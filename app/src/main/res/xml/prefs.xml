@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory app:title="Внешний вид" app:iconSpaceReserved="false">
+        <ListPreference app:key="theme" app:title="Тема" app:defaultValue="system" app:entries="@array/theme_names" app:entryValues="@array/theme_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <SeekBarPreference app:key="font_size" app:title="Размер шрифта" app:min="8" android:max="32" app:defaultValue="15" app:showSeekBarValue="true" app:iconSpaceReserved="false" xmlns:android="http://schemas.android.com/apk/res/android" />
+        <SwitchPreferenceCompat app:key="line_numbers" app:title="Номера строк" app:defaultValue="true" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="wrap" app:title="Перенос длинных строк" app:defaultValue="true" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="high_refresh" app:title="Максимальная частота экрана" app:summary="Просить у системы 120–144 Гц для плавной прокрутки" app:defaultValue="true" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+    <PreferenceCategory app:title="Редактор" app:iconSpaceReserved="false">
+        <ListPreference app:key="indent" app:title="Отступ" app:defaultValue="4" app:entries="@array/indent_names" app:entryValues="@array/indent_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="auto_pair" app:title="Парные скобки и кавычки" app:defaultValue="true" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="auto_indent" app:title="Автоотступ" app:defaultValue="true" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="autocomplete" app:title="Подсказки слов" app:defaultValue="true" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="autosave" app:title="Автосохранение" app:summary="Через 1,5 с после правки и при сворачивании" app:defaultValue="true" app:iconSpaceReserved="false" />
+        <EditTextPreference app:key="extra_keys" app:title="Кнопки над клавиатурой" app:dialogMessage="Через пробел. Особые: Tab, Undo, Redo, Comment, Outdent, Home, End, space, enter" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="haptics" app:title="Отклик вибрацией" app:defaultValue="true" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+    <PreferenceCategory app:title="Голосовой ввод" app:iconSpaceReserved="false">
+        <ListPreference app:key="voice_engine" app:title="Распознавание" app:defaultValue="auto" app:entries="@array/engine_names" app:entryValues="@array/engine_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <ListPreference app:key="voice_lang" app:title="Язык по умолчанию" app:defaultValue="ru" app:entries="@array/lang_names" app:entryValues="@array/lang_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <Preference app:key="vosk_ru" app:title="Офлайн-модель Vosk: русский" app:iconSpaceReserved="false" />
+        <Preference app:key="vosk_en" app:title="Офлайн-модель Vosk: английский" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+    <PreferenceCategory app:title="Git и GitHub" app:iconSpaceReserved="false">
+        <EditTextPreference app:key="git_user" app:title="Логин GitHub" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <Preference app:key="git_token" app:title="Токен доступа (PAT)" app:iconSpaceReserved="false" />
+        <EditTextPreference app:key="git_name" app:title="Имя автора коммитов" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <EditTextPreference app:key="git_email" app:title="E-mail автора" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+</PreferenceScreen>

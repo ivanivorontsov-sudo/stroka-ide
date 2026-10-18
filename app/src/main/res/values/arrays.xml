@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="theme_names">
+        <item>Как в системе</item>
+        <item>Тёмная</item>
+        <item>Светлая</item>
+    </string-array>
+    <string-array name="theme_values">
+        <item>system</item>
+        <item>dark</item>
+        <item>light</item>
+    </string-array>
+    <string-array name="indent_names">
+        <item>4 пробела</item>
+        <item>2 пробела</item>
+        <item>Табуляция</item>
+    </string-array>
+    <string-array name="indent_values">
+        <item>4</item>
+        <item>2</item>
+        <item>tab</item>
+    </string-array>
+    <string-array name="engine_names">
+        <item>Авто: Google, без сети — Vosk</item>
+        <item>Только Google (SpeechRecognizer)</item>
+        <item>Только Vosk (офлайн)</item>
+    </string-array>
+    <string-array name="engine_values">
+        <item>auto</item>
+        <item>google</item>
+        <item>vosk</item>
+    </string-array>
+    <string-array name="lang_names">
+        <item>Русский</item>
+        <item>English</item>
+    </string-array>
+    <string-array name="lang_values">
+        <item>ru</item>
+        <item>en</item>
+    </string-array>
+</resources>

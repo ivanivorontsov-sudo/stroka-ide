@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Строка</string>
+    <string name="files">Файлы</string>
+    <string name="new_project">Проект</string>
+    <string name="open_folder">Папка…</string>
+    <string name="empty_hint">Откройте файл из панели слева или создайте проект из шаблона.</string>
+    <string name="find_hint">Найти</string>
+    <string name="replace_hint">Заменить на</string>
+    <string name="replace">Заменить</string>
+    <string name="replace_all">Все</string>
+    <string name="regex">Регулярка</string>
+    <string name="match_case">Аа</string>
+    <string name="whole_word">Слово</string>
+    <string name="prev">Предыдущее</string>
+    <string name="next">Следующее</string>
+    <string name="close">Закрыть</string>
+    <string name="close_tab">Закрыть вкладку</string>
+    <string name="console">Консоль</string>
+    <string name="preview">Просмотр</string>
+    <string name="stop">Остановить</string>
+    <string name="clear">Очистить</string>
+    <string name="input_hint">Ввод для программы</string>
+    <string name="send">Ввод</string>
+    <string name="voice">Голосовой ввод</string>
+    <string name="voice_help">Справка по голосу</string>
+    <string name="settings">Настройки</string>
+    <string name="run">Запустить</string>
+    <string name="undo">Отменить</string>
+    <string name="redo">Повторить</string>
+    <string name="save">Сохранить</string>
+    <string name="save_all">Сохранить всё</string>
+    <string name="find_replace">Найти и заменить</string>
+    <string name="goto_line">Перейти к строке</string>
+    <string name="new_file">Новый файл</string>
+    <string name="from_template">Новый проект из шаблона</string>
+    <string name="git">Git</string>
+    <string name="show_console">Консоль</string>
+    <string name="html_preview">Просмотр HTML</string>
+    <string name="word_wrap">Перенос строк</string>
+    <string name="toggle_theme">Тёмная тема</string>
+    <string name="toggle_comment">Комментарий</string>
+    <string name="voice_commands">Голосовые команды</string>
+    <string name="close_current">Закрыть вкладку</string>
+    <string name="about">О программе</string>
+    <string name="mic_permission">Для голосового ввода нужен доступ к микрофону</string>
+</resources>

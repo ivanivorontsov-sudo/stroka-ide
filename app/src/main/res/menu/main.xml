@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/action_undo" android:icon="@drawable/ic_undo" android:title="@string/undo" app:showAsAction="always" />
+    <item android:id="@+id/action_redo" android:icon="@drawable/ic_redo" android:title="@string/redo" app:showAsAction="always" />
+    <item android:id="@+id/action_run" android:icon="@drawable/ic_play" android:title="@string/run" app:showAsAction="always" />
+    <item android:id="@+id/action_save" android:icon="@drawable/ic_save" android:title="@string/save" app:showAsAction="never" />
+    <item android:id="@+id/action_find" android:title="@string/find_replace" app:showAsAction="never" />
+    <item android:id="@+id/action_goto" android:title="@string/goto_line" app:showAsAction="never" />
+    <item android:id="@+id/action_new_file" android:title="@string/new_file" app:showAsAction="never" />
+    <item android:id="@+id/action_template" android:title="@string/from_template" app:showAsAction="never" />
+    <item android:id="@+id/action_git" android:title="@string/git" app:showAsAction="never" />
+    <item android:id="@+id/action_console" android:title="@string/show_console" app:showAsAction="never" />
+    <item android:id="@+id/action_preview" android:title="@string/html_preview" app:showAsAction="never" />
+    <item android:id="@+id/action_comment" android:title="@string/toggle_comment" app:showAsAction="never" />
+    <item android:id="@+id/action_wrap" android:checkable="true" android:title="@string/word_wrap" app:showAsAction="never" />
+    <item android:id="@+id/action_theme" android:checkable="true" android:title="@string/toggle_theme" app:showAsAction="never" />
+    <item android:id="@+id/action_voice_help" android:title="@string/voice_commands" app:showAsAction="never" />
+    <item android:id="@+id/action_close" android:title="@string/close_current" app:showAsAction="never" />
+    <item android:id="@+id/action_settings" android:title="@string/settings" app:showAsAction="never" />
+    <item android:id="@+id/action_about" android:title="@string/about" app:showAsAction="never" />
+</menu>

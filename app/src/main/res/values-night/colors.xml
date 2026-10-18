@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="editor_bg">#1E1F22</color>
+    <color name="editor_fg">#D4D7DD</color>
+    <color name="gutter_bg">#232428</color>
+    <color name="gutter_fg">#5F6370</color>
+    <color name="current_line">#14FFFFFF</color>
+    <color name="selection">#664A79C9</color>
+    <color name="search_hit">#66C99A2E</color>
+    <color name="console_bg">#17181B</color>
+    <color name="console_fg">#D4D7DD</color>
+    <color name="console_err">#FF7B72</color>
+    <color name="console_info">#79B8FF</color>
+    <color name="syn_keyword">#C678DD</color>
+    <color name="syn_type">#E5C07B</color>
+    <color name="syn_builtin">#56B6C2</color>
+    <color name="syn_constant">#D19A66</color>
+    <color name="syn_string">#98C379</color>
+    <color name="syn_number">#D19A66</color>
+    <color name="syn_comment">#7F848E</color>
+    <color name="syn_function">#61AFEF</color>
+    <color name="syn_tag">#E06C75</color>
+    <color name="syn_attr">#D19A66</color>
+    <color name="syn_heading">#61AFEF</color>
+    <color name="syn_meta">#B392F0</color>
+    <color name="syn_label">#F07178</color>
+    <color name="syn_emphasis">#C678DD</color>
+    <color name="syn_link">#56B6C2</color>
+</resources>

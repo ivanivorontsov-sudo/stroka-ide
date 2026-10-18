@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Stroka" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#B4C5FF</item>
+        <item name="colorOnPrimary">#0E2A6B</item>
+        <item name="colorPrimaryContainer">#2B4386</item>
+        <item name="colorSecondaryContainer">#3A4256</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+    </style>
+</resources>
