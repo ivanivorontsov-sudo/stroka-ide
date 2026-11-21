@@ -70,6 +70,8 @@ def run(code, filename, cwd, cb):
             os.chdir(cwd)
             sys.path.insert(0, cwd)
         sys.argv = [filename]
+        from stroka_tkinter import install
+        install(cb)
         g = {"__name__": "__main__", "__file__": filename, "__builtins__": builtins}
         exec(compile(code, filename, "exec"), g)
     except SystemExit as e:

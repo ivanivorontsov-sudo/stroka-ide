@@ -2,6 +2,8 @@ package org.ivanivorontsov.stroka.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -26,6 +28,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.webkit.ConsoleMessage
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -77,6 +80,7 @@ import org.ivanivorontsov.stroka.run.JsRunner
 import org.ivanivorontsov.stroka.run.PythonRunner
 import org.ivanivorontsov.stroka.voice.VoiceInput
 import org.ivanivorontsov.stroka.build.BuildCoordinator
+import org.ivanivorontsov.stroka.build.CompileEnv
 import org.ivanivorontsov.stroka.build.BuildException
 import org.ivanivorontsov.stroka.build.OneFileBuild
 import org.ivanivorontsov.stroka.build.Toolchain
@@ -920,6 +924,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             if (previewBox.visibility == View.VISIBLE) refreshPreview() else { consoleBuf.clear(); consoleText.text = "" }
         }
         findViewById<ImageButton>(R.id.panelStop).setOnClickListener { stopRun() }
+        findViewById<ImageButton>(R.id.panelCopy).setOnClickListener { copyConsole() }
+        consoleText.setTextIsSelectable(true)
+        consoleText.setLongClickable(true)
         findViewById<Button>(R.id.consoleSend).setOnClickListener { sendInput() }
         consoleInput.setOnEditorActionListener { _, a, _ -> if (a == EditorInfo.IME_ACTION_SEND || a == EditorInfo.IME_ACTION_DONE) { sendInput(); true } else false }
         panelTabs.addOnButtonCheckedListener { _, id, checked ->
@@ -965,6 +972,14 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         panel.visibility = View.GONE
     }
 
+    private fun copyConsole() {
+        val text = consoleBuf.toString()
+        val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("Консоль", text))
+        toast(getString(R.string.copied))
+    }
+
+
     private fun appendConsole(s: String, kind: Kind) {
         val start = consoleBuf.length
         consoleBuf.append(s)
@@ -977,7 +992,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         if (color != 0) consoleBuf.setSpan(ForegroundColorSpan(color), start, consoleBuf.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         if (consoleBuf.length > 300_000) consoleBuf.delete(0, consoleBuf.length - 200_000)
         consoleText.setText(consoleBuf, TextView.BufferType.SPANNABLE)
-        consoleScroll.post { consoleScroll.fullScroll(View.FOCUS_DOWN) }
+        consoleText.setTextIsSelectable(true)
+        if (!consoleText.hasSelection()) {
+            consoleScroll.post { consoleScroll.fullScroll(View.FOCUS_DOWN) }
+        }
     }
 
     private fun sendInput() {
@@ -1018,6 +1036,14 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 panelStatus.text = "Ждёт ввода…"
                 consoleInput.requestFocus()
                 (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(consoleInput, 0)
+            }
+            override fun onPreview(html: String) {
+                showPanel(true)
+                consoleBox.visibility = View.GONE
+                previewBox.visibility = View.VISIBLE
+                val w = ensurePreview()
+                w.loadDataWithBaseURL("https://stroka.local/", html, "text/html", "utf-8", null)
+                panelStatus.text = "Просмотр"
             }
             override fun onFinished(code: Int, millis: Long) {
                 inputRow.visibility = View.GONE
@@ -1066,6 +1092,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         w.settings.builtInZoomControls = true
         w.settings.displayZoomControls = false
         w.webViewClient = object : WebViewClient() {}
+        w.addJavascriptInterface(StrokaJs(), "Stroka")
         w.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {
                 val err = m.messageLevel() == ConsoleMessage.MessageLevel.ERROR || m.messageLevel() == ConsoleMessage.MessageLevel.WARNING
@@ -1398,9 +1425,43 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         MaterialAlertDialogBuilder(this).setTitle("Голосовой ввод").setView(sv).setPositiveButton("Понятно", null).show()
     }
 
+
+    inner class StrokaJs {
+        @JavascriptInterface
+        fun onUiEvent(event: String) {
+            python.postUiEvent(event)
+        }
+    }
+
+    private fun compileEnvFor(d: Doc): CompileEnv {
+        val files = LinkedHashMap<String, String>()
+        val local = d.ref as? DocRef.Local
+        val root = local?.let { File(it.path).parentFile }
+        if (root != null && root.isDirectory) {
+            root.walkTopDown().maxDepth(8).forEach { f ->
+                if (f.isFile && f.name.endsWith(".pon", ignoreCase = true)) {
+                    val rel = f.relativeTo(root).invariantSeparatorsPath
+                    files[rel] = f.readText(Charsets.UTF_8)
+                }
+            }
+        }
+        for (doc in docs) {
+            val r = doc.ref as? DocRef.Local
+            if (r != null && root != null) {
+                val f = File(r.path)
+                if ((f.canonicalPath == root.canonicalPath || f.canonicalPath.startsWith(root.canonicalPath + "/")) && doc.name.endsWith(".pon", ignoreCase = true)) {
+                    files[f.relativeTo(root).invariantSeparatorsPath] = doc.text
+                }
+            } else if (doc.name.endsWith(".pon", ignoreCase = true)) {
+                files[doc.name] = doc.text
+            }
+        }
+        return CompileEnv(fileName = d.name, projectFiles = files, projectRoot = root)
+    }
+
     private fun showAbout() {
         MaterialAlertDialogBuilder(this).setTitle("Строка ${BuildConfig.VERSION_NAME}")
-            .setMessage("Редактор кода для телефона, версия " + BuildConfig.VERSION_NAME + ".\n\nЗапуск: Python 3.12, JavaScript, язык «Понятный».\nСборка APK и Windows EXE прямо на телефоне: полный конвейер aapt2, компилятор Java, d8 и подпись; EXE — через компилятор и движок QuickJS.\nГолос: Google SpeechRecognizer и офлайн Vosk.\nGit: JGit, токен хранится в Android Keystore.\n\nВесь новый код этой версии написан с помощью ИИ.\niPhone не поддерживается: по правилам Apple на нём нельзя собрать и установить APK.\n\nПроекты лежат в памяти приложения. Чтобы работать с папкой на телефоне, нажмите «Папка…» в панели файлов.")
+            .setMessage("Редактор кода для телефона, версия " + BuildConfig.VERSION_NAME + ".\n\nЗапуск: Python 3.12 (включая программы с tkinter в панели «Просмотр»), JavaScript, язык «Понятный».\nСборка APK на телефоне: «Понятный», Java, JavaScript, HTML и Python (среда Chaquopy, лицензия MIT, из Строки). EXE — «Понятный» и JavaScript через QuickJS.\nСтандартные библиотеки «Понятного» и часть Java/JS-библиотек встроены; список лицензий — в настройках.\nГолос: Google SpeechRecognizer и офлайн Vosk.\nGit: JGit, токен хранится в Android Keystore.\n\nВесь новый код этой версии написан с помощью ИИ.\niPhone не поддерживается: по правилам Apple на нём нельзя собрать и установить APK.\n\nПроекты лежат в памяти приложения. Чтобы работать с папкой на телефоне, нажмите «Папка…» в панели файлов.")
             .setPositiveButton("ОК", null).show()
     }
 
@@ -1415,7 +1476,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         showPanel(false)
         appendConsole("▶ понятный $name\n", Kind.INFO)
         panelStatus.text = "«Понятный» выполняется…"
-        val script = BuildCoordinator.runScript(code, yadro)
+        val script = BuildCoordinator.runScript(code, yadro, compileEnvFor(docs[current]))
         js.run(script, name, object : JsRunner.Sink {
             override fun onOutput(text: String, error: Boolean) = appendConsole(text, if (error) Kind.ERR else Kind.OUT)
             override fun onPrompt(message: String, default: String, result: (String?) -> Unit) {
@@ -1452,18 +1513,18 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val d = docs.getOrNull(current) ?: run { toast("Откройте файл программы"); return }
         captureEditor(d)
         if (prefs.autosave) saveAllDirty()
-        val allowed = d.lang == Lang.PONYATNY || d.lang == Lang.JAVASCRIPT || d.lang == Lang.HTML || d.lang == Lang.JAVA || d.lang == Lang.KOTLIN
+        val allowed = d.lang == Lang.PONYATNY || d.lang == Lang.JAVASCRIPT || d.lang == Lang.HTML || d.lang == Lang.JAVA || d.lang == Lang.KOTLIN || d.lang == Lang.PYTHON
         if (!allowed) {
             MaterialAlertDialogBuilder(this)
                 .setTitle("Сборка")
-                .setMessage("На телефоне собираются программы на «Понятном», Java, JavaScript и HTML. Откройте файл .pon, .java или шаблон «Понятный: калькулятор» / «Java: калькулятор».")
+                .setMessage("На телефоне собираются программы на «Понятном», Java, Python, JavaScript и HTML. Откройте файл .pon, .java, .py или шаблон калькулятора.")
                 .setPositiveButton("ОК", null).show()
             return
         }
         if (kind == "exe" && d.lang != Lang.PONYATNY && d.lang != Lang.JAVASCRIPT) {
             MaterialAlertDialogBuilder(this)
                 .setTitle("Сборка EXE")
-                .setMessage("Windows EXE на телефоне собирается из программы на «Понятном» или JavaScript (встроенный QuickJS). Для Java соберите APK.")
+                .setMessage("Windows EXE на телефоне собирается из программы на «Понятном» или JavaScript (встроенный QuickJS). Для Java и Python соберите APK.")
                 .setPositiveButton("ОК", null).show()
             return
         }
@@ -1482,11 +1543,12 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 val work = File(cacheDir, "build-one")
                 work.deleteRecursively()
                 work.mkdirs()
+                val env = compileEnvFor(d)
                 if (kind == "apk") {
                     val tmp = File(work, "$label.apk")
-                    val apk = OneFileBuild.buildApk(source, fileName, label, work, assets, tmp) { msg ->
+                    val apk = OneFileBuild.buildApk(source, fileName, label, work, assets, tmp, { msg ->
                         main.post { appendConsole(msg + "\n", Kind.INFO) }
-                    }
+                    }, env)
                     val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, apk.name, apk.readBytes())
                     val ms = (System.nanoTime() - t0) / 1_000_000L
                     main.post {
@@ -1497,9 +1559,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                     }
                 } else {
                     val tmp = File(work, "$label.exe")
-                    val exe = OneFileBuild.buildExe(source, fileName, label, work, assets, tmp) { msg ->
+                    val exe = OneFileBuild.buildExe(source, fileName, label, work, assets, tmp, { msg ->
                         main.post { appendConsole(msg + "\n", Kind.INFO) }
-                    }
+                    }, env)
                     val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, exe.name, exe.readBytes())
                     val ms = (System.nanoTime() - t0) / 1_000_000L
                     main.post {

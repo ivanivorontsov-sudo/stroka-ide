@@ -20,6 +20,8 @@
     <string name="preview">Просмотр</string>
     <string name="stop">Остановить</string>
     <string name="clear">Очистить</string>
+    <string name="copy_console">Копировать</string>
+    <string name="copied">Скопировано</string>
     <string name="input_hint">Ввод для программы</string>
     <string name="send">Ввод</string>
     <string name="voice">Голосовой ввод</string>

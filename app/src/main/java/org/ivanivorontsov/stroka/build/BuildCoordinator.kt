@@ -16,15 +16,21 @@ object BuildCoordinator {
 
     fun yadroJs(ctx: Context): String = assetText(ctx, "ponyatny/yadro.js")
 
-    fun runScript(source: String, yadro: String): String {
-        val quoted = org.json.JSONObject.quote(source)
-        return yadro + "\n(function(){\n" +
+    fun runScript(source: String, yadro: String, env: CompileEnv = CompileEnv()): String {
+        val prepared = LibResolver.preparePonyatny(source, env)
+        val quoted = JsonTxt.quote(source)
+        val stdJson = JsonTxt.objectOf(prepared.std)
+        val filesJson = JsonTxt.objectOf(prepared.projectFiles)
+        return yadro + "\n" + PonyatnyJs.resolverJs() + "\n" +
+            "var STROKA_STD = " + stdJson + ";\n" +
+            "var STROKA_FILES = " + filesJson + ";\n" +
+            "(function(){\n" +
             "  var src = " + quoted + ";\n" +
-            "  var js = PonyatnyYadro.compile(src);\n" +
+            "  var js = PonyatnyYadro.compile(src, { file: " + PonyatnyJs.json(prepared.fileName) + ", resolve: function(p, from){ return strokaResolve(p, from, STROKA_STD, STROKA_FILES); } });\n" +
             "  var __R = PonyatnyYadro.makeRuntime({\n" +
             "    write: function(s){ console.log(String(s)); },\n" +
             "    writeErr: function(s){ console.error(String(s)); },\n" +
-            "    ask: function(q){ var v = window.prompt(q || 'Ввод', ''); return v == null ? '' : v; },\n" +
+            "    ask: function(q){ var v = window.prompt(q || '\u0412\u0432\u043e\u0434', ''); return v == null ? '' : v; },\n" +
             "    maxSteps: 5000000,\n" +
             "    args: []\n" +
             "  });\n" +
@@ -62,13 +68,19 @@ object BuildCoordinator {
             "runtime.js" to assetBytes(ctx, "runtime/runtime.js"),
             "shell.js" to assetBytes(ctx, "runtime/shell.js")
         )
+        val libDir = extractLibs(ctx, File(ctx.filesDir, "libs"))
         return BuildAssets(
             yadroText = yadroJs(ctx),
             runtime = runtime,
             mainJava = assetText(ctx, "toolchain/Main.java"),
             userKey = UserKey.load(keyFile),
             exeStub = assetBytes(ctx, "templates/stroka-qjs-stub.exe"),
-            toolchain = tc
+            toolchain = tc,
+            stdText = try { assetText(ctx, "ponyatny/std.js") } catch (_: Exception) { "" },
+            libDir = libDir,
+            cacheDir = File(ctx.filesDir, "lib-cache"),
+            setupStub = try { assetBytes(ctx, "templates/stroka-setup-stub.exe") } catch (_: Exception) { ByteArray(0) },
+            qjsLinuxAmd64 = try { assetBytes(ctx, "templates/qjs-linux-x86_64") } catch (_: Exception) { ByteArray(0) }
         )
     }
 
@@ -91,8 +103,33 @@ object BuildCoordinator {
             mainJava = File(root, "app/src/main/assets/toolchain/Main.java").readText(Charsets.UTF_8),
             userKey = key,
             exeStub = stub.readBytes(),
-            toolchain = tc
+            toolchain = tc,
+            stdText = File(root, "app/src/main/assets/ponyatny/std.js").readText(Charsets.UTF_8),
+            libDir = File(root, "app/src/main/assets/libs"),
+            cacheDir = File(root, "app/build/lib-cache"),
+            setupStub = File(root, "app/src/main/assets/templates/stroka-setup-stub.exe").let { if (it.isFile) it.readBytes() else ByteArray(0) },
+            qjsLinuxAmd64 = File(root, "app/src/main/assets/templates/qjs-linux-x86_64").let { if (it.isFile) it.readBytes() else ByteArray(0) }
         )
+    }
+
+    fun extractLibs(ctx: Context, dest: File): File {
+        dest.mkdirs()
+        fun copyDir(prefix: String) {
+            val names = ctx.assets.list(prefix)
+            if (names == null || names.isEmpty()) {
+                try {
+                    val rel = if (prefix.startsWith("libs/")) prefix.substring(5) else prefix
+                    val target = File(dest, rel)
+                    target.parentFile?.mkdirs()
+                    ctx.assets.open(prefix).use { inp -> target.outputStream().use { out -> inp.copyTo(out) } }
+                } catch (_: Exception) {
+                }
+                return
+            }
+            for (n in names) copyDir("$prefix/$n")
+        }
+        try { copyDir("libs") } catch (_: Exception) {}
+        return dest
     }
 
     fun writeToTree(ctx: Context, tree: Uri, name: String, data: ByteArray): Uri {

@@ -15,8 +15,8 @@ android {
         applicationId = "org.ivanivorontsov.stroka"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.8.0"
+        versionCode = 11
+        versionName = "1.8.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters.clear()
@@ -79,6 +79,7 @@ chaquopy {
 }
 
 dependencies {
+    implementation(files("libs/javax-lang-model-stub.jar"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-ktx:1.9.3")

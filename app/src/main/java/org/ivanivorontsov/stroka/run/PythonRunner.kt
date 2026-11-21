@@ -7,6 +7,7 @@ import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class PythonRunner(private val ctx: Context) {
@@ -15,10 +16,12 @@ class PythonRunner(private val ctx: Context) {
         fun onOutput(text: String, error: Boolean)
         fun onInputRequested(prompt: String)
         fun onFinished(code: Int, millis: Long)
+        fun onPreview(html: String) {}
     }
 
     inner class Callback(private val sink: Sink) {
         private val buf = StringBuilder()
+        private val events = LinkedBlockingQueue<String>()
         private var lastErr = false
         private var scheduled = false
 
@@ -46,6 +49,26 @@ class PythonRunner(private val ctx: Context) {
 
         fun flush() = synchronized(buf) { flushLocked() }
 
+        fun showPreview(html: String) {
+            main.post { sink.onPreview(html) }
+        }
+
+        fun waitUiEvent(timeoutMs: Int): String {
+            return try {
+                events.poll(timeoutMs.toLong(), TimeUnit.MILLISECONDS) ?: ""
+            } catch (_: InterruptedException) {
+                ""
+            }
+        }
+
+        fun waitUiEvent(timeoutMs: Long): String = waitUiEvent(timeoutMs.toInt())
+
+        fun waitUiEvent(): String = waitUiEvent(24 * 60 * 60 * 1000)
+
+        fun postUiEvent(event: String) {
+            events.offer(event ?: "")
+        }
+
         fun readLine(prompt: String): String? {
             flush()
             main.post { sink.onInputRequested(prompt) }
@@ -58,6 +81,7 @@ class PythonRunner(private val ctx: Context) {
     private val input = LinkedBlockingQueue<String>()
     private val running = AtomicBoolean(false)
     private var module: PyObject? = null
+    @Volatile private var activeCb: Callback? = null
 
     val isRunning: Boolean get() = running.get()
 
@@ -72,6 +96,7 @@ class PythonRunner(private val ctx: Context) {
             val start = System.currentTimeMillis()
             var status = 1
             val cb = Callback(sink)
+            activeCb = cb
             try {
                 if (!Python.isStarted()) Python.start(AndroidPlatform(ctx.applicationContext))
                 val m = module ?: Python.getInstance().getModule("stroka_runner").also { module = it }
@@ -80,6 +105,7 @@ class PythonRunner(private val ctx: Context) {
                 cb.out("Ошибка запуска Python: ${e.message}\n", true)
             } finally {
                 cb.flush()
+                activeCb = null
                 running.set(false)
                 val ms = System.currentTimeMillis() - start
                 main.postDelayed({ sink.onFinished(status, ms) }, 60)
@@ -87,8 +113,13 @@ class PythonRunner(private val ctx: Context) {
         }, "python-run").apply { isDaemon = true }.start()
     }
 
+    fun postUiEvent(event: String) {
+        activeCb?.postUiEvent(event)
+    }
+
     fun stop() {
         if (!running.get()) return
+        postUiEvent("__stop__")
         input.offer(EOF)
         try {
             module?.callAttr("stop")

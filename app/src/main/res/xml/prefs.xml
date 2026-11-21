@@ -36,4 +36,8 @@
         <EditTextPreference app:key="ai_model" app:title="Модель ИИ" app:defaultValue="deepseek-chat" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <Preference app:key="ai_key" app:title="Ключ API ИИ" app:iconSpaceReserved="false" />
     </PreferenceCategory>
+    <PreferenceCategory app:title="О программе" app:iconSpaceReserved="false">
+        <Preference app:key="licenses" app:title="Лицензии встроенных библиотек" app:summary="Понятный, Apache Commons, Gson, Day.js, Chaquopy, инструменты сборки" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
 </PreferenceScreen>
+

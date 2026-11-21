@@ -6,7 +6,7 @@ import java.io.PrintWriter
 import java.io.StringWriter
 
 object JavaCompile {
-    fun compile(sources: List<File>, bootclasspath: File, outDir: File) {
+    fun compile(sources: List<File>, bootclasspath: File, outDir: File, classpath: List<File> = emptyList()) {
         if (sources.isEmpty()) throw BuildException("Нет Java-исходников для компиляции.")
         outDir.mkdirs()
         val out = StringWriter()
@@ -19,9 +19,14 @@ object JavaCompile {
             "-encoding", "UTF-8",
             "-bootclasspath", bootclasspath.absolutePath,
             "-d", outDir.absolutePath,
+            "-proc:none",
             "-nowarn",
             "-g:none"
         ))
+        if (classpath.isNotEmpty()) {
+            args.add("-classpath")
+            args.add(classpath.joinToString(File.pathSeparator) { it.absolutePath })
+        }
         sources.forEach { args.add(it.absolutePath) }
         val ok = main.compile(args.toTypedArray())
         if (!ok) {

@@ -19,21 +19,52 @@ object PonyatnyJs {
         return "window.__STROKA__={title:$t,mode:$m};\nwindow.__strokaMain=function(__R){\n$js\n};\n"
     }
 
-    fun compile(source: String, yadroSource: String): String {
+    fun compile(source: String, yadroSource: String, env: CompileEnv = CompileEnv()): String {
         if (yadroSource.isBlank()) throw BuildException("Не найден компилятор «Понятный».")
+        val prepared = LibResolver.preparePonyatny(source, env)
         val ctx = appContext
-        if (ctx != null) return compileWithWebView(ctx, source, yadroSource)
-        return compileWithNodeProcess(source, yadroSource)
+        if (ctx != null) return compileWithWebView(ctx, source, yadroSource, prepared)
+        return compileWithNodeProcess(source, yadroSource, prepared)
     }
 
-    fun compileFile(source: String, yadroJs: File): String {
+    fun compileFile(source: String, yadroJs: File, env: CompileEnv = CompileEnv()): String {
         if (!yadroJs.isFile) throw BuildException("Не найден компилятор «Понятный»: ${yadroJs.absolutePath}")
-        return compile(source, yadroJs.readText(Charsets.UTF_8))
+        return compile(source, yadroJs.readText(Charsets.UTF_8), env)
     }
 
     fun compileWithNode(source: String, yadroJs: File, node: File, work: File): String = compileFile(source, yadroJs)
 
-    private fun compileWithNodeProcess(source: String, yadroSource: String): String {
+    fun resolverJs(): String = """
+function strokaResolve(p, from, std, files) {
+  var s = String(p || "");
+  var stdName = null;
+  var m = s.match(/^(?:стд|std)\/([^\/\\]+?)(?:\.pon)?$/i);
+  if (m) stdName = m[1].toLowerCase();
+  else if (s.indexOf("/") < 0 && s.indexOf("\\\\") < 0) {
+    var bare = s.replace(/\.pon$/i, "");
+    if (std[bare]) stdName = bare;
+  }
+  if (stdName && std[stdName]) return { id: "стд:" + stdName, name: "стд/" + stdName + ".pon", source: std[stdName] };
+  if (stdName && !std[stdName]) return null;
+  var rel = s.replace(/\\\\/g, "/");
+  if (!/\.pon$/i.test(rel)) rel += ".pon";
+  var base = String(from || "").replace(/\\\\/g, "/");
+  var dir = base.indexOf("/") >= 0 ? base.slice(0, base.lastIndexOf("/")) : "";
+  var parts = dir ? dir.split("/").filter(function(x){ return x.length; }) : [];
+  var bits = rel.split("/");
+  for (var i = 0; i < bits.length; i++) {
+    var b = bits[i];
+    if (!b || b === ".") continue;
+    if (b === "..") { if (!parts.length) return null; parts.pop(); }
+    else parts.push(b);
+  }
+  var joined = parts.join("/");
+  if (files[joined]) return { id: joined, name: joined, source: files[joined] };
+  return null;
+}
+""".trimIndent()
+
+    private fun compileWithNodeProcess(source: String, yadroSource: String, env: CompileEnv): String {
         val node = findNode() ?: throw BuildException("Нет движка JavaScript для компилятора «Понятный».")
         val work = File(System.getProperty("java.io.tmpdir"), "stroka-pon-" + System.nanoTime())
         work.mkdirs()
@@ -44,12 +75,19 @@ object PonyatnyJs {
             val out = File(work, "out.js")
             val script = File(work, "compile.cjs")
             src.writeText(source, Charsets.UTF_8)
+            val stdJson = JsonTxt.objectOf(env.std)
+            val filesJson = JsonTxt.objectOf(env.projectFiles)
+            File(work, "std.json").writeText(stdJson, Charsets.UTF_8)
+            File(work, "files.json").writeText(filesJson, Charsets.UTF_8)
             script.writeText(
                 """const fs = require("fs");
 const Y = require(${json(yadro.absolutePath)});
 const src = fs.readFileSync(process.argv[2], "utf8");
+const std = JSON.parse(fs.readFileSync(require("path").join(__dirname, "std.json"), "utf8"));
+const files = JSON.parse(fs.readFileSync(require("path").join(__dirname, "files.json"), "utf8"));
+${resolverJs()}
 try {
-  const js = Y.compile(src);
+  const js = Y.compile(src, { file: ${json(env.fileName)}, resolve: function(p, from) { return strokaResolve(p, from, std, files); } });
   fs.writeFileSync(process.argv[3], js);
 } catch (e) {
   const m = e && e.message ? e.message : String(e);
@@ -81,17 +119,21 @@ try {
         return null
     }
 
-    private fun compileWithWebView(ctx: android.content.Context, source: String, yadroSource: String): String {
+    private fun compileWithWebView(ctx: android.content.Context, source: String, yadroSource: String, env: CompileEnv): String {
         val latch = CountDownLatch(1)
         val box = AtomicReference<Any>()
         val app = ctx.applicationContext
+        val stdJson = JsonTxt.objectOf(env.std)
+        val filesJson = JsonTxt.objectOf(env.projectFiles)
+        val fileName = json(env.fileName)
         val run = Runnable {
             try {
                 val web = WebView(app)
                 web.settings.javaScriptEnabled = true
                 web.webViewClient = object : android.webkit.WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
-                        val expr = "(function(){try{var js=PonyatnyYadro.compile(" + JSONObject.quote(source) + ");return {ok:true,js:js};}catch(e){return {ok:false,err:String(e&&e.message?e.message:e)};}})()"
+                        val expr = "(function(){try{var js=PonyatnyYadro.compile(" + JSONObject.quote(source) +
+                            ",{file:$fileName,resolve:function(p,from){return strokaResolve(p,from,STROKA_STD,STROKA_FILES);}});return {ok:true,js:js};}catch(e){return {ok:false,err:String(e&&e.message?e.message:e)};}})()"
                         web.evaluateJavascript(expr) { raw ->
                             try {
                                 val json = unwrapJs(raw)
@@ -107,7 +149,10 @@ try {
                         }
                     }
                 }
-                val html = "<!doctype html><meta charset=utf-8><script>\n" + yadroSource + "\n</script>"
+                val html = "<!doctype html><meta charset=utf-8><script>\n" + yadroSource + "\n" +
+                    "var STROKA_STD = " + stdJson + ";\n" +
+                    "var STROKA_FILES = " + filesJson + ";\n" +
+                    resolverJs() + "\n</script>"
                 web.loadDataWithBaseURL("https://stroka.local/", html, "text/html", "utf-8", null)
             } catch (e: Exception) {
                 box.set(BuildException("Не удалось запустить движок JavaScript: ${e.message}"))

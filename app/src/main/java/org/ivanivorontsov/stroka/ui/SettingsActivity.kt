@@ -3,6 +3,8 @@ package org.ivanivorontsov.stroka.ui
 import android.os.Bundle
 import android.text.InputType
 import android.widget.EditText
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -43,6 +45,7 @@ class SettingsActivity : AppCompatActivity() {
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.prefs, rootKey)
+            findPreference<Preference>("licenses")?.setOnPreferenceClickListener { showLicenses(); true }
             val prefs = Prefs(requireContext())
             findPreference<Preference>("theme")?.setOnPreferenceChangeListener { _, _ ->
                 view?.post { prefs.applyTheme() }
@@ -66,6 +69,28 @@ class SettingsActivity : AppCompatActivity() {
             val aiPref = findPreference<Preference>("ai_key")
             updateAiSummary(aiPref)
             aiPref?.setOnPreferenceClickListener { askAiKey(it); true }
+        }
+
+        private fun showLicenses() {
+            val text = try {
+                requireContext().assets.open("libs/LICENSES.md").bufferedReader(Charsets.UTF_8).use { it.readText() }
+            } catch (e: Exception) {
+                "Не удалось прочитать список лицензий: ${e.message}"
+            }
+            val view = ScrollView(requireContext()).apply {
+                val pad = (16 * resources.displayMetrics.density).toInt()
+                addView(TextView(requireContext()).apply {
+                    this.text = text
+                    setPadding(pad, pad, pad, pad)
+                    textSize = 14f
+                    setTextIsSelectable(true)
+                })
+            }
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Лицензии")
+                .setView(view)
+                .setPositiveButton("ОК", null)
+                .show()
         }
 
         private fun updateTokenSummary(p: Preference?) {
