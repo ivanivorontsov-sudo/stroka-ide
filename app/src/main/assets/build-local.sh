@@ -135,10 +135,11 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(web)
         web.loadData("<meta name='viewport' content='width=device-width,initial-scale=1'><body style='font:16px sans-serif;padding:24px'>Запуск приложения…</body>", "text/html", "utf-8")
+        copyAssetTree("", filesDir)
         Thread({
             try {
                 if (!Python.isStarted()) Python.start(AndroidPlatform(applicationContext))
-                val code = assets.open("main.py").bufferedReader().use { it.readText() }
+                val code = File(filesDir, "main.py").readText()
                 Python.getInstance().getModule("stroka_runner").callAttr("run", code, "main.py", filesDir.absolutePath, bridge)
             } catch (failure: Throwable) {
                 runOnUiThread {
@@ -147,6 +148,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }, "python-main").apply { isDaemon = true }.start()
+    }
+
+    private fun copyAssetTree(path: String, destination: File) {
+        val children = assets.list(path).orEmpty()
+        if (children.isEmpty()) {
+            destination.parentFile?.mkdirs()
+            assets.open(path).use { input -> destination.outputStream().use { output -> input.copyTo(output) } }
+            return
+        }
+        destination.mkdirs()
+        children.forEach { child ->
+            val childPath = if (path.isEmpty()) child else "$path/$child"
+            copyAssetTree(childPath, File(destination, child))
+        }
     }
 
     override fun onDestroy() {
