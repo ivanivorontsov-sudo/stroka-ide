@@ -13,6 +13,7 @@ on:
           - android-apk
           - android-aab
           - windows-exe
+          - linux-exe
           - website
           - python-exe
       project_path:
@@ -207,6 +208,50 @@ jobs:
           name: windows-exe-and-diagnostics
           path: |
             dist/windows/
+            diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
+
+  linux:
+    name: Build Linux executable
+    needs: inspect
+    if: needs.inspect.outputs.target == 'linux-exe'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish self-contained Linux ELF
+        shell: bash
+        env:
+          PROJECT: ${{ needs.inspect.outputs.project }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/linux
+          PROJECT_FILE=$(find "$PROJECT" -maxdepth 4 -name '*.csproj' -print -quit)
+          test -n "$PROJECT_FILE" || { echo "No .csproj found. Linux ELF target currently supports .NET projects."; exit 2; }
+          dotnet restore "$PROJECT_FILE"
+          dotnet publish "$PROJECT_FILE" -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist/linux
+          chmod +x dist/linux/*
+          ELF=$(find dist/linux -maxdepth 1 -type f -executable | head -n 1)
+          test -n "$ELF" || { echo "No executable output found."; exit 3; }
+          file "$ELF" | grep -q ELF
+          sha256sum "$ELF" > dist/linux/SHA256SUMS.txt
+      - name: Write Linux build report
+        if: always()
+        run: |
+          mkdir -p diagnostics
+          echo "Linux target: x86_64 ELF, .NET 8, self-contained single-file. For ARM64 use a separate linux-arm64 publish target." > diagnostics/BUILD-REPORT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-elf-and-diagnostics
+          path: |
+            dist/linux/
             diagnostics/
           if-no-files-found: warn
           retention-days: 14
