@@ -300,6 +300,10 @@ object VoiceMapper {
         )
         val priorityPhrases = listOf(
             "скобка открыть", "открыть скобку", "скобка", "open paren", "open parenthesis",
+            "сделай тёмную тему", "сделай темную тему", "включи ночную тему", "покажи светлую тему", "премиальный дизайн", "премиум дизайн",
+            "материал дизайн", "material design", "material 3", "fluent design", "как windows 11", "shadcn", "океанская тема", "тема аврора", "минималистичный стиль",
+            "сделай две колонки", "две колонки", "две колонке", "три колонки", "четыре колонки", "два столбца", "три столбца", "сделай сетку 2 на 2",
+            "make dark theme", "switch to dark mode", "light theme", "premium style", "two columns", "three columns", "grid of 3", "make a 2x2 grid",
             "close paren", "close parenthesis", "open brace", "close brace",
             "open bracket", "close bracket", "quote", "semicolon", "colon", "comma",
             "dot", "equals", "double equals", "not equal", "new line", "indent", "underscore",
