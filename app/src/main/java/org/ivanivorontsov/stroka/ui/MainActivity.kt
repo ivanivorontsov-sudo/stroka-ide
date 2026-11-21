@@ -1174,7 +1174,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                         .setPositiveButton("Понятно", null).show()
                     return@setPositiveButton
                 }
-                if (prefs.autosave) saveAllDirty()
+                saveAllDirty()
                 showPanel(false)
                 appendConsole("▶ Проверка проекта перед сборкой…\n", Kind.INFO)
                 panelStatus.text = "Подготовка облачной сборки…"
