@@ -93,14 +93,14 @@ function explainCode(){
 code.onchange=()=>{try{let d=new DOMParser().parseFromString(code.value,'text/html');snap();stage.innerHTML=d.body.querySelector('.page')?.innerHTML||d.body.innerHTML;selected=null;update()}catch(e){}};
 function normalizeVoiceCommand(raw){
  let n=String(raw||'').toLowerCase().normalize('NFKC').replace(/ё/g,'е');
- n=n.replace(/[«»„“”]/g,'"').replace(/[!?;]+/g,' ').replace(/[,]+/g,' ').replace(/\\s+/g,' ').trim();
+ n=n.replace(/[«»„“”]/g,'"').replace(/[!?;]+/g,' ').replace(/[,]+/g,' ').replace(/\s+/g,' ').trim();
  const repairs=[
-  [/\\bтемку\\b/g,'тему'],[/\\bтёмку\\b/g,'тему'],[/\\bтемную тему\\b/g,'темную тему'],
-  [/\\bдве колонке\\b/g,'две колонки'],[/\\bдва колонка\\b/g,'две колонки'],[/\\bдве колонны\\b/g,'две колонки'],
-  [/\\bдва столбца\\b/g,'две колонки'],[/\\bтри столбца\\b/g,'три колонки'],[/\\bчетыре столбца\\b/g,'четыре колонки'],
-  [/\\bпремиум дизайн\\b/g,'премиальный стиль'],[/\\bпремиальный дизайн\\b/g,'премиальный стиль'],
-  [/\\bшадсин\\b/g,'shadcn'],[/\\bматериал дизаин\\b/g,'material design'],
-  [/\\bфлюент дизайн\\b/g,'fluent design'],[/\\bсайт визитка\\b/g,'визитка']
+  [/\bтемку\b/g,'тему'],[/\bтёмку\b/g,'тему'],[/\bтемную тему\b/g,'темную тему'],
+  [/\bдве колонке\b/g,'две колонки'],[/\bдва колонка\b/g,'две колонки'],[/\bдве колонны\b/g,'две колонки'],
+  [/\bдва столбца\b/g,'две колонки'],[/\bтри столбца\b/g,'три колонки'],[/\bчетыре столбца\b/g,'четыре колонки'],
+  [/\bпремиум дизайн\b/g,'премиальный стиль'],[/\bпремиальный дизайн\b/g,'премиальный стиль'],
+  [/\bшадсин\b/g,'shadcn'],[/\bshadсн\b/g,'shadcn'],[/\bматериал дизаин\b/g,'material design'],
+  [/\bфлюент дизайн\b/g,'fluent design'],[/\bсайт визитка\b/g,'визитка']
  ];
  for(const [pattern,replacement] of repairs)n=n.replace(pattern,replacement);
  return n;
@@ -117,7 +117,7 @@ function applyStyleHints(raw){
  else if(/аврора|aurora|purple theme/.test(n))setTheme('aurora');
  else if(/минимал|минималист|minimal/.test(n))setTheme('minimal');
  const grids=selected?[selected.querySelector('.content-grid,.landing-grid,.biz-grid')].filter(Boolean):Array.from(stage.querySelectorAll('.content-grid,.landing-grid,.biz-grid'));
- const columns=n.match(/(?:в|на)?\s*(две|2|три|3|четыре|4)\s+колонк|\b(2|3|4)\s+columns?/);
+ const columns=n.match(/(?:в|на|с)?\s*(две|2|три|3|четыре|4)\s+(?:колонк\w*|столбц\w*|columns?|cols?)|\b(2|3|4)\s*(?:x|×)\s*(?:2|3|4)\b|\b(2|3|4)\s*col(?:umns?)?\b|\bgrid of (2|3|4)\b);
  if(columns){const word=columns[1]||columns[2]||columns[3]||columns[4];const count=({две:2,три:3,четыре:4})[word]||Number(word);grids.forEach(g=>g.style.gridTemplateColumns='repeat('+count+',minmax(0,1fr))')}
  if(/по центру|выровняй по центру|отцентрируй|центральное выравнивание|center align|align center/.test(n)&&selected)selected.style.textAlign='center';
  if(/скругл|закругл|круглые углы|rounded corners|round corners/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.content-card,.biz-tile,.price-card,.quote-card'))).forEach(x=>x.style.borderRadius='22px')}
