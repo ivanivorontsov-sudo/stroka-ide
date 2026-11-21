@@ -11,7 +11,7 @@ if [ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" ]; then
   TMP="$TMPDIR/stroka-cmdline-tools"
   mkdir -p "$TMP"
   echo "Скачиваю официальные Android command-line tools..."
-  curl -fL --retry 3 "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip" -o "$TMP/tools.zip"
+  curl -fL --retry 3 "https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip" -o "$TMP/tools.zip"\n  echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  $TMP/tools.zip" | sha256sum -c -
   mkdir -p "$TMP/unpack"
   unzip -q "$TMP/tools.zip" -d "$TMP/unpack"
   rm -rf "$SDK/cmdline-tools/latest"
