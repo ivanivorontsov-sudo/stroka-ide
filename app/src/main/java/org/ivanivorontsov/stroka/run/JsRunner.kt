@@ -70,14 +70,15 @@ class JsRunner(private val ctx: Context) {
         }
         val harness = if (withPonyatny) {
             val compiler = ctx.assets.open("ponyatny/yadro.js").bufferedReader().use { it.readText() }
-            HARNESS.replace("/*PONYATNY_COMPILER*/", compiler)
+            val standardLibrary = ctx.assets.open("ponyatny/std.json").bufferedReader().use { it.readText() }
+            HARNESS.replace("/*PONYATNY_COMPILER*/", compiler + "\nwindow.PonyatnyStdModules = " + standardLibrary + ";")
         } else HARNESS.replace("/*PONYATNY_COMPILER*/", "")
         w.loadDataWithBaseURL("https://stroka.local/", harness, "text/html", "utf-8", null)
         web = w
         return w
     }
 
-    fun run(code: String, fileName: String, sink: Sink) {
+    fun run(code: String, fileName: String, sink: Sink, modules: Map<String, String> = emptyMap()) {
         if (isRunning) return
         this.sink = sink
         isRunning = true
@@ -86,7 +87,10 @@ class JsRunner(private val ctx: Context) {
         val payload = JSONObject.quote(code)
         val name = JSONObject.quote(fileName)
         val ponyatny = fileName.substringAfterLast('.', "").equals("pon", ignoreCase = true)
-        pending = if (ponyatny) "window.__ponyatnyRun($payload, $name);" else "window.__strokaRun($payload, $name);"
+        val moduleObject = JSONObject()
+        modules.forEach { (path, source) -> moduleObject.put(path, source) }
+        val modulePayload = JSONObject.quote(moduleObject.toString())
+        pending = if (ponyatny) "window.__ponyatnyRun($payload, $name, $modulePayload);" else "window.__strokaRun($payload, $name);"
         ensure(withPonyatny = ponyatny)
     }
 
@@ -133,11 +137,40 @@ class JsRunner(private val ctx: Context) {
       StrokaHost.done(false);
     }
   };
-  window.__ponyatnyRun = function(code, name){
+  window.__ponyatnyRun = function(code, name, moduleJson){
     try {
       if (!window.PonyatnyYadro) throw new Error("Компилятор «Понятный» не загружен");
+      var projectFiles = {};
+      try { projectFiles = JSON.parse(moduleJson || "{}"); } catch (ignored) {}
+      function cleanPath(path){
+        var stack = [];
+        String(path || "").replace(/\\/g, "/").split("/").forEach(function(part){
+          if (!part || part === ".") return;
+          if (part === "..") stack.pop(); else stack.push(part);
+        });
+        return stack.join("/");
+      }
+      function resolveModule(path, from){
+        var requested = cleanPath(path);
+        var base = cleanPath(String(from || "").replace(/[^/]*$/, ""));
+        var candidates = [cleanPath(base + "/" + requested), requested];
+        candidates = candidates.concat(candidates.map(function(value){ return value.endsWith(".pon") ? value : value + ".pon"; }));
+        for (var i = 0; i < candidates.length; i++) {
+          var key = candidates[i];
+          if (Object.prototype.hasOwnProperty.call(projectFiles, key)) {
+            return { id: "project:" + key, name: key, source: projectFiles[key] };
+          }
+        }
+        var standard = requested.replace(/^стд\\//, "").replace(/\\.pon$/i, "");
+        var standardSource = window.PonyatnyStdModules && window.PonyatnyStdModules[standard];
+        if (standardSource !== undefined) {
+          return { id: "std:" + standard, name: "стд/" + standard + ".pon", source: standardSource };
+        }
+        return null;
+      }
       window.PonyatnyYadro.run(code, {
         file: name,
+        resolve: resolveModule,
         write: function(value){ StrokaHost.log("log", String(value)); },
         writeErr: function(value){ StrokaHost.log("error", String(value)); },
         ask: function(question){ return window.prompt(String(question || ""), ""); },
