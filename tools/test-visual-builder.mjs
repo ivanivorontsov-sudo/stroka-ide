@@ -4,6 +4,8 @@ import vm from 'node:vm';
 
 const html = fs.readFileSync('app/src/main/assets/visual_builder.html', 'utf8');
 const activity = fs.readFileSync('app/src/main/java/org/ivanivorontsov/stroka/ui/VisualBuilderActivity.kt', 'utf8');
+const localBuild = fs.readFileSync('app/src/main/java/org/ivanivorontsov/stroka/ui/LocalBuildEngine.kt', 'utf8');
+const projectTemplates = fs.readFileSync('app/src/main/java/org/ivanivorontsov/stroka/core/Templates.kt', 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
 assert.ok(scripts.length, 'visual builder must contain its inline script');
 for (const source of scripts) new vm.Script(source, { filename: 'visual_builder.html' });
@@ -65,4 +67,12 @@ assert.ok(!activity.includes('SpeechRecognizer.createSpeechRecognizer'), 'legacy
 assert.ok(html.includes('window.onVoiceStatus='), 'builder must display listening status separately');
 assert.ok(html.includes('if(styleOnly&&!contentIntent){update();return}'), 'style-only commands must not create accidental blocks');
 assert.ok(html.includes('make (?:a )?website'), 'English website creation command must be supported');
+assert.ok(html.includes("if(!stage.children.length){applyTemplate('landing');}"), 'new visual builder must start with a designed landing page');
+assert.ok(html.includes('const premiumStyles='), 'exported page must include the premium responsive design system');
+assert.ok(html.includes('site-feature-grid') && html.includes('site-final'), 'default site must contain designed content sections');
+assert.ok(html.includes('собери красивый сайт'), 'Russian voice command must map to the full website template');
+assert.ok(html.includes('class="item site-section" draggable="true"'), 'website sections must be independently selectable and draggable');
+assert.ok(localBuild.includes('fun buildStaticWebsite') && localBuild.includes('MediaStore.Downloads'), 'static site build must create a real ZIP in Downloads');
+assert.ok(localBuild.includes('fun buildPonyatnyWebsite') && localBuild.includes('ponyatny/yadro.js'), 'offline Ponyatny compiler must be embedded in website export');
+assert.ok(projectTemplates.includes('адаптивный премиум-шаблон') && projectTemplates.includes('YOURSTUDIO'), 'new web projects must start from the premium template');
 console.log('Visual builder: syntax OK; bilingual voice/theme/grid regression cases passed; 9 themes and explainer/templates present.');
