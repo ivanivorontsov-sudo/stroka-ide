@@ -35,10 +35,10 @@ fi
 cd "$ROOT"
 case "$TARGET" in
   android-apk)
-    "$GRADLE" --no-daemon --stacktrace assembleDebug
+    "$GRADLE" --no-daemon --max-workers=2 --stacktrace assembleDebug
     ;;
   android-aab)
-    "$GRADLE" --no-daemon --stacktrace bundleDebug
+    "$GRADLE" --no-daemon --max-workers=2 --stacktrace bundleDebug
     ;;
   *) fail "Неподдерживаемая локальная цель: $TARGET" ;;
 esac
