@@ -68,7 +68,7 @@ object EditorLogic {
 
     private fun opensPonyBlock(body: String): Boolean {
         val line = body.trim().lowercase().replace('ё', 'е')
-        return Regex("^(?:если\\\\b.*\\\\bто|иначе(?:\\\\s+если\\\\b.*\\\\bто)?|пока\\\\b.*|повторить\\\\b.*|для\\\\b.*|функция\\\\b.*|класс\\\\b.*|структура\\\\b.*|попробуй\\\\b.*|выбор\\\\b.*|вариант\\\\b.*|когда\\\\b.*|интерфейс\\\\b.*|перечисление\\\\b.*|поток\\\\b.*|наконец\\\\b.*)$").matches(line)
+        return Regex("^(?:если\\b.*\\bто|иначе(?:\\s+если\\b.*\\bто)?|пока\\b.*|повторить\\b.*|для\\b.*|функция\\b.*|класс\\b.*|структура\\b.*|попробуй\\b.*|выбор\\b.*|вариант\\b.*|когда\\b.*|интерфейс\\b.*|перечисление\\b.*|поток\\b.*|наконец\\b.*)$").matches(line)
     }
 
     private val voidTags = setOf("br", "hr", "img", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr", "!doctype")
