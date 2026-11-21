@@ -101,7 +101,11 @@ object PonyatnyVoiceMapper {
         if (output != null) {
             val value = output.groupValues[1].trim()
             if (value.startsWith("\"") || value.startsWith("«")) return "пиши " + value
-            return "пиши \"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+            if (value.startsWith("переменную ")) return "пиши " + value.removePrefix("переменную ").trim()
+            val isExpression = Regex("""[0-9()*/%<>=]|\b(плюс|минус|умножить|делить|равно|и|или|не|число|строка|длина|сумма|макс|мин)\b""")
+                .containsMatchIn(value.lowercase())
+            if (isExpression) source = "пиши " + value
+            else return "пиши \"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         }
         for ((spoken, code) in phrases.entries.sortedByDescending { it.key.length }) {
             val regex = Regex("(?<![\\p{L}\\p{N}_])" + Regex.escape(spoken) + "(?![\\p{L}\\p{N}_])", RegexOption.IGNORE_CASE)
