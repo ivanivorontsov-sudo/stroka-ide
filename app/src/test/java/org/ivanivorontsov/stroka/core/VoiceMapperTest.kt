@@ -135,6 +135,10 @@ class VoiceMapperTest {
         assert(hints.contains("сохранить"))
         assert(hints.contains("запусти код"))
         assert(hints.contains("open paren"))
+        assert(hints.contains("веб форма"))
+        assert(hints.contains("модальное окно"))
+        assert(hints.contains("подключи библиотеку"))
+        assert(hints.contains("requests"))
     }
     @Test
     fun englishProgrammingKeywordsAndSymbols() {

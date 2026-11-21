@@ -300,9 +300,15 @@ object VoiceMapper {
             "скобка открыть", "открыть скобку", "скобка", "open paren", "open parenthesis",
             "close paren", "close parenthesis", "open brace", "close brace",
             "open bracket", "close bracket", "quote", "semicolon", "colon", "comma",
-            "dot", "equals", "double equals", "not equal", "new line", "indent", "underscore"
+            "dot", "equals", "double equals", "not equal", "new line", "indent", "underscore",
+            "нужна программа", "кусок кода", "часть кода", "блок кода", "фрагмент кода",
+            "получить имя", "ввод имени", "веб форма", "форма обратной связи",
+            "модальное окно", "диалоговое окно", "создай html страницу", "css оформление",
+            "подключи библиотеку", "импортируй пакет", "сгенерируй функцию",
+            "requests", "numpy", "pandas", "flask", "fastapi", "tkinter",
+            "axios", "react", "express", "lodash", "date-fns"
         )
-        return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(220)
+        return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(260)
     }
 
     fun map(utterance: String, preferredLanguage: Lang = Lang.PLAIN): List<VoiceAction> {
