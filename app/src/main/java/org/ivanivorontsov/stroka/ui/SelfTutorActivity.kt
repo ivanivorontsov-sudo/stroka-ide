@@ -62,7 +62,7 @@ class SelfTutorActivity : AppCompatActivity() {
         val lesson = lessons[index]
         content.removeAllViews()
         fun text(value: String, size: Float = 16f, bold: Boolean = false) {
-            content.addView(AppCompatTextView(this).apply { text = value; textSize = size; if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD); setPadding(0, 8, 0, 8) })
+            content.addView(AppCompatTextView(this).apply { text = value; textSize = size; setTextIsSelectable(true); if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD); setPadding(0, 8, 0, 8) })
         }
         text("Урок ${index + 1} из ${lessons.size}", 13f)
         text(lesson.title, 24f, true)
