@@ -26,7 +26,8 @@ if [ -z "$ROOT" ]; then
   while IFS= read -r -d '' f; do ROOT="$(dirname "$f")"; break; done < <(find "$WORK" -maxdepth 4 \( -name build.gradle -o -name build.gradle.kts \) -print0)
 fi
 if [ -z "$ROOT" ]; then
-  PONFILE="$(find "$WORK" -maxdepth 5 -type f -name '*.pon' ! -path '*/std/*' -print -quit || true)"
+  PONFILE="$(find "$WORK" -maxdepth 5 -type f -name 'main.pon' ! -path '*/std/*' -print -quit || true)"
+  if [ -z "$PONFILE" ]; then PONFILE="$(find "$WORK" -maxdepth 5 -type f -name '*.pon' ! -path '*/std/*' -print -quit || true)"; fi
   if [ -n "$PONFILE" ]; then
     command -v node >/dev/null 2>&1 || fail "Node.js не установлен. Повторите сборку: Строка установит окружение автоматически."
     BUILDER="$WORK/tools/build-ponyatny.mjs"
