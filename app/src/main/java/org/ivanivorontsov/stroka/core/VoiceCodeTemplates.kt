@@ -251,7 +251,7 @@ object VoiceCodeTemplates {
         Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "for (let i = 0; i < 5; i++) {\n    console.log(i);\n}"
         Lang.KOTLIN -> "for (i in 0 until 5) {\n    println(i)\n}"
         Lang.JAVA -> "for (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}"
-        Lang.PONYATNY -> "повтори 5 раза\n    пиши счет\nконец"
+        Lang.PONYATNY -> "повтори 5 раз\n    пиши \"Повтор\"\nконец"
         else -> "for i in range(5):\n    print(i)"
     }
 
@@ -259,7 +259,7 @@ object VoiceCodeTemplates {
         Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "if (condition) {\n    console.log(\"Условие выполнено\");\n}"
         Lang.KOTLIN -> "if (condition) {\n    println(\"Условие выполнено\")\n}"
         Lang.JAVA -> "if (condition) {\n    System.out.println(\"Условие выполнено\");\n}"
-        Lang.PONYATNY -> "если условие то\n    пиши \"Условие выполнено\"\nконец"
+        Lang.PONYATNY -> "если истина то\n    пиши \"Условие выполнено\"\nконец"
         else -> "if condition:\n    print(\"Условие выполнено\")"
     }
 
