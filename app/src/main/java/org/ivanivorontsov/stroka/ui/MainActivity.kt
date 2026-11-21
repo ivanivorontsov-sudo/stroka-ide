@@ -1223,6 +1223,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         for (a in actions) applyVoice(a)
     }
 
+    override fun onFinalCandidates(candidates: List<String>) {
+        onFinal(VoiceMapper.bestCandidate(candidates))
+    }
+
     override fun onStopped() {
         voicePanel.visibility = View.GONE
         extraKeys.setMicActive(false)
