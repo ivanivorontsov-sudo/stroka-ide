@@ -17,7 +17,7 @@ object VoiceCodeTemplates {
             .trim()
 
     private val requestWords = listOf(
-        "нужна", "нужен", "нужно", "хочу", "создай", "создать", "сделай", "сделать", "пиши", "понятный",
+        "нужна", "нужен", "нужно", "хочу", "создай", "создать", "сделай", "сделать", "пиши", "понятный", "подключи", "библиотеку",
         "сгенерируй", "сгенерировать", "напиши", "написать", "добавь", "добавить", "вставь", "вставить",
         "подключи", "подключить", "импортируй", "импортировать", "установи", "установить",
         "программа", "часть кода", "кусок кода", "блок кода", "фрагмент кода", "сниппет",
@@ -65,7 +65,7 @@ object VoiceCodeTemplates {
     }
 
     private fun detectIntent(text: String, lang: Lang, fullConstructs: Boolean): Intent? {
-        val libraries = listOf("requests", "numpy", "pandas", "flask", "fastapi", "tkinter", "math", "random", "json", "axios", "react", "express", "lodash", "date-fns")
+        val libraries = listOf("requests", "numpy", "pandas", "flask", "fastapi", "tkinter", "math", "random", "json", "axios", "react", "express", "lodash", "date-fns", "математика", "случай", "время", "строки", "списки", "файлы", "консоль")
         if (text.contains("библиотек") || text.contains("library") || text.contains("пакет") || text.contains("подключ") ||
             text.contains("импортируй") || text.contains("import ") || libraries.any { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }) return Intent.LIBRARY
         if (listOf("калькулятор", "calculator", "калькулятар", "калкулятор", "арифметик", "посчитать", "вычислить").any(text::contains)) return Intent.CALCULATOR
@@ -599,7 +599,7 @@ object VoiceCodeTemplates {
     }
 
     private fun library(text: String, lang: Lang): String {
-        val names = listOf("requests", "numpy", "pandas", "flask", "fastapi", "tkinter", "math", "random", "json", "axios", "react", "express", "lodash", "date-fns")
+        val names = listOf("requests", "numpy", "pandas", "flask", "fastapi", "tkinter", "math", "random", "json", "axios", "react", "express", "lodash", "date-fns", "математика", "случай", "время", "строки", "списки", "файлы", "консоль")
         val library = names.firstOrNull { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }
         return when (library) {
             "requests" -> "# Установка один раз: python -m pip install requests\nimport requests"
@@ -608,9 +608,14 @@ object VoiceCodeTemplates {
             "flask" -> "# Установка один раз: python -m pip install flask\nfrom flask import Flask, request, jsonify"
             "fastapi" -> "# Установка один раз: python -m pip install fastapi uvicorn\nfrom fastapi import FastAPI"
             "tkinter" -> "import tkinter as tk\nfrom tkinter import messagebox"
-            "math" -> "import math"
-            "random" -> "import random"
-            "json" -> "import json"
+            "math", "математика" -> if (lang == Lang.PONYATNY) "подключи \"стд/математика.pon\" как мат" else "import math"
+            "random", "случай" -> if (lang == Lang.PONYATNY) "подключи \"стд/случай.pon\" как случай" else "import random"
+            "время" -> if (lang == Lang.PONYATNY) "подключи \"стд/время.pon\" как время" else "import time"
+            "строки" -> if (lang == Lang.PONYATNY) "подключи \"стд/строки.pon\" как строки" else "import string"
+            "списки" -> if (lang == Lang.PONYATNY) "подключи \"стд/списки.pon\" как списки" else "import collections"
+            "файлы" -> if (lang == Lang.PONYATNY) "подключи \"стд/файлы.pon\" как файлы" else "import pathlib"
+            "консоль" -> if (lang == Lang.PONYATNY) "подключи \"стд/консоль.pon\" как консоль" else "import logging"
+            "json" -> if (lang == Lang.PONYATNY) "# JSON доступен через встроенные функции в_json и из_json" else "import json"
             "axios" -> "// Установка один раз: npm install axios\nimport axios from \"axios\";"
             "react" -> "// Установка один раз: npm install react react-dom\nimport React from \"react\";"
             "express" -> "// Установка один раз: npm install express\nimport express from \"express\";"
