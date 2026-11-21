@@ -75,23 +75,23 @@ object PonyatnyVoiceMapper {
     fun map(utterance: String): String? {
         val original = utterance.trim()
         if (original.isEmpty()) return null
-        var source = original.lowercase().replace('ё', 'е')
-        val output = Regex("^(?:пиши|напиши|напечатай|выведи|вывести|скажи)(?: на экран| текст| строку)?\\s+(.+)$")
-            .find(source)
+        var source = original.replace('ё', 'е')
+        val output = Regex("^(?:пиши|напиши|напечатай|выведи|вывести|скажи)(?: на экран| текст| строку)?\\s+(.+)$", RegexOption.IGNORE_CASE)
+            .find(original)
         if (output != null) {
             val value = output.groupValues[1].trim()
             if (value.startsWith("\"") || value.startsWith("«")) return "пиши " + value
             return "пиши \"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         }
         for ((spoken, code) in phrases.entries.sortedByDescending { it.key.length }) {
-            val regex = Regex("(?<![\\p{L}\\p{N}_])" + Regex.escape(spoken) + "(?![\\p{L}\\p{N}_])")
+            val regex = Regex("(?<![\\p{L}\\p{N}_])" + Regex.escape(spoken) + "(?![\\p{L}\\p{N}_])", RegexOption.IGNORE_CASE)
             source = regex.replace(source, code)
         }
         val tokens = Regex("[\\p{L}\\p{N}_]+|[^\\p{L}\\p{N}_]+").findAll(source).map { it.value }.toList()
         val words = tokens.map { it.lowercase() }
         val out = StringBuilder()
         var i = 0
-        var changed = source != original.lowercase().replace('ё', 'е')
+        var changed = source != original
         while (i < tokens.size) {
             val token = tokens[i]
             val word = words[i]
