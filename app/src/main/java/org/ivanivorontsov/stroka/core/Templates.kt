@@ -10,6 +10,11 @@ object Templates {
             ), "main.py"
         ),
         Template(
+            "ponyatny", "Понятный: русская программа", mapOf(
+                "main.pon" to "# Язык «Понятный» 2.5\nпусть имя = спроси(\"Как тебя зовут? \")\nпиши \"Привет, \" + имя + \"!\"\n\nподключи \"стд/математика.pon\" как мат\nпиши \"Факториал пяти: \" + строка(мат.факториал(5))\n"
+            ), "main.pon"
+        ),
+        Template(
             "web", "Сайт: HTML + CSS + JS", mapOf(
                 "index.html" to "<!DOCTYPE html>\n<html lang=\"ru\">\n<head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>Моя страница</title>\n    <link rel=\"stylesheet\" href=\"style.css\">\n</head>\n<body>\n    <h1>Привет, мир!</h1>\n    <button id=\"btn\">Нажми меня</button>\n    <p id=\"out\"></p>\n    <script src=\"app.js\"></script>\n</body>\n</html>\n",
                 "style.css" to "body {\n    font-family: sans-serif;\n    margin: 24px;\n    background: #f4f6fb;\n    color: #222;\n}\n\nbutton {\n    padding: 12px 20px;\n    font-size: 18px;\n    border-radius: 10px;\n}\n",
