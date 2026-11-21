@@ -26,6 +26,26 @@ object LocalTermuxBuild {
 
     data class Staged(val zipPath: String, val runnerPath: String)
 
+    fun prepare(context: Context) {
+        publishDownload(context, "setup-termux.sh", "text/x-shellscript") { out ->
+            context.assets.open("setup-termux.sh").use { it.copyTo(out) }
+        }
+        val intent = Intent(RUN_COMMAND).apply {
+            setClassName(TERMUX_PACKAGE, "com.termux.app.RunCommandService")
+            action = RUN_COMMAND
+            putExtra(RUN_COMMAND_PATH, "/data/data/com.termux/files/usr/bin/bash")
+            putExtra(RUN_COMMAND_ARGUMENTS, arrayOf("/sdcard/Download/StrokaBuild/setup-termux.sh"))
+            putExtra(RUN_COMMAND_WORKDIR, "/data/data/com.termux/files/home")
+            putExtra(RUN_COMMAND_BACKGROUND, false)
+            putExtra(RUN_COMMAND_SESSION_ACTION, "0")
+        }
+        try {
+            context.startService(intent)
+        } catch (e: SecurityException) {
+            throw IllegalStateException("Разрешите для «Строки» дополнительное разрешение «Запуск команд в Termux», а в Termux включите allow-external-apps=true.", e)
+        }
+    }
+
     fun start(context: Context, project: File, target: String) {
         require(target == "android-apk" || target == "android-aab") {
             "Локальная сборка на телефоне пока поддерживает Android APK и AAB."
@@ -77,6 +97,9 @@ object LocalTermuxBuild {
         }
         val scriptUri = publishDownload(context, "build-local.sh", "text/x-shellscript") { out ->
             context.assets.open("build-local.sh").use { it.copyTo(out) }
+        }
+        publishDownload(context, "setup-termux.sh", "text/x-shellscript") { out ->
+            context.assets.open("setup-termux.sh").use { it.copyTo(out) }
         }
         val downloads = "/sdcard/Download/StrokaBuild"
         return Staged("$downloads/project.zip", "$downloads/build-local.sh")
