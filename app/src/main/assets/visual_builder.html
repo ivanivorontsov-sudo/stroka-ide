@@ -34,9 +34,13 @@ body[data-theme="shadcn"]{--bg:#fafafa;--surface:#fff;--ink:#09090b;--muted:#717
 body[data-theme="material"] .stage,body[data-theme="material"] .panel{border-radius:28px}
 body[data-theme="fluent"] .stage,body[data-theme="fluent"] .panel{border-radius:8px;box-shadow:0 2px 8px #0000000a}
 body[data-theme="shadcn"] .stage,body[data-theme="shadcn"] .panel{border-radius:10px;box-shadow:0 1px 2px #0000000a}
+body[data-theme="antd"]{--bg:#f0f2f5;--surface:#fff;--ink:#141414;--muted:#595959;--line:#d9d9d9;--accent:#1677ff}
+body[data-theme="antd"] .stage,body[data-theme="antd"] .panel{border-radius:8px}
+body[data-theme="carbon"]{--bg:#f4f4f4;--surface:#fff;--ink:#161616;--muted:#525252;--line:#e0e0e0;--accent:#0f62fe}
+body[data-theme="carbon"] .stage,body[data-theme="carbon"] .panel{border-radius:0;box-shadow:none}
 
 </style></head><body><header><div class="brand"><span class="brand-mark">S</span><div><b>Строка · Дизайн-студия</b><small>Собираем интерфейс голосом и блоками</small></div></div><button id="undo" title="Отменить">↶</button><button id="voice">🎙 Голос</button><button id="explain">🧠 Объяснятор кода</button><button id="show">Предпросмотр</button><button class="primary" id="save">Вставить код</button></header>
-<div class="themebar"><span>Тема:</span><button data-theme="light">Светлая</button><button data-theme="dark">Тёмная</button><button data-theme="luxury">Luxury</button><button data-theme="ocean">Ocean</button><button data-theme="aurora">Aurora</button><button data-theme="minimal">Minimal</button><button data-theme="material">Material 3</button><button data-theme="fluent">Fluent 2</button><button data-theme="shadcn">shadcn/ui</button><span class="theme-hint">Команды: «сделай тёмную тему», «покажи две темы», «сделай премиальный стиль»</span></div>
+<div class="themebar"><span>Тема:</span><button data-theme="light">Светлая</button><button data-theme="dark">Тёмная</button><button data-theme="luxury">Luxury</button><button data-theme="ocean">Ocean</button><button data-theme="aurora">Aurora</button><button data-theme="minimal">Minimal</button><button data-theme="material">Material 3</button><button data-theme="fluent">Fluent 2</button><button data-theme="shadcn">shadcn/ui</button><button data-theme="antd">Ant Design</button><button data-theme="carbon">Carbon</button><span class="theme-hint">Команды: «сделай тёмную тему», «покажи две темы», «сделай премиальный стиль»</span></div>
 <div class="layout"><nav class="shelf"><b>Блоки</b><button data-add="hero">Заголовок</button><button data-add="text">Текст</button><button data-add="image">Изображение</button><button data-add="button">Кнопка</button><button data-add="form">Форма</button><button data-add="calculator">Калькулятор</button><hr><b>Готовые дизайны</b><button data-template="card">✨ Визитка Pro</button><button data-template="landing">🚀 SaaS / продукт</button><button data-template="portfolio">🎨 Портфолио</button><button data-template="shop">🛍 Магазин</button><p class="hint">Перетаскивай блоки. Команды можно говорить по-русски и по-английски.</p></nav><main><div class="stage" id="stage"></div></main></div>
 <section class="panel"><b class="wide">Свойства выбранного блока</b><label class="wide">Текст<input id="txt"></label><label>Ширина<input id="width" placeholder="100%"></label><label>Размер текста<input id="size" placeholder="18px"></label><label>Цвет<input id="color" type="color" value="#172033"></label><label>Фон<input id="bg" type="color" value="#ffffff"></label><label>Отступ<input id="pad" placeholder="12px"></label><label>Скругление<input id="radius" placeholder="8px"></label><label class="wide">URL изображения<input id="src" placeholder="https://..."></label><div class="wide"><button id="up">Выше</button><button id="down">Ниже</button><button id="del">Удалить</button></div></section>
 <section id="explainer" class="explain-panel" hidden><div class="explain-head"><b>🧠 Объяснятор кода</b><button id="closeExplain">Закрыть</button></div><p>Объясняет человеческим языком, за что отвечают найденные элементы HTML, CSS и JavaScript.</p><div id="explainResults"></div></section><h3 style="padding:0 10px">HTML-код — можно редактировать вручную</h3><textarea id="code" class="code" spellcheck="false"></textarea><h3 style="padding:0 10px">Предпросмотр</h3><iframe id="frame" class="preview" sandbox="allow-scripts"></iframe>
@@ -54,6 +58,9 @@ const themeCss={
  material:'body{background:#f4f1fa;color:#1d1b20}.landing-hero{background:linear-gradient(135deg,#6750a4,#8b78bd);border-radius:28px}.content-card,.price-card{border-radius:24px;background:#fdf8ff;border-color:#e6e0ec}.landing-cta{border-radius:999px;background:#6750a4;color:white}',
  fluent:'body{background:#f5f5f5;color:#242424}.landing-hero{background:linear-gradient(135deg,#0f6cbd,#479ef5);border-radius:10px}.content-card,.price-card{border-radius:8px;box-shadow:0 2px 8px #00000010}.landing-cta{border-radius:6px;background:#0f6cbd;color:white}',
  shadcn:'body{background:#fafafa;color:#09090b}.landing-hero{background:#18181b;border-radius:12px}.content-card,.price-card{border-radius:10px;border:1px solid #e4e4e7;box-shadow:0 1px 2px #00000008}.landing-cta{border-radius:8px;background:#18181b;color:white}'
+,
+ antd:'body{background:#f0f2f5;color:#141414}.landing-hero{background:#1677ff;border-radius:8px}.content-card,.price-card{border-radius:8px;border-color:#d9d9d9;box-shadow:0 2px 8px #0000000a}.landing-cta{border-radius:6px;background:#1677ff;color:white}',
+ carbon:'body{background:#f4f4f4;color:#161616}.landing-hero{background:#161616;color:#fff;border-radius:0}.content-card,.price-card{border-radius:0;border-color:#e0e0e0;box-shadow:none}.landing-cta{border-radius:0;background:#0f62fe;color:white}'
 };
 function snap(){history.push(stage.innerHTML);if(history.length>25)history.shift()}
 function block(t){let e=document.createElement('section');e.className='item';e.draggable=true;e.dataset.type=t;
@@ -113,6 +120,8 @@ function applyStyleHints(raw){
  else if(/material\s*3|материал\s*3|material design|материал дизайн/.test(n))setTheme('material');
  else if(/fluent\s*2|fluent design|флюент|как windows 11/.test(n))setTheme('fluent');
  else if(/shadcn|shadсн|шадсн|шадсин/.test(n))setTheme('shadcn');
+ else if(/ant design|antd|ант дизайн/.test(n))setTheme('antd');
+ else if(/carbon|карбон/.test(n))setTheme('carbon');
  else if(/океан|морск|ocean|blue theme/.test(n))setTheme('ocean');
  else if(/аврора|aurora|purple theme/.test(n))setTheme('aurora');
  else if(/минимал|минималист|minimal/.test(n))setTheme('minimal');
