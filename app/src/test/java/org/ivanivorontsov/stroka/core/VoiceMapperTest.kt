@@ -332,4 +332,19 @@ class VoiceMapperTest {
         }
     }
 
+
+    @Test
+    fun recognitionHintsIncludeVisualDesignCommands() {
+        val hints = VoiceMapper.recognitionHints()
+        listOf(
+            "сделай тёмную тему",
+            "две колонки",
+            "премиум дизайн",
+            "material design",
+            "fluent design",
+            "shadcn",
+            "make dark theme",
+            "two columns"
+        ).forEach { assertNotNull("Missing recognition hint: $it", hints.find { hint -> hint.equals(it, ignoreCase = true) }) }
+    }
 }
