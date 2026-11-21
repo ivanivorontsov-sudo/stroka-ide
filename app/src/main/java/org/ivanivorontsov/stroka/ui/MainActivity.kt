@@ -1196,7 +1196,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 text = label
                 textSize = 14f
                 setPadding(dp(2), dp(5), 0, dp(5))
-                isChecked = index == (if (doc?.lang == Lang.PYTHON || doc?.lang == Lang.PONYATNY) 1 else 0)
+                isChecked = index == 0
             }
             radioGroup.addView(radio, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1270,7 +1270,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Собрать проект")
             .setView(scroll, dp(20), dp(4), dp(20), dp(4))
-            .setPositiveButton("Проверить и собрать", null)
+            .setPositiveButton("Облачная сборка", null)
             .setNeutralButton("Настроить GitHub", null)
             .setNegativeButton("Отмена", null)
             .create()
@@ -1320,11 +1320,11 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
                 val androidTarget = target == "android-apk" || target == "android-aab" ||
                     (target == "auto" && (kind == LocalBuildEngine.ProjectKind.ANDROID_GRADLE ||
-                        kind == LocalBuildEngine.ProjectKind.PONYATNY))
+                        kind == LocalBuildEngine.ProjectKind.PONYATNY || kind == LocalBuildEngine.ProjectKind.PYTHON))
                 if (androidTarget) {
                     MaterialAlertDialogBuilder(this)
                         .setTitle("Для APK/AAB нужен резервный сборщик")
-                        .setMessage("Встроенная сборка Android APK/AAB ещё не поддерживает Android Gradle Toolchain на самом устройстве. Можно запустить сохранённую сборку Termux; GitHub Actions тоже остаётся доступен. Встроенный движок не будет выдавать ZIP или пустой файл за APK.")
+                        .setMessage("Встроенный сборщик уже работает без Termux для статических сайтов. Для APK/AAB, Python и «Понятного» пока используется проверенный сборочный скрипт Termux; GitHub Actions остаётся для тяжёлых и Windows/Linux-проектов. Встроенный движок не будет выдавать ZIP или пустой файл за APK.")
                         .setPositiveButton("Запустить Termux") { _, _ ->
                             try {
                                 LocalTermuxBuild.start(this, projectRoot, target.takeIf { it != "auto" } ?: "android-apk")
