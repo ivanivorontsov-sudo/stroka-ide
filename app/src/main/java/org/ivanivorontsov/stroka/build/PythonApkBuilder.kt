@@ -48,7 +48,7 @@ object PythonApkBuilder {
                 extras[n] = data
             }
         }
-        extras["assets/py/program.py"] = source.toByteArray(Charsets.UTF_8)
+        extras["assets/py/program.py"] = programBytes(source)
         val shim = loadShim(assets)
         extras["assets/py/stroka_tkinter.py"] = shim
         extras["assets/py/stroka_py_app.py"] = bootstrap().toByteArray(Charsets.UTF_8)
@@ -77,6 +77,16 @@ object PythonApkBuilder {
             extras = extras,
             extractNativeLibs = true
         )
+    }
+
+    fun programBytes(source: String): ByteArray {
+        val text = source.removePrefix("\uFEFF")
+        val nul = text.indexOf('\u0000')
+        if (nul >= 0) {
+            val line = text.substring(0, nul).count { it == '\n' } + 1
+            throw BuildException("В тексте программы есть нулевой символ (строка $line). Удалите его и сохраните файл заново.")
+        }
+        return text.toByteArray(Charsets.UTF_8)
     }
 
     fun findRuntimeApk(assets: BuildAssets): File? {
@@ -144,37 +154,67 @@ object PythonApkBuilder {
     }
 
     fun bootstrap(): String = """
-import os, sys, runpy
+import builtins, io, os, sys, traceback
+
+
+class _Console(io.TextIOBase):
+    def __init__(self, activity, err):
+        self._a = activity
+        self._err = err
+
+    def writable(self):
+        return True
+
+    def write(self, s):
+        s = str(s)
+        if s:
+            self._a.consoleWrite(s, self._err)
+        return len(s)
+
+    def flush(self):
+        pass
+
 
 def run(activity):
-    base = activity.getFilesDir().getAbsolutePath()
-    py = os.path.join(base, "py")
-    os.makedirs(py, exist_ok=True)
-    am = activity.getAssets()
-    for name in ("stroka_tkinter.py", "stroka_py_app.py", "program.py", "FILENAME.txt"):
-        try:
-            src = am.open("py/" + name)
-            data = src.read()
-            src.close()
-            dest = os.path.join(py, name)
-            with open(dest, "wb") as f:
-                f.write(bytes(data) if not isinstance(data, bytes) else data)
-        except Exception:
-            pass
+    py = os.path.join(activity.getFilesDir().getAbsolutePath(), "py")
     if py not in sys.path:
         sys.path.insert(0, py)
-    from stroka_tkinter import install
-    install(activity)
-    name = "program.py"
+    sys.stdout = _Console(activity, False)
+    sys.stderr = _Console(activity, True)
+
+    def _input(prompt=""):
+        if prompt:
+            sys.stdout.write(str(prompt))
+        line = activity.consoleInput(str(prompt))
+        if line is None:
+            raise EOFError("ввод закрыт")
+        return str(line)
+
+    builtins.input = _input
     try:
-        with open(os.path.join(py, "FILENAME.txt"), "r", encoding="utf-8") as f:
-            name = f.read().strip() or name
-    except Exception:
+        from stroka_tkinter import install
+        install(activity)
+        name = "program.py"
+        try:
+            with open(os.path.join(py, "FILENAME.txt"), "r", encoding="utf-8-sig") as f:
+                name = f.read().strip() or name
+        except OSError:
+            pass
+        sys.argv = [name]
+        path = os.path.join(py, "program.py")
+        with open(path, "r", encoding="utf-8-sig") as f:
+            src = f.read()
+        g = {"__name__": "__main__", "__file__": path, "__builtins__": builtins}
+        exec(compile(src, name, "exec"), g)
+    except SystemExit:
         pass
-    sys.argv = [name]
-    g = {"__name__": "__main__", "__file__": os.path.join(py, "program.py")}
-    with open(os.path.join(py, "program.py"), "r", encoding="utf-8") as f:
-        src = f.read()
-    exec(compile(src, name, "exec"), g)
+    except BaseException:
+        traceback.print_exc()
+    finally:
+        try:
+            sys.stdout.flush()
+        except Exception:
+            pass
+        activity.consoleDone()
 """.trimIndent() + "\n"
 }

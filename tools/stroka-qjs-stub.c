@@ -80,18 +80,39 @@ static JSValue js_print(JSContext *ctx, JSValueConst this_val, int argc, JSValue
     return JS_UNDEFINED;
 }
 
+static int console_mode = 0;
+
 static JSValue js_ask(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-    const char *q = argc > 0 ? JS_ToCString(ctx, argv[0]) : "Ввод";
-    wchar_t *wq = utf8_to_wide(q ? q : "Ввод");
-    wchar_t buf[1024];
-    buf[0] = 0;
-    if (wq) {
-        HWND parent = GetActiveWindow();
-        (void)parent;
-        free(wq);
+    const char *q = argc > 0 ? JS_ToCString(ctx, argv[0]) : NULL;
+    char buf[4096];
+    size_t n;
+    (void)this_val;
+    if (!console_mode) {
+        if (q) JS_FreeCString(ctx, q);
+        return JS_NewString(ctx, "");
     }
+    if (q && q[0]) { fputs(q, stdout); fputc(' ', stdout); }
+    fflush(stdout);
     if (q) JS_FreeCString(ctx, q);
-    return JS_NewString(ctx, "");
+    if (!fgets(buf, sizeof(buf), stdin)) return JS_NewString(ctx, "");
+    n = strlen(buf);
+    while (n && (buf[n - 1] == '\n' || buf[n - 1] == '\r')) buf[--n] = 0;
+    return JS_NewString(ctx, buf);
+}
+
+static void report_error(const char *s) {
+    if (console_mode) {
+        fputs("Ошибка. ", stderr);
+        fputs(s, stderr);
+        fputc('\n', stderr);
+        fflush(stderr);
+        return;
+    }
+    {
+        wchar_t *w = utf8_to_wide(s);
+        MessageBoxW(NULL, w ? w : L"Ошибка JavaScript", L"Строка", MB_ICONERROR);
+        free(w);
+    }
 }
 
 static int eval_buf(const char *name, const char *code, size_t len) {
@@ -99,11 +120,20 @@ static int eval_buf(const char *name, const char *code, size_t len) {
     int ok = 1;
     if (JS_IsException(ret)) {
         JSValue ex = JS_GetException(js);
-        const char *s = JS_ToCString(js, ex);
-        wchar_t *w = utf8_to_wide(s ? s : "Ошибка JavaScript");
-        MessageBoxW(NULL, w ? w : L"Ошибка JavaScript", L"Строка", MB_ICONERROR);
-        free(w);
+        JSValue global = JS_GetGlobalObject(js);
+        JSValue fmt = JS_GetPropertyStr(js, global, "__strokaError");
+        const char *s = NULL;
+        JSValue txt = JS_UNDEFINED;
+        if (JS_IsFunction(js, fmt)) {
+            txt = JS_Call(js, fmt, global, 1, &ex);
+            if (!JS_IsException(txt)) s = JS_ToCString(js, txt);
+        }
+        if (!s) s = JS_ToCString(js, ex);
+        report_error(s ? s : "Ошибка JavaScript");
         if (s) JS_FreeCString(js, s);
+        JS_FreeValue(js, txt);
+        JS_FreeValue(js, fmt);
+        JS_FreeValue(js, global);
         JS_FreeValue(js, ex);
         ok = 0;
     }
@@ -113,31 +143,36 @@ static int eval_buf(const char *name, const char *code, size_t len) {
 
 static char *call_fn(const char *name, const char *a, const char *b) {
     JSValue global = JS_GetGlobalObject(js);
-    JSValue fn = JS_GetPropertyStr(js, global, name);
+    JSValue fn = JS_GetPropertyStr(js, global, "__strokaCalc");
+    JSValue args[3];
+    JSValue ret;
+    const char *s;
+    char *out;
     if (!JS_IsFunction(js, fn)) {
         JS_FreeValue(js, fn);
         JS_FreeValue(js, global);
         return NULL;
     }
-    JSValue args[2];
-    args[0] = JS_NewString(js, a ? a : "");
-    args[1] = JS_NewString(js, b ? b : "");
-    JSValue ret = JS_Call(js, fn, global, 2, args);
+    args[0] = JS_NewString(js, name);
+    args[1] = JS_NewString(js, a ? a : "");
+    args[2] = JS_NewString(js, b ? b : "");
+    ret = JS_Call(js, fn, global, 3, args);
     JS_FreeValue(js, args[0]);
     JS_FreeValue(js, args[1]);
+    JS_FreeValue(js, args[2]);
     JS_FreeValue(js, fn);
     JS_FreeValue(js, global);
     if (JS_IsException(ret)) {
         JSValue ex = JS_GetException(js);
-        const char *s = JS_ToCString(js, ex);
-        char *out = s ? _strdup(s) : _strdup("Ошибка");
+        s = JS_ToCString(js, ex);
+        out = s ? _strdup(s) : _strdup("Ошибка");
         if (s) JS_FreeCString(js, s);
         JS_FreeValue(js, ex);
         JS_FreeValue(js, ret);
         return out;
     }
-    const char *s = JS_ToCString(js, ret);
-    char *out = s ? _strdup(s) : _strdup("");
+    s = JS_ToCString(js, ret);
+    out = s ? _strdup(s) : _strdup("");
     if (s) JS_FreeCString(js, s);
     JS_FreeValue(js, ret);
     return out;
@@ -234,19 +269,14 @@ static int run_calc_ui(HINSTANCE inst) {
     return (int)msg.wParam;
 }
 
-static int run_console_ui(HINSTANCE inst) {
-    AllocConsole();
+static void open_console(void) {
+    if (!AttachConsole(ATTACH_PARENT_PROCESS)) AllocConsole();
     SetConsoleOutputCP(65001);
     SetConsoleCP(65001);
     freopen("CONOUT$", "w", stdout);
     freopen("CONOUT$", "w", stderr);
     freopen("CONIN$", "r", stdin);
-    PFile *prog = find_file("program.js");
-    if (prog) {
-        if (!eval_buf("program.js", (const char *)prog->data, prog->size)) return 1;
-    }
-    printf("Готово.\n");
-    return 0;
+    console_mode = 1;
 }
 
 static int load_payload(void) {
@@ -345,23 +375,46 @@ static int setup_js(void) {
     return 1;
 }
 
+static int self_check(const char *cmd) {
+    char op[64], a[256], b[256];
+    char *r;
+    if (sscanf(cmd, "--stroka-check %63s %255s %255s", op, a, b) != 3) return 2;
+    console_mode = 1;
+    if (!setup_js()) return 1;
+    r = call_fn(op, a, b);
+    printf("%s\n", r ? r : "Нет функции");
+    fflush(stdout);
+    free(r);
+    return 0;
+}
+
 int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmd, int show) {
-    (void)prev; (void)cmd; (void)show;
+    int rc;
+    (void)prev; (void)show;
     if (!load_payload()) {
         MessageBoxW(NULL, L"В этой программе нет встроенного кода (повреждён файл).", L"Строка", MB_ICONERROR);
         return 1;
     }
-    if (!setup_js()) return 1;
+    if (cmd && strncmp(cmd, "--stroka-check ", 15) == 0) {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+        return self_check(cmd);
+    }
     if (strcmp(mode_utf8, "calc") == 0) {
-        int rc = run_calc_ui(inst);
-        JS_FreeContext(js);
-        JS_FreeRuntime(rt);
-        return rc;
+        if (!setup_js()) return 1;
+        rc = run_calc_ui(inst);
+    } else {
+        open_console();
+        rc = setup_js() ? 0 : 1;
+        if (cmd == NULL || strstr(cmd, "--no-wait") == NULL) {
+            char line[16];
+            printf("\nНажмите Enter, чтобы закрыть окно.\n");
+            fflush(stdout);
+            if (fgets(line, sizeof(line), stdin) == NULL) line[0] = 0;
+        }
     }
-    {
-        int rc = run_console_ui(inst);
-        JS_FreeContext(js);
-        JS_FreeRuntime(rt);
-        return rc;
-    }
+    JS_FreeContext(js);
+    JS_FreeRuntime(rt);
+    return rc;
 }

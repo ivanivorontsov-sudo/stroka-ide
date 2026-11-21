@@ -64,15 +64,11 @@ object OneFileBuild {
             mode = PonyatnyJs.detectMode(source, js)
         }
         work.mkdirs()
-        val files = linkedMapOf(
-            "program.js" to js.toByteArray(Charsets.UTF_8),
-            "meta.txt" to "title=$label\nmode=$mode\n".toByteArray(Charsets.UTF_8)
-        )
-        if (mode != "calc") {
-            files["boot.js"] = (
-                "if (typeof console === 'object' && console.log) { }\n"
-            ).toByteArray(Charsets.UTF_8)
-        }
+        val files = LinkedHashMap<String, ByteArray>()
+        if (!lower.endsWith(".js")) files["yadro.js"] = assets.yadroText.toByteArray(Charsets.UTF_8)
+        files["boot.js"] = QjsBoot.windows().toByteArray(Charsets.UTF_8)
+        files["program.js"] = js.toByteArray(Charsets.UTF_8)
+        files["meta.txt"] = "title=$label\nmode=$mode\n".toByteArray(Charsets.UTF_8)
         return StrokaExe.pack(assets.exeStub, files, outExe)
     }
 
@@ -116,7 +112,12 @@ object OneFileBuild {
         if (lower.endsWith(".js")) js = withJsLibs(source, assets, env, log)
         else js = PonyatnyJs.compile(source, assets.yadroText, env.withStd(assets))
         work.mkdirs()
-        val files = linkedMapOf("program.js" to js.toByteArray(Charsets.UTF_8))
+        val mode = PonyatnyJs.detectMode(source, js)
+        val files = linkedMapOf(
+            "yadro.js" to assets.yadroText.toByteArray(Charsets.UTF_8),
+            "program.js" to js.toByteArray(Charsets.UTF_8),
+            "main.js" to QjsBoot.linuxMain(mode).toByteArray(Charsets.UTF_8)
+        )
         val icon = PngIcon.launcher(48)
         return DebPacker.build(label, "1.0", assets.qjsLinuxAmd64, files, icon, outDeb, log)
     }

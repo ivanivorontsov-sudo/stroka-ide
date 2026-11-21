@@ -25,7 +25,7 @@ object DebPacker {
         val wrapper = """
             |#!/bin/sh
             |DIR="/usr/lib/stroka-apps/$pkg"
-            |exec "${'$'}DIR/qjs" "${'$'}DIR/program.js" "${'$'}@"
+            |exec "${'$'}DIR/qjs" --std "${'$'}DIR/main.js" "${'$'}@"
             |""".trimMargin() + "\n"
         val desktop = """
             |[Desktop Entry]

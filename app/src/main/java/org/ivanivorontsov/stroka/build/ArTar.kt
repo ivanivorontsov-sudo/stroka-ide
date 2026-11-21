@@ -40,10 +40,10 @@ object ArTar {
                 i = n.indexOf('/', i + 1)
             }
         }
-        for (d in dirs.sorted()) out.write(ustar(d, ByteArray(0), 0x40ed, true))
+        for (d in dirs.sorted()) out.write(ustar(d, ByteArray(0), 0x1ed, true))
         for ((raw, data) in files) {
             val n = raw.trimStart('/').replace('\\', '/')
-            val mode = if (n in modeExec || n.startsWith("usr/bin/")) 0x81ed else 0x81a4
+            val mode = if (n in modeExec || n.startsWith("usr/bin/")) 0x1ed else 0x1a4
             out.write(ustar(n, data, mode, false))
         }
         out.write(ByteArray(1024))
@@ -66,14 +66,19 @@ object ArTar {
         oct(hdr, 108, 8, 0)
         oct(hdr, 116, 8, 0)
         oct(hdr, 124, 12, data.size)
-        oct(hdr, 136, 12, 0)
+        oct(hdr, 136, 12, 1767225600)
         hdr[156] = if (dir) '5'.code.toByte() else '0'.code.toByte()
         val magic = "ustar\u000000".toByteArray(Charsets.US_ASCII)
         System.arraycopy(magic, 0, hdr, 257, 8)
+        val owner = "root".toByteArray(Charsets.US_ASCII)
+        System.arraycopy(owner, 0, hdr, 265, owner.size)
+        System.arraycopy(owner, 0, hdr, 297, owner.size)
         for (i in 148 until 156) hdr[i] = ' '.code.toByte()
         var sum = 0
         for (b in hdr) sum += b.toInt() and 0xff
-        oct(hdr, 148, 8, sum)
+        val cs = sum.toString(8).padStart(6, '0').toByteArray(Charsets.US_ASCII)
+        System.arraycopy(cs, 0, hdr, 148, 6)
+        hdr[154] = 0
         hdr[155] = ' '.code.toByte()
         val out = ByteArrayOutputStream()
         out.write(hdr)
@@ -86,10 +91,9 @@ object ArTar {
     }
 
     private fun oct(b: ByteArray, off: Int, len: Int, v: Int) {
-        val s = v.toString(8)
-        val start = off + len - 2 - s.length
-        for (i in 0 until len) b[off + i] = '0'.code.toByte()
-        if (start >= off) System.arraycopy(s.toByteArray(Charsets.US_ASCII), 0, b, start, s.length)
+        val s = v.toString(8).padStart(len - 1, '0')
+        if (s.length > len - 1) throw BuildException("Слишком большое значение для tar: $v")
+        System.arraycopy(s.toByteArray(Charsets.US_ASCII), 0, b, off, len - 1)
         b[off + len - 1] = 0
     }
 }

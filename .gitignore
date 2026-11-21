@@ -10,3 +10,4 @@ keystore.properties
 screens/raw/
 screens/raw*.png
 .kotlin/
+__pycache__/
