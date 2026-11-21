@@ -12,8 +12,8 @@ object VoiceCodeTemplates {
     private fun normalize(text: String): String =
         text.lowercase()
             .replace('ё', 'е')
-            .replace(Regex("[^\\\\p{L}\\\\p{N}+#.-]+"), " ")
-            .replace(Regex("\\\\s+"), " ")
+            .replace(Regex("[^\\p{L}\\p{N}+#.-]+"), " ")
+            .replace(Regex("\\s+"), " ")
             .trim()
 
     private val requestWords = listOf(
@@ -30,14 +30,14 @@ object VoiceCodeTemplates {
     private fun hasRequest(text: String): Boolean = requestWords.any { text.contains(it) }
 
     private fun languageFrom(text: String, fallback: Lang): Lang = when {
-        Regex("\\\\bpython\\\\b|питон").containsMatchIn(text) -> Lang.PYTHON
-        Regex("\\\\btypescript\\\\b|\\\\bts\\\\b").containsMatchIn(text) -> Lang.TYPESCRIPT
-        Regex("\\\\bjavascript\\\\b|\\\\bjava script\\\\b|джаваскрипт|\\\\bjs\\\\b").containsMatchIn(text) -> Lang.JAVASCRIPT
-        Regex("\\\\bhtml\\\\b|хтмл").containsMatchIn(text) -> Lang.HTML
-        Regex("\\\\bcss\\\\b|цсс").containsMatchIn(text) -> Lang.CSS
-        Regex("\\\\bkotlin\\\\b|котлин").containsMatchIn(text) -> Lang.KOTLIN
-        Regex("\\\\bjava\\\\b|джава").containsMatchIn(text) -> Lang.JAVA
-        Regex("\\\\bc\\\\+\\\\+\\\\b|\\\\bcpp\\\\b").containsMatchIn(text) -> Lang.CPP
+        Regex("\\bpython\\b|питон").containsMatchIn(text) -> Lang.PYTHON
+        Regex("\\btypescript\\b|\\bts\\b").containsMatchIn(text) -> Lang.TYPESCRIPT
+        Regex("\\bjavascript\\b|\\bjava script\\b|джаваскрипт|\\bjs\\b").containsMatchIn(text) -> Lang.JAVASCRIPT
+        Regex("\\bhtml\\b|хтмл").containsMatchIn(text) -> Lang.HTML
+        Regex("\\bcss\\b|цсс").containsMatchIn(text) -> Lang.CSS
+        Regex("\\bkotlin\\b|котлин").containsMatchIn(text) -> Lang.KOTLIN
+        Regex("\\bjava\\b|джава").containsMatchIn(text) -> Lang.JAVA
+        Regex("\\bc\\+\\+\\b|\\bcpp\\b").containsMatchIn(text) -> Lang.CPP
         fallback != Lang.PLAIN -> fallback
         else -> Lang.PYTHON
     }
@@ -49,7 +49,7 @@ object VoiceCodeTemplates {
         )
         if (text.contains("библиотек") || text.contains("library") || text.contains("пакет") ||
             text.contains("подключ") || text.contains("импортируй") || text.contains("import ") ||
-            libraries.any { Regex("\\\\b" + Regex.escape(it) + "\\\\b").containsMatchIn(text) }
+            libraries.any { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }
         ) return Intent.LIBRARY
 
         val hasForm = text.contains("форм") || text.contains("form") || text.contains("регистрац") ||
@@ -398,26 +398,26 @@ object VoiceCodeTemplates {
 
     private fun library(text: String, lang: Lang): String {
         val names = listOf("requests", "numpy", "pandas", "flask", "fastapi", "tkinter", "math", "random", "json", "axios", "react", "express", "lodash", "date-fns")
-        val library = names.firstOrNull { Regex("\\\\b" + Regex.escape(it) + "\\\\b").containsMatchIn(text) }
+        val library = names.firstOrNull { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }
         return when (library) {
-            "requests" -> "# Установка один раз: python -m pip install requests\\nimport requests"
-            "numpy" -> "# Установка один раз: python -m pip install numpy\\nimport numpy as np"
-            "pandas" -> "# Установка один раз: python -m pip install pandas\\nimport pandas as pd"
-            "flask" -> "# Установка один раз: python -m pip install flask\\nfrom flask import Flask, request, jsonify"
-            "fastapi" -> "# Установка один раз: python -m pip install fastapi uvicorn\\nfrom fastapi import FastAPI"
-            "tkinter" -> "import tkinter as tk\\nfrom tkinter import messagebox"
+            "requests" -> "# Установка один раз: python -m pip install requests\nimport requests"
+            "numpy" -> "# Установка один раз: python -m pip install numpy\nimport numpy as np"
+            "pandas" -> "# Установка один раз: python -m pip install pandas\nimport pandas as pd"
+            "flask" -> "# Установка один раз: python -m pip install flask\nfrom flask import Flask, request, jsonify"
+            "fastapi" -> "# Установка один раз: python -m pip install fastapi uvicorn\nfrom fastapi import FastAPI"
+            "tkinter" -> "import tkinter as tk\nfrom tkinter import messagebox"
             "math" -> "import math"
             "random" -> "import random"
             "json" -> "import json"
-            "axios" -> "// Установка один раз: npm install axios\\nimport axios from \\"axios\\";"
-            "react" -> "// Установка один раз: npm install react react-dom\\nimport React from \\"react\\";"
-            "express" -> "// Установка один раз: npm install express\\nimport express from \\"express\\";"
-            "lodash" -> "// Установка один раз: npm install lodash\\nimport _ from \\"lodash\\";"
-            "date-fns" -> "// Установка один раз: npm install date-fns\\nimport { format } from \\"date-fns\\";"
+            "axios" -> "// Установка один раз: npm install axios\nimport axios from \"axios\";"
+            "react" -> "// Установка один раз: npm install react react-dom\nimport React from \"react\";"
+            "express" -> "// Установка один раз: npm install express\nimport express from \"express\";"
+            "lodash" -> "// Установка один раз: npm install lodash\nimport _ from \"lodash\";"
+            "date-fns" -> "// Установка один раз: npm install date-fns\nimport { format } from \"date-fns\";"
             else -> if (lang == Lang.JAVASCRIPT || lang == Lang.TYPESCRIPT) {
-                "// Установите пакет в проекте: npm install package-name\\nimport packageName from \\"package-name\\";"
+                "// Установите пакет в проекте: npm install package-name\nimport packageName from \"package-name\";"
             } else {
-                "# Установите библиотеку в окружении: python -m pip install package_name\\nimport package_name"
+                "# Установите библиотеку в окружении: python -m pip install package_name\nimport package_name"
             }
         }
     }
