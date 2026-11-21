@@ -1324,14 +1324,20 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         private val VOICE_HELP = """
 Нажмите 🎤 на панели над клавиатурой. Кнопка RU/EN переключает основной язык распознавания. Для английского произношения команд выбирайте EN; для русской речи с английскими именами кода — RU.
 
-Языки программирования:
-Слова Python, JavaScript, TypeScript, Java, Kotlin, C++, C#, HTML, CSS и SQL можно диктовать как обычно. Английские ключевые слова: function, def, class, return, if, else, elif, for, while, try, catch, finally, throw, import, from, const, let, var, async, await, public, private, static, int, float, double, string, boolean, true, false, null, self, this.
+Голосовые блоки кода (шаблон вставляется целиком в позицию курсора):
+«нужна программа / часть кода / кусок кода, чтобы получить имя» — блок ввода имени
+«создай веб-форму» / «сделай форму обратной связи» — HTML-форма
+«нужен блок кода для модального окна» — окно / диалог
+«создай HTML-страницу» — каркас страницы
+«сделай CSS-оформление» — стили
+«создай функцию» — каркас функции
+«подключи библиотеку requests» / «импортируй пакет axios» — импорт и подсказка по установке
 
-Русские варианты:
-«функция» → function · «если» → if · «иначе» → else · «иначе если» → elif
-«пока» → while · «класс» → class · «импорт» → import
-«возврат» → return · «истина» → true · «ложь» → false
-«публичный» → public · «приватный» → private · «статический» → static
+Шаблон выбирается по расширению открытого файла (Python, JavaScript, TypeScript, HTML, CSS, Kotlin, Java) или по языку, названному в команде. Макросы работают по известным шаблонам, а не придумывают произвольную программу. Внешние библиотеки автоматически не устанавливаются: команда установки показывается комментарием.
+
+Языки программирования:
+function, def, class, return, if, else, elif, for, while, try, catch, finally, throw, import, from, const, let, var, async, await, public, private, static, int, float, double, string, boolean, true, false, null, self, this.
+Русские варианты: «функция», «если», «иначе», «пока», «класс», «импорт», «возврат», «истина», «ложь».
 
 Символы:
 open paren / close paren → ( )
@@ -1349,8 +1355,8 @@ new line — новая строка · tab / indent — отступ · outdent
 «snake case user profile name» → user_profile_name
 «kebab case user profile name» → user-profile-name
 «flat case user profile name» → userprofilename
-«letter ex» → x · «letter why» → y. Русские названия букв (икс, игрек и т. д.) тоже поддерживаются.
-«literally dot» / «буквально точка» — вставить слово как текст, не как символ.
+«letter ex» → x · «letter why» → y.
+«literally dot» / «буквально точка» — вставить слово как текст.
 
 Числа:
 «twenty five» → 25 · «one hundred twenty three» → 123
@@ -1362,8 +1368,6 @@ select all · copy · paste · cut · delete word · delete line · comment · s
 сохранить · запустить · отменить · повторить · найти <текст> · перейти к строке <номер>
 выделить всё · копировать · вставить · вырезать · удалить слово · удалить строку
 закомментировать · стоп
-
-Команды управления произносятся отдельной фразой. Код можно диктовать длинной последовательностью, смешивая русские пояснения и английские ключевые слова. Для наиболее точного распознавания английских фраз выбирайте EN, русских — RU.
 
 Офлайн: скачайте нужную модель Vosk в Настройки → Голосовой ввод.
 """.trim()

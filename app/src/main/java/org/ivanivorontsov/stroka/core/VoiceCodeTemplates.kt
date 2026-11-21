@@ -16,6 +16,8 @@ object VoiceCodeTemplates {
     private val requestWords = listOf(
         "нужна", "нужен", "нужно", "хочу", "создай", "создать", "сделай", "сделать",
         "сгенерируй", "сгенерировать", "напиши", "написать", "добавь", "добавить", "вставь", "вставить",
+        "подключи", "подключить", "импортируй", "импортировать", "установи", "установить",
+        "библиотека", "библиотеку", "пакет", "library", "import package", "install package",
         "программа", "часть кода", "кусок кода", "блок кода", "фрагмент кода", "сниппет",
         "need", "i need", "i want", "create", "make", "generate", "write", "add", "insert", "build",
         "program for", "piece of code", "code snippet", "block of code", "component"
@@ -49,9 +51,7 @@ object VoiceCodeTemplates {
             libraryNames.any { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }
         ) return Intent.LIBRARY
 
-        if (lang == Lang.CSS || text.contains("css") || text.contains("стил") ||
-            text.contains("оформлен") || text.contains("style") || text.contains("stylesheet")
-        ) return Intent.CSS_STYLES
+        if (lang == Lang.CSS) return Intent.CSS_STYLES
 
         if (text.contains("форм") || text.contains("form") || text.contains("регистрац") ||
             text.contains("обратн") && text.contains("связ") || text.contains("contact form") ||
@@ -67,6 +67,12 @@ object VoiceCodeTemplates {
             text.contains("имя пользователя") || text.contains("user name") ||
             text.contains("username") || text.contains("get name") || text.contains("ask name")
         ) return Intent.NAME_INPUT
+
+        if (text.contains("html") && text.contains("css")) return Intent.HTML_PAGE
+
+        if (text.contains("css") || text.contains("стил") || text.contains("оформлен") ||
+            text.contains("style") || text.contains("stylesheet")
+        ) return Intent.CSS_STYLES
 
         if (text.contains("html") || text.contains("веб-страниц") || text.contains("веб страниц") ||
             text.contains("web page") || text.contains("website") || text.contains("страниц")
@@ -91,7 +97,7 @@ object VoiceCodeTemplates {
             Intent.WEB_FORM -> webForm(language)
             Intent.WINDOW -> window(language)
             Intent.HTML_PAGE -> htmlPage(language)
-            Intent.CSS_STYLES -> cssStyles(language)
+            Intent.CSS_STYLES -> if (language == Lang.HTML) "<style>\\n" + cssStyles(Lang.CSS) + "\\n</style>" else cssStyles(language)
             Intent.FUNCTION -> function(language)
             Intent.PROGRAM -> program(language)
             Intent.LIBRARY -> library(text, language)
