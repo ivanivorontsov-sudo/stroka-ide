@@ -148,9 +148,9 @@ object VoiceCodeTemplates {
     private fun phpTemplate(intent: Intent): String = when (intent) {
         Intent.NAME_INPUT -> """
             <?php
-            $name = trim($_POST['name'] ?? '');
-            if ($_SERVER['REQUEST_METHOD'] === 'POST' && $name !== '') {
-                echo 'Привет, ' . htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '!';
+            ${'$'}name = trim(${'$'}_POST['name'] ?? '');
+            if (${'$'}_SERVER['REQUEST_METHOD'] === 'POST' && ${'$'}name !== '') {
+                echo 'Привет, ' . htmlspecialchars(${'$'}name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '!';
             }
             ?>
             <form method="post"><label>Как вас зовут?<input name="name" required></label><button>Продолжить</button></form>
@@ -165,8 +165,8 @@ object VoiceCodeTemplates {
         Intent.CSS_STYLES -> cssStyles(Lang.CSS)
         Intent.FUNCTION -> """
             <?php
-            function process_data(mixed $value): mixed {
-                return $value;
+            function process_data(mixed ${'$'}value): mixed {
+                return ${'$'}value;
             }
             ?>
         """
