@@ -1206,6 +1206,16 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             }
         }
         content.addView(status)
+        val copyInstructions = Button(this).apply {
+            text = "Копировать описание и инструкцию"
+            isAllCaps = false
+            setOnClickListener {
+                copyText(explanation.text.toString() + "\n\n" + status.text.toString(), "Инструкция скопирована")
+            }
+        }
+        content.addView(copyInstructions, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(8) })
         val localSetupButton = Button(this).apply {
             text = "Подготовить локальную сборку (Termux)"
             isAllCaps = false
@@ -1590,7 +1600,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
         val sv = ScrollView(this)
         sv.addView(tv)
-        MaterialAlertDialogBuilder(this).setTitle("Голосовой ввод").setView(sv).setPositiveButton("Понятно", null).show()
+        MaterialAlertDialogBuilder(this).setTitle("Голосовой ввод").setView(sv)
+            .setNeutralButton("Копировать инструкцию") { _, _ -> copyText(VOICE_HELP, "Инструкция скопирована") }
+            .setPositiveButton("Понятно", null).show()
     }
 
     private fun showAbout() {
