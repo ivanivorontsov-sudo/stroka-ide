@@ -21,13 +21,15 @@
         <item>tab</item>
     </string-array>
     <string-array name="engine_names">
-        <item>Авто: Google, без сети — Vosk</item>
-        <item>Только Google (SpeechRecognizer)</item>
-        <item>Только Vosk (офлайн)</item>
+        <item>Авто: Google онлайн, офлайн — Android / Vosk</item>
+        <item>Системный сервис Google / Android</item>
+        <item>Android на устройстве (офлайн, Android 12+)</item>
+        <item>Vosk (офлайн)</item>
     </string-array>
     <string-array name="engine_values">
         <item>auto</item>
         <item>google</item>
+        <item>ondevice</item>
         <item>vosk</item>
     </string-array>
     <string-array name="lang_names">
