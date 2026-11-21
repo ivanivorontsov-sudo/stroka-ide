@@ -44,6 +44,14 @@ object EditorLogic {
         if (lang == Lang.HTML && last == '>' && isOpeningTagLine(body)) extra = true
         var newIndent = if (extra) indent + unit else indent
         if (lang.colonIndents && !extra && pyDedent.matches(body)) newIndent = removeOneIndent(indent, unit)
+        if (lang == Lang.PONYATNY) {
+            if (opensPonyBlock(body)) {
+                extra = true
+                newIndent = indent + unit
+            } else if (body.trim().equals("конец", ignoreCase = true)) {
+                newIndent = removeOneIndent(indent, unit)
+            }
+        }
         val pos = nlPos + 1
         val next = if (pos < t.length) t[pos] else '\u0000'
         val pairClose = (last == '{' && next == '}') || (last == '(' && next == ')') || (last == '[' && next == ']') ||
@@ -56,6 +64,11 @@ object EditorLogic {
         while (e < t.length && (t[e] == ' ' || t[e] == '\t')) e++
         if (newIndent.isEmpty() && e == pos) return null
         return Edit(pos, e, newIndent, pos + newIndent.length)
+    }
+
+    private fun opensPonyBlock(body: String): Boolean {
+        val line = body.trim().lowercase().replace('ё', 'е')
+        return Regex("^(?:если\\\\b.*\\\\bто|иначе(?:\\\\s+если\\\\b.*\\\\bто)?|пока\\\\b.*|повторить\\\\b.*|для\\\\b.*|функция\\\\b.*|класс\\\\b.*|структура\\\\b.*|попробуй\\\\b.*|выбор\\\\b.*|вариант\\\\b.*|когда\\\\b.*|интерфейс\\\\b.*|перечисление\\\\b.*|поток\\\\b.*|наконец\\\\b.*)$").matches(line)
     }
 
     private val voidTags = setOf("br", "hr", "img", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr", "!doctype")
