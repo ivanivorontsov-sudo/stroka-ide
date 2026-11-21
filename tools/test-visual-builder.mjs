@@ -37,6 +37,8 @@ for (const [phrase, expected] of cases) {
 
 for (const [phrase, expected] of [
   ['сделай две колонки', 'repeat(2,minmax(0,1fr))'],
+  ['два столбца', 'repeat(2,minmax(0,1fr))'],
+  ['two columns', 'repeat(2,minmax(0,1fr))'],
   ['покажи две колонке', 'repeat(2,minmax(0,1fr))'],
   ['сделай три столбца', 'repeat(3,minmax(0,1fr))'],
   ['make grid of 3', 'repeat(3,minmax(0,1fr))'],
