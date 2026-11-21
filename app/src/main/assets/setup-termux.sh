@@ -29,7 +29,7 @@ export ANDROID_SDK_ROOT="$SDK"
 SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
 echo "Устанавливаю Android SDK API 36 и Build Tools 36.0.0..."
 yes | bash "$SDKMANAGER" --sdk_root="$SDK" --licenses >/dev/null || true
-bash "$SDKMANAGER" --sdk_root="$SDK" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+bash "$SDKMANAGER" --sdk_root="$SDK" "platform-tools" "platforms;android-35" "platforms;android-36" "build-tools;36.0.0"
 
 mkdir -p "$HOME/.gradle" "$HOME/.termux"
 touch "$HOME/.gradle/gradle.properties"
