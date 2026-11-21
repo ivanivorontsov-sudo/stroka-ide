@@ -1149,8 +1149,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 append("Строка проверит проект и отправит сборку на отдельную машину GitHub Actions. ")
                 append("Это нужно потому, что Android SDK и Windows-компилятор нельзя надёжно запускать внутри Android-приложения.\n\n")
                 append("Текущий файл: ").append(doc?.name ?: "не выбран").append("\n")
+                append("Папка проекта: будет определена автоматически по структуре файлов\n")
                 append("Репозиторий: ").append(repo?.name ?: "не найден").append("\n")
-                append("GitHub-токен: ").append(if (token.isNullOrBlank()) "не настроен" else "есть").append("\n\n")
+                append("GitHub-токен: ").append(if (token.isNullOrBlank()) "не настроен" else "есть").append("\n")
+                append("Если сборочного workflow нет, Строка добавит его в основную ветку репозитория.\n\n")
                 append("Важно: сборка берёт только уже отправленный (push) код. Незакоммиченные изменения не попадут в неё.")
             }
         }
@@ -1178,7 +1180,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 panelStatus.text = "Подготовка облачной сборки…"
                 gitIo.execute {
                     try {
-                        val result = CloudBuild.dispatch(repo, target, token)
+                        val result = CloudBuild.dispatch(this, repo, source, target, token)
                         main.post {
                             appendConsole("✓ Сборка отправлена: ${result.repo} / ${result.branch}\n", Kind.INFO)
                             appendConsole("Откройте страницу Actions, чтобы наблюдать сборку и скачать проверенный артефакт.\n", Kind.INFO)
