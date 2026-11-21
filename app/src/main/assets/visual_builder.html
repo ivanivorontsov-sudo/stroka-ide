@@ -28,9 +28,15 @@ body[data-theme="ocean"]{--bg:#eaf6f8;--surface:#fff;--ink:#123344;--muted:#5273
 body[data-theme="aurora"]{--bg:#f4efff;--surface:#fff;--ink:#292044;--muted:#776a94;--line:#e6dcf5;--accent:#8957d5}
 body[data-theme="luxury"]{--bg:#12110f;--surface:#1e1b17;--ink:#f6ecd5;--muted:#b9a98b;--line:#4a3c27;--accent:#c7a35b}
 body[data-theme="minimal"]{--bg:#fff;--surface:#fff;--ink:#171717;--muted:#666;--line:#e8e8e8;--accent:#111}
+body[data-theme="material"]{--bg:#f4f1fa;--surface:#fdf8ff;--ink:#1d1b20;--muted:#625b71;--line:#e6e0ec;--accent:#6750a4}
+body[data-theme="fluent"]{--bg:#f5f5f5;--surface:#fff;--ink:#242424;--muted:#616161;--line:#e1dfdd;--accent:#0f6cbd}
+body[data-theme="shadcn"]{--bg:#fafafa;--surface:#fff;--ink:#09090b;--muted:#71717a;--line:#e4e4e7;--accent:#18181b}
+body[data-theme="material"] .stage,body[data-theme="material"] .panel{border-radius:28px}
+body[data-theme="fluent"] .stage,body[data-theme="fluent"] .panel{border-radius:8px;box-shadow:0 2px 8px #0000000a}
+body[data-theme="shadcn"] .stage,body[data-theme="shadcn"] .panel{border-radius:10px;box-shadow:0 1px 2px #0000000a}
 
 </style></head><body><header><div class="brand"><span class="brand-mark">S</span><div><b>Строка · Дизайн-студия</b><small>Собираем интерфейс голосом и блоками</small></div></div><button id="undo" title="Отменить">↶</button><button id="voice">🎙 Голос</button><button id="explain">🧠 Объяснятор кода</button><button id="show">Предпросмотр</button><button class="primary" id="save">Вставить код</button></header>
-<div class="themebar"><span>Тема:</span><button data-theme="light">Светлая</button><button data-theme="dark">Тёмная</button><button data-theme="luxury">Luxury</button><button data-theme="ocean">Ocean</button><button data-theme="aurora">Aurora</button><button data-theme="minimal">Minimal</button><span class="theme-hint">Команды: «сделай тёмную тему», «покажи две темы», «сделай премиальный стиль»</span></div>
+<div class="themebar"><span>Тема:</span><button data-theme="light">Светлая</button><button data-theme="dark">Тёмная</button><button data-theme="luxury">Luxury</button><button data-theme="ocean">Ocean</button><button data-theme="aurora">Aurora</button><button data-theme="minimal">Minimal</button><button data-theme="material">Material 3</button><button data-theme="fluent">Fluent 2</button><button data-theme="shadcn">shadcn/ui</button><span class="theme-hint">Команды: «сделай тёмную тему», «покажи две темы», «сделай премиальный стиль»</span></div>
 <div class="layout"><nav class="shelf"><b>Блоки</b><button data-add="hero">Заголовок</button><button data-add="text">Текст</button><button data-add="image">Изображение</button><button data-add="button">Кнопка</button><button data-add="form">Форма</button><button data-add="calculator">Калькулятор</button><hr><b>Готовые дизайны</b><button data-template="card">✨ Визитка Pro</button><button data-template="landing">🚀 SaaS / продукт</button><button data-template="portfolio">🎨 Портфолио</button><button data-template="shop">🛍 Магазин</button><p class="hint">Перетаскивай блоки. Команды можно говорить по-русски и по-английски.</p></nav><main><div class="stage" id="stage"></div></main></div>
 <section class="panel"><b class="wide">Свойства выбранного блока</b><label class="wide">Текст<input id="txt"></label><label>Ширина<input id="width" placeholder="100%"></label><label>Размер текста<input id="size" placeholder="18px"></label><label>Цвет<input id="color" type="color" value="#172033"></label><label>Фон<input id="bg" type="color" value="#ffffff"></label><label>Отступ<input id="pad" placeholder="12px"></label><label>Скругление<input id="radius" placeholder="8px"></label><label class="wide">URL изображения<input id="src" placeholder="https://..."></label><div class="wide"><button id="up">Выше</button><button id="down">Ниже</button><button id="del">Удалить</button></div></section>
 <section id="explainer" class="explain-panel" hidden><div class="explain-head"><b>🧠 Объяснятор кода</b><button id="closeExplain">Закрыть</button></div><p>Объясняет человеческим языком, за что отвечают найденные элементы HTML, CSS и JavaScript.</p><div id="explainResults"></div></section><h3 style="padding:0 10px">HTML-код — можно редактировать вручную</h3><textarea id="code" class="code" spellcheck="false"></textarea><h3 style="padding:0 10px">Предпросмотр</h3><iframe id="frame" class="preview" sandbox="allow-scripts"></iframe>
@@ -44,7 +50,10 @@ const themeCss={
  luxury:'body{background:#101010;color:#f5ead2}.content-card,.price-card{background:#1b1916;color:#f5ead2;border-color:#8e713d}.landing-hero{background:linear-gradient(130deg,#16110b,#5b4524)}.landing-cta{background:#d8bd78;color:#211807}.quote-card{background:#2a241a;color:#f5ead2}',
  minimal:'body{background:#fff;color:#202020}.content-card,.price-card{box-shadow:none;border-radius:4px}.landing-hero{background:#f4f4f4;color:#222;border-radius:4px}.landing-hero p{color:#555}.landing-cta{background:#222;color:#fff;border-radius:4px}',
  ocean:'body{background:#eaf6f8;color:#123344}.landing-hero{background:linear-gradient(130deg,#063b53,#0b8793)}.content-card,.price-card{border-color:#cde3e8}',
- aurora:'body{background:#f4efff;color:#292044}.landing-hero{background:linear-gradient(130deg,#35205f,#8957d5 60%,#42a6a0)}.content-card,.price-card{border-color:#e6dcf5}'
+ aurora:'body{background:#f4efff;color:#292044}.landing-hero{background:linear-gradient(130deg,#35205f,#8957d5 60%,#42a6a0)}.content-card,.price-card{border-color:#e6dcf5}',
+ material:'body{background:#f4f1fa;color:#1d1b20}.landing-hero{background:linear-gradient(135deg,#6750a4,#8b78bd);border-radius:28px}.content-card,.price-card{border-radius:24px;background:#fdf8ff;border-color:#e6e0ec}.landing-cta{border-radius:999px;background:#6750a4;color:white}',
+ fluent:'body{background:#f5f5f5;color:#242424}.landing-hero{background:linear-gradient(135deg,#0f6cbd,#479ef5);border-radius:10px}.content-card,.price-card{border-radius:8px;box-shadow:0 2px 8px #00000010}.landing-cta{border-radius:6px;background:#0f6cbd;color:white}',
+ shadcn:'body{background:#fafafa;color:#09090b}.landing-hero{background:#18181b;border-radius:12px}.content-card,.price-card{border-radius:10px;border:1px solid #e4e4e7;box-shadow:0 1px 2px #00000008}.landing-cta{border-radius:8px;background:#18181b;color:white}'
 };
 function snap(){history.push(stage.innerHTML);if(history.length>25)history.shift()}
 function block(t){let e=document.createElement('section');e.className='item';e.draggable=true;e.dataset.type=t;
@@ -105,6 +114,9 @@ function voiceCommand(raw){
  if(/премиаль|дорогой стиль|luxury|black and gold/.test(n)){setTheme('luxury');return}
  if(/океан|морск|ocean|blue theme/.test(n)){setTheme('ocean');return}
  if(/аврора|градиент|aurora|purple theme/.test(n)){setTheme('aurora');return}
+ if(/material\s*3|материал\s*3|material design|материал дизайн/.test(n)){setTheme('material');return}
+ if(/fluent\s*2|fluent design|флюент|как windows 11/.test(n)){setTheme('fluent');return}
+ if(/shadcn|шадсн|шадсин|как shadcn/.test(n)){setTheme('shadcn');return}
  if(/минимал|минималист|minimal/.test(n)){setTheme('minimal');return}
  if(/две темы|два варианта темы|two themes|show theme options/.test(n)){setTheme('light');document.querySelector('.theme-hint').textContent='Вариант 1: светлая. Для второго варианта скажите «сделай тёмную тему» или выберите её сверху.';document.querySelector('.themebar').scrollIntoView({behavior:'smooth'});return}
  if(/выровняй|выравнивание|по центру|center align/.test(n)&&selected){snap();selected.style.textAlign='center';update();return}
