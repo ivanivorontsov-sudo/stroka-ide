@@ -262,6 +262,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             R.id.action_wrap -> { prefs.wrap = !prefs.wrap; editor.setWrap(prefs.wrap); updateMenuChecks() }
             R.id.action_theme -> toggleTheme()
             R.id.action_voice_help -> showVoiceHelp()
+            R.id.action_ponyatny_help -> showPonyatnyHelp()
             R.id.action_self_tutor -> startActivity(Intent(this, SelfTutorActivity::class.java))
             R.id.action_close -> if (current >= 0) closeDoc(current)
             R.id.action_settings -> startActivity(Intent(this, SettingsActivity::class.java))
@@ -1612,6 +1613,22 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         if (::voice.isInitialized && voice.isActive) stopVoice()
         val seed = docs.getOrNull(current)?.let { if (it.lang == Lang.HTML) editor.text?.toString().orEmpty() else "" }.orEmpty()
         visualBuilderResult.launch(Intent(this, VisualBuilderActivity::class.java).putExtra("source", seed).putExtra("language", prefs.voiceLang))
+    }
+
+    private fun showPonyatnyHelp() {
+        val reference = assets.open("ponyatny/СИНТАКСИС.md").bufferedReader().use { it.readText() }
+        val body = android.widget.TextView(this).apply {
+            text = reference
+            textSize = 13f
+            setTextIsSelectable(true)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+        }
+        val scroll = android.widget.ScrollView(this).apply { addView(body) }
+        MaterialAlertDialogBuilder(this).setTitle("Синтаксис языка «Понятный» 2.5")
+            .setView(scroll)
+            .setNeutralButton("Копировать справочник") { _, _ -> copyText(reference, "Справочник скопирован") }
+            .setPositiveButton("Закрыть", null)
+            .show()
     }
 
     private fun showVoiceHelp() {
