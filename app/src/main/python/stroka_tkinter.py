@@ -16,6 +16,7 @@ def install(callback):
     tk.__path__ = []
     ttk = types.ModuleType("tkinter.ttk")
     messagebox = types.ModuleType("tkinter.messagebox")
+    dialog = {"html": ""}
 
     class Variable:
         def __init__(self, master=None, value="", **kwargs): self.value = value
@@ -90,7 +91,7 @@ def install(callback):
             body = "".join(x._render() for x in self.children)
             return """<!doctype html><html lang="ru"><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8">
 <style>*{box-sizing:border-box}body{margin:0;padding:18px;background:#f5f5f8;color:#20212a;font:16px system-ui}main{max-width:560px;margin:4vh auto;background:white;border-radius:18px;padding:22px;box-shadow:0 8px 32px #0002}h2{margin:0 0 18px;font-size:22px}.label{margin:10px 0 6px}.entry{display:block;width:100%;padding:12px;margin:8px 0 14px;border:1px solid #b8bdc9;border-radius:10px;font:inherit}textarea{min-height:100px}button{padding:12px 18px;margin:6px 6px 6px 0;border:0;border-radius:10px;background:#dce5ff;color:#172d63;font:inherit}.check{display:block;margin:12px 0}section{margin:12px 0;padding:12px;border:1px solid #e1e3e9;border-radius:12px}</style>
-<main><h2>""" + html.escape(self.window_title) + """</h2>""" + body + """</main></html>"""
+<main><h2>""" + html.escape(self.window_title) + """</h2>""" + body + (dialog["html"] or "") + """</main></html>"""
         def mainloop(self):
             if _callback is None: return
             _callback.showPreview(self._page())
@@ -98,6 +99,10 @@ def install(callback):
                 event = _callback.waitUiEvent()
                 if event == "__stop__": break
                 if not event: continue
+                if event == "d":
+                    dialog["html"] = ""
+                    _callback.showPreview(self._page())
+                    continue
                 kind, _, payload = event.partition(":")
                 widget_id, sep, value = payload.partition("|")
                 try: widget = _widgets.get(int(widget_id))
@@ -129,9 +134,7 @@ def install(callback):
     class Menu(Widget): pass
 
     def showinfo(title, message, **kwargs):
-        if _callback is not None:
-            page = '<html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font:16px system-ui;padding:24px"><h2>' + html.escape(str(title)) + '</h2><p>' + html.escape(str(message)) + '</p></body></html>'
-            _callback.showPreview(page)
+        dialog["html"] = '<div style="position:fixed;inset:0;background:#0006;display:grid;place-items:center;padding:20px"><div style="background:white;color:#20212a;border-radius:14px;padding:20px;max-width:420px;width:100%;box-shadow:0 8px 32px #0004"><h3>' + html.escape(str(title)) + '</h3><p>' + html.escape(str(message)) + '</p><button onclick="window.Stroka&&Stroka.onUiEvent(String.fromCharCode(100))">OK</button></div></div>'
     def showwarning(title, message, **kwargs): return showinfo(title, message, **kwargs)
     def showerror(title, message, **kwargs): return showinfo(title, message, **kwargs)
     def askyesno(title, message, **kwargs): showinfo(title, message, **kwargs); return False
