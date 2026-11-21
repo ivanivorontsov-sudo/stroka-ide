@@ -11,7 +11,7 @@ on:
         description: Главный файл относительно папки проекта
         required: false
         type: string
-        default: main.pon
+        default: tools/fixtures/ponyatny/main.pon
 permissions:
   contents: read
 concurrency:
