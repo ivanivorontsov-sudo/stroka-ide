@@ -11,14 +11,19 @@ object CloudBuild {
 
     fun dispatch(directory: File, target: String, token: String): Result {
         require(token.isNotBlank()) { "GitHub-токен не задан" }
-        val (remote, branch, clean) = Git.open(directory).use { git ->
+        val (remote, branch, clean, pushed) = Git.open(directory).use { git ->
+            val currentBranch = git.repository.branch
+            val localHead = git.repository.resolve("HEAD")
+            val remoteHead = git.repository.resolve("refs/remotes/origin/$currentBranch")
             Triple(
                 git.repository.config.getString("remote", "origin", "url").orEmpty(),
-                git.repository.branch,
-                git.status().call().isClean
+                currentBranch,
+                git.status().call().isClean,
+                localHead != null && remoteHead != null && localHead == remoteHead
             )
         }
-        require(clean) { "В Git есть незакоммиченные или неотправленные изменения. Сначала сохраните их коммитом и выполните push: облачная сборка не должна незаметно собирать старый код." }
+        require(clean) { "В Git есть незакоммиченные изменения. Сначала сохраните их коммитом и выполните push: облачная сборка не должна незаметно собирать старый код." }
+        require(pushed) { "Локальная ветка не совпадает с origin/$branch. Сначала выполните push последнего коммита, затем повторите сборку." }
         val match = Regex("(?:github\\.com[:/])([^/]+)/([^/]+?)(?:\\.git)?/?$").find(remote)
             ?: throw IllegalStateException("Удалённый адрес origin не похож на GitHub: $remote")
         val owner = match.groupValues[1]
