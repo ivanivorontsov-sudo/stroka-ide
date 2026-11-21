@@ -343,6 +343,8 @@ class VoiceMapperTest {
             "material design",
             "fluent design",
             "shadcn",
+            "ant design",
+            "carbon design",
             "make dark theme",
             "two columns"
         ).forEach { assertNotNull("Missing recognition hint: $it", hints.find { hint -> hint.equals(it, ignoreCase = true) }) }
