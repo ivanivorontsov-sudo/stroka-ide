@@ -68,6 +68,12 @@ object VoiceCodeTemplates {
         if (text.contains("библиотек") || text.contains("library") || text.contains("пакет") || text.contains("подключ") ||
             text.contains("импортируй") || text.contains("import ") || libraries.any { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }) return Intent.LIBRARY
         if (listOf("калькулятор", "calculator", "калькулятар", "калкулятор", "арифметик", "посчитать", "вычислить").any(text::contains)) return Intent.CALCULATOR
+        if (fullConstructs) {
+            if (listOf("выведи", "вывести", "напечатай", "напечатать", "покажи текст", "вывод", "print", "println", "console log", "output", "display").any(text::contains)) return Intent.OUTPUT
+            if (listOf("считай", "считать", "запроси", "получи ввод", "прочитай ввод", "input", "read input", "get input", "prompt").any(text::contains)) return Intent.INPUT
+            if (listOf("цикл", "повтори", "повторять", "перебери", "перебрать", "for loop", "while loop", "loop", "iterate").any(text::contains)) return Intent.LOOP
+            if (listOf("условие", "если", "проверь если", "проверить если", "if statement", "condition").any(text::contains)) return Intent.CONDITION
+        }
         if (lang == Lang.CSS || text.contains("css") || text.contains("стил") || text.contains("оформлен") || text.contains("stylesheet")) return Intent.CSS_STYLES
         if (text.contains("форм") || text.contains("form") || text.contains("регистрац") || (text.contains("обратн") && text.contains("связ"))) return Intent.WEB_FORM
         if (text.contains("окн") || text.contains("диалог") || text.contains("модаль") || text.contains("window") || text.contains("dialog") ||
@@ -76,12 +82,6 @@ object VoiceCodeTemplates {
         if (text.contains("html") && text.contains("css")) return Intent.HTML_PAGE
         if (text.contains("html") || text.contains("веб-страниц") || text.contains("веб страниц") || text.contains("web page") || text.contains("website") || text.contains("страниц")) return Intent.HTML_PAGE
         if (text.contains("имя") || text.contains("имени") || text.contains("name") || text.contains("username") || text.contains("get name") || text.contains("ask name")) return Intent.NAME_INPUT
-        if (fullConstructs) {
-            if (listOf("выведи", "вывести", "напечатай", "напечатать", "покажи текст", "вывод", "print", "println", "console log", "output", "display").any(text::contains)) return Intent.OUTPUT
-            if (listOf("считай", "считать", "запроси", "получи ввод", "прочитай ввод", "input", "read input", "get input", "prompt").any(text::contains)) return Intent.INPUT
-            if (listOf("цикл", "повтори", "повторять", "перебери", "перебрать", "for loop", "while loop", "loop", "iterate").any(text::contains)) return Intent.LOOP
-            if (listOf("условие", "если", "проверь если", "проверить если", "if statement", "condition").any(text::contains)) return Intent.CONDITION
-        }
         if (text.contains("функц") || text.contains("function") || text.contains("метод") || text.contains("method")) return Intent.FUNCTION
         if (text.contains("программ") || text.contains("program") || text.contains("код") || text.contains("snippet") || text.contains("component")) return Intent.PROGRAM
         return null
