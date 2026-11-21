@@ -1170,7 +1170,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 }
                 if (token.isNullOrBlank()) {
                     MaterialAlertDialogBuilder(this).setTitle("Нужен GitHub-токен")
-                        .setMessage("Добавьте токен в Настройки → Git и GitHub. Для запуска workflow требуется право Actions: write, а для приватного репозитория — доступ к Contents.")
+                        .setMessage("Добавьте токен в Настройки → Git и GitHub. Нужны права Actions: write и Contents: write, чтобы установить сборочный workflow.")
                         .setPositiveButton("Понятно", null).show()
                     return@setPositiveButton
                 }
@@ -1193,7 +1193,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                             appendConsole("✕ Сборка не запущена: $message\n", Kind.ERR)
                             panelStatus.text = "Сборка не запущена"
                             MaterialAlertDialogBuilder(this).setTitle("Не удалось запустить сборку")
-                                .setMessage(message + "\n\nПроверьте, что рабочая папка чистая, изменения отправлены в GitHub, а файл .github/workflows/project-build.yml уже находится в основной ветке.")
+                                .setMessage(message + "\n\nПроверьте GitHub-токен (Actions: write и Contents: write), чистоту Git и то, что последний коммит отправлен в origin.")
                                 .setPositiveButton("Понятно", null).show()
                         }
                     }
