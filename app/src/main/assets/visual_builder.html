@@ -109,10 +109,10 @@ function applyStyleHints(raw){
  const n=normalizeVoiceCommand(raw);
  if(/темн|черн|ночн|dark mode|dark theme|night mode/.test(n))setTheme('dark');
  else if(/светл|бел|дневн|light mode|light theme|day mode/.test(n))setTheme('light');
- else if(/премиаль|дорогой стиль|богатый стиль|luxury|black and gold|золот|premium style/.test(n))setTheme('luxury');
+ else if(/премиум|премиаль|дорогой стиль|богатый стиль|luxury|black and gold|золот|premium style/.test(n))setTheme('luxury');
  else if(/material\s*3|материал\s*3|material design|материал дизайн/.test(n))setTheme('material');
  else if(/fluent\s*2|fluent design|флюент|как windows 11/.test(n))setTheme('fluent');
- else if(/shadcn|шадсн|шадсин/.test(n))setTheme('shadcn');
+ else if(/shadcn|shadсн|шадсн|шадсин/.test(n))setTheme('shadcn');
  else if(/океан|морск|ocean|blue theme/.test(n))setTheme('ocean');
  else if(/аврора|aurora|purple theme/.test(n))setTheme('aurora');
  else if(/минимал|минималист|minimal/.test(n))setTheme('minimal');
