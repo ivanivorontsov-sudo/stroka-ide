@@ -24,6 +24,7 @@ sealed class VoiceAction {
     object Close : VoiceAction()
     data class Find(val query: String) : VoiceAction()
     data class GoToLine(val line: Int) : VoiceAction()
+    data class SetLiteralMode(val kind: String?) : VoiceAction()
 }
 
 object VoiceMapper {
@@ -316,15 +317,35 @@ object VoiceMapper {
         return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(260)
     }
 
-    fun map(utterance: String, preferredLanguage: Lang = Lang.PLAIN, fileName: String? = null): List<VoiceAction> {
+    fun map(utterance: String, preferredLanguage: Lang = Lang.PLAIN, fileName: String? = null, voiceMode: String = "blocks", literalMode: String? = null): List<VoiceAction> {
         val trimmed = utterance.trim()
         if (trimmed.isEmpty()) return emptyList()
-        VoiceCodeTemplates.generate(trimmed, preferredLanguage, fileName)?.let {
+        val normalized = normalize(trimmed)
+        if (literalMode != null && listOf("конец ввода", "конец текста", "конец комментария", "завершить ввод", "end input", "end text", "end comment").contains(normalized)) {
+            return listOf(VoiceAction.SetLiteralMode(null))
+        }
+        val marker = listOf("это ввод" to "text", "это текст" to "text", "буквальный ввод" to "text", "literal input" to "text", "this is input" to "text", "это комментарий" to "comment", "комментарий" to "comment", "this is a comment" to "comment")
+            .firstOrNull { normalized == it.first || normalized.startsWith(it.first + " ") }
+        if (marker != null) {
+            val rest = trimmed.substringAfter(' ', "").substringAfter(' ', "").trim()
+            val actions = mutableListOf<VoiceAction>(VoiceAction.SetLiteralMode(marker.second))
+            if (rest.isNotBlank()) actions.add(VoiceAction.Insert(if (marker.second == "comment") commentText(rest, preferredLanguage) else rest))
+            return actions
+        }
+        if (literalMode != null) return listOf(VoiceAction.Insert(if (literalMode == "comment") commentText(trimmed, preferredLanguage) else trimmed))
+        if (voiceMode == "off") return listOf(VoiceAction.Insert(trimmed))
+        VoiceCodeTemplates.generate(trimmed, preferredLanguage, fileName, fullConstructs = voiceMode == "constructs")?.let {
             return listOf(VoiceAction.InsertBlock(it.title, it.code))
         }
         parseCommand(trimmed)?.let { return listOf(it) }
         val fixed = fixCapitalization(trimmed).let { if (it.length > 1 && it.endsWith(".") && !it.endsWith("..") && it[it.length - 2].isLetter()) it.dropLast(1) else it }
         return dictate(fixed)
+    }
+
+    private fun commentText(text: String, lang: Lang): String = when (lang) {
+        Lang.HTML -> "<!-- $text -->"
+        Lang.JAVASCRIPT, Lang.TYPESCRIPT, Lang.JAVA, Lang.KOTLIN, Lang.CPP -> "// $text"
+        else -> "# $text"
     }
 
     private fun fixCapitalization(s: String): String {
