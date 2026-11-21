@@ -91,11 +91,25 @@ function explainCode(){
 }
 
 code.onchange=()=>{try{let d=new DOMParser().parseFromString(code.value,'text/html');snap();stage.innerHTML=d.body.querySelector('.page')?.innerHTML||d.body.innerHTML;selected=null;update()}catch(e){}};
+function normalizeVoiceCommand(raw){
+ let n=String(raw||'').toLowerCase().normalize('NFKC').replace(/ё/g,'е');
+ n=n.replace(/[«»„“”]/g,'"').replace(/[!?;]+/g,' ').replace(/[,]+/g,' ').replace(/\\s+/g,' ').trim();
+ const repairs=[
+  [/\\bтемку\\b/g,'тему'],[/\\bтёмку\\b/g,'тему'],[/\\bтемную тему\\b/g,'темную тему'],
+  [/\\bдве колонке\\b/g,'две колонки'],[/\\bдва колонка\\b/g,'две колонки'],[/\\bдве колонны\\b/g,'две колонки'],
+  [/\\bдва столбца\\b/g,'две колонки'],[/\\bтри столбца\\b/g,'три колонки'],[/\\bчетыре столбца\\b/g,'четыре колонки'],
+  [/\\bпремиум дизайн\\b/g,'премиальный стиль'],[/\\bпремиальный дизайн\\b/g,'премиальный стиль'],
+  [/\\bшадсин\\b/g,'shadcn'],[/\\bматериал дизаин\\b/g,'material design'],
+  [/\\bфлюент дизайн\\b/g,'fluent design'],[/\\bсайт визитка\\b/g,'визитка']
+ ];
+ for(const [pattern,replacement] of repairs)n=n.replace(pattern,replacement);
+ return n;
+}
 function applyStyleHints(raw){
- const n=raw.toLowerCase().replace(/ё/g,'е');
- if(/темн|тёмн|dark mode|dark theme/.test(n))setTheme('dark');
- else if(/светл|light mode|light theme/.test(n))setTheme('light');
- else if(/премиаль|дорогой стиль|luxury|black and gold|золот/.test(n))setTheme('luxury');
+ const n=normalizeVoiceCommand(raw);
+ if(/темн|черн|ночн|dark mode|dark theme|night mode/.test(n))setTheme('dark');
+ else if(/светл|бел|дневн|light mode|light theme|day mode/.test(n))setTheme('light');
+ else if(/премиаль|дорогой стиль|богатый стиль|luxury|black and gold|золот|premium style/.test(n))setTheme('luxury');
  else if(/material\s*3|материал\s*3|material design|материал дизайн/.test(n))setTheme('material');
  else if(/fluent\s*2|fluent design|флюент|как windows 11/.test(n))setTheme('fluent');
  else if(/shadcn|шадсн|шадсин/.test(n))setTheme('shadcn');
@@ -104,15 +118,15 @@ function applyStyleHints(raw){
  else if(/минимал|минималист|minimal/.test(n))setTheme('minimal');
  const grids=selected?[selected.querySelector('.content-grid,.landing-grid,.biz-grid')].filter(Boolean):Array.from(stage.querySelectorAll('.content-grid,.landing-grid,.biz-grid'));
  const columns=n.match(/(?:в|на)?\s*(две|2|три|3|четыре|4)\s+колонк|\b(2|3|4)\s+columns?/);
- if(columns){const word=columns[1]||columns[2];const count=({две:2,три:3,четыре:4})[word]||Number(word);grids.forEach(g=>g.style.gridTemplateColumns='repeat('+count+',minmax(0,1fr))')}
- if(/по центру|выровняй по центру|center align/.test(n)&&selected)selected.style.textAlign='center';
- if(/скругл|закругл|rounded corners/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.content-card,.biz-tile,.price-card,.quote-card'))).forEach(x=>x.style.borderRadius='22px')}
- if(/добавь тень|сделай тень|drop shadow/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.content-card,.biz-tile,.price-card'))).forEach(x=>x.style.boxShadow='0 18px 45px #17203320')}
- if(/крупнее шрифт|увеличь текст|larger font/.test(n)&&selected)selected.style.fontSize='22px';
- if(/больше воздуха|увеличь отступы|more spacing/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.item'))).forEach(x=>x.style.padding='24px')}
+ if(columns){const word=columns[1]||columns[2]||columns[3]||columns[4];const count=({две:2,три:3,четыре:4})[word]||Number(word);grids.forEach(g=>g.style.gridTemplateColumns='repeat('+count+',minmax(0,1fr))')}
+ if(/по центру|выровняй по центру|отцентрируй|центральное выравнивание|center align|align center/.test(n)&&selected)selected.style.textAlign='center';
+ if(/скругл|закругл|круглые углы|rounded corners|round corners/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.content-card,.biz-tile,.price-card,.quote-card'))).forEach(x=>x.style.borderRadius='22px')}
+ if(/добавь тень|сделай тень|с тенями|drop shadow|add shadow/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.content-card,.biz-tile,.price-card'))).forEach(x=>x.style.boxShadow='0 18px 45px #17203320')}
+ if(/крупнее шрифт|увеличь текст|увеличь шрифт|большой текст|larger font|bigger text/.test(n)&&selected)selected.style.fontSize='22px';
+ if(/больше воздуха|увеличь отступы|добавь отступы|сделай просторнее|more spacing|more padding/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.item'))).forEach(x=>x.style.padding='24px')}
 }
 function voiceCommand(raw){
- const n=raw.toLowerCase().replace(/ё/g,'е').trim();
+ const n=normalizeVoiceCommand(raw);
  if(!n)return;
  applyStyleHints(n);
  const typeOf=(v)=>/визитк|business\s*card|contact\s*card|digital\s*card/.test(v)?'card':/услуг|service/.test(v)?'services':/отзыв|review|testimonial/.test(v)?'reviews':/цен|price|тариф/.test(v)?'pricing':/вопрос|faq|часто задаваем/.test(v)?'faq':/контакт|contact/.test(v)?'contacts':/магазин|store|shop|e-commerce/.test(v)?'shop':/портфолио|portfolio/.test(v)?'portfolio':/галере|gallery/.test(v)?'gallery':/о нас|about/.test(v)?'about':/лендинг|landing\s*page|сайт|website|web\s*site|главная страница/.test(v)?'landing':/калькулятор|calculator/.test(v)?'calculator':/форм|form/.test(v)?'form':/изображ|картин|image|picture/.test(v)?'image':/кноп|button/.test(v)?'button':/заголов|header|heading|title/.test(v)?'hero':/раздел|divider/.test(v)?'spacer':'text';
