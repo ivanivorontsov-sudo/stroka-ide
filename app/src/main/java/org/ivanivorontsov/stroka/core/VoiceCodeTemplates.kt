@@ -335,6 +335,14 @@ object VoiceCodeTemplates {
                 <label for="contact-message">Сообщение</label><textarea id="contact-message" name="message" rows="4" required></textarea>
                 <button type="submit">Отправить</button>
             </form>
+            <script>
+                document.getElementById("contact-form").addEventListener("submit", (event) => {
+                    event.preventDefault();
+                    const form = event.currentTarget;
+                    if (!form.reportValidity()) return;
+                    alert("Спасибо! Форма заполнена.");
+                });
+            </script>
         """
     }
 
