@@ -1140,7 +1140,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val source = (doc?.ref as? DocRef.Local)?.let { File(it.path) }
         val repo = git.findRepoRoot(source?.parentFile)
         val token = SecureStore(this).get("github_token")
-        val options = arrayOf("Автоопределение проекта", "Android APK", "Android App Bundle (AAB)", "Windows EXE", "Сайт (HTML / Node.js)", "Python EXE (Windows)")
+        val options = arrayOf("Автоопределение проекта", "Android APK", "Android App Bundle (AAB)", "Windows EXE", "Linux ELF (.NET)", "Сайт (HTML / Node.js)", "Python EXE (Windows)")
         var selected = 0
         val details = TextView(this).apply {
             textSize = 13f
@@ -1161,7 +1161,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             .setSingleChoiceItems(options, 0) { _, which -> selected = which }
             .setView(details)
             .setPositiveButton("Проверить и собрать") { _, _ ->
-                val target = listOf("auto", "android-apk", "android-aab", "windows-exe", "website", "python-exe")[selected]
+                val target = listOf("auto", "android-apk", "android-aab", "windows-exe", "linux-exe", "website", "python-exe")[selected]
                 if (repo == null) {
                     MaterialAlertDialogBuilder(this).setTitle("Не найден Git-репозиторий")
                         .setMessage("Откройте файл внутри проекта, созданного или клонированного через Git, либо сначала инициализируйте репозиторий. Облачная сборка работает с отправленным на GitHub исходным кодом.")
