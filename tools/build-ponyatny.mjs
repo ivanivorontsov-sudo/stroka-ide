@@ -59,6 +59,7 @@ function writeWeb(outDir, source, name) {
   const app = [
     "(() => {",
     "const out=document.getElementById('output'), src=document.getElementById('source'), status=document.getElementById('status');",
+    "src.value=" + JSON.stringify(source) + ";",
     "const modules=" + JSON.stringify(std) + ";",
     "const write=v=>{out.textContent+=String(v)+'\\n';};",
     "document.getElementById('run').addEventListener('click',()=>{out.textContent='';try{PonyatnyYadro.run(src.value,{file:'main.pon',write,writeErr:v=>write('Ошибка: '+v),ask:q=>window.prompt(q||'Введите значение:')??'',resolve:req=>{const k=String(req).replace(/^стд\\//,'').replace(/\\.pon$/i,'');return Object.prototype.hasOwnProperty.call(modules,k)?{id:'std:'+k,name:'стд/'+k+'.pon',source:modules[k]}:null;}});status.textContent='Выполнено';}catch(e){status.textContent='Ошибка';write(e&&e.message?e.message:e);}});",
