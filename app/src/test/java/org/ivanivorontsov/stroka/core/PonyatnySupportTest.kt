@@ -21,6 +21,8 @@ class PonyatnySupportTest {
     @Test fun voiceMapsSpokenPonyatnySyntaxAndNumbers() {
         assertEquals("пусть число = 5", PonyatnyVoiceMapper.map("переменная число равно пять"))
         assertEquals("пиши \"Привет, мир!\"", PonyatnyVoiceMapper.map("пиши Привет, мир!"))
+        assertEquals("пиши 1 + 2", PonyatnyVoiceMapper.map("пиши один плюс два"))
+        assertEquals("пиши имя", PonyatnyVoiceMapper.map("пиши переменную имя"))
         assertEquals("пусть имя = 7", PonyatnyVoiceMapper.map("пускай имя равно семь"))
     }
 
