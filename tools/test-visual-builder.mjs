@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const html = fs.readFileSync('app/src/main/assets/visual_builder.html', 'utf8');
-const scripts = [...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/gi)].map(m => m[1]);
+const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
 assert.ok(scripts.length, 'visual builder must contain its inline script');
 for (const source of scripts) new vm.Script(source, { filename: 'visual_builder.html' });
 
@@ -20,7 +20,7 @@ const sandbox = {
   update: () => {}
 };
 vm.createContext(sandbox);
-vm.runInContext(parserSource + '\\nthis.normalize = normalizeVoiceCommand; this.apply = applyStyleHints;', sandbox);
+vm.runInContext(parserSource + '\nthis.normalize = normalizeVoiceCommand; this.apply = applyStyleHints;', sandbox);
 
 const cases = [
   ['сделай тёмную тему', 'dark'],
