@@ -31,6 +31,8 @@ if [ -z "$ROOT" ]; then
   APP="$HOME/.cache/stroka-build/python-app"
   rm -rf "$APP"
   PYROOT="$(dirname "$PYFILE")"
+  APP_SLUG="$(basename "$PYFILE" .py | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_]/_/g')"
+  if [[ ! "$APP_SLUG" =~ ^[a-z] ]]; then APP_SLUG="app_$APP_SLUG"; fi
   mkdir -p "$APP/app/src/main/java/com/example/strokabuild" "$APP/app/src/main/python" "$APP/app/src/main/assets"
   cp -R "$PYROOT"/. "$APP/app/src/main/python/"
   cp "$PYFILE" "$APP/app/src/main/python/main.py"
@@ -89,6 +91,7 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
 }
 EOF
+  sed -i "s|applicationId = \"com.example.strokabuild\"|applicationId = \"com.example.stroka.$APP_SLUG\"|" "$APP/app/build.gradle.kts"
   cat > "$APP/app/src/main/AndroidManifest.xml" <<'EOF'
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Python app">
