@@ -982,7 +982,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val cwd = (d.ref as? DocRef.Local)?.let { File(it.path).parent } ?: File(projectsDir, "Песочница").absolutePath
         when (d.lang) {
             Lang.PYTHON -> runPython(code, d.name, cwd)
-            Lang.JAVASCRIPT -> runJs(code, d.name)
+            Lang.JAVASCRIPT, Lang.PONYATNY -> runJs(code, d.name)
             Lang.HTML, Lang.CSS, Lang.MARKDOWN -> openPreview()
             else -> {
                 showPanel(false)
@@ -1027,8 +1027,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private fun runJs(code: String, name: String) {
         if (python.isRunning || js.isRunning) { toast("Программа уже выполняется"); return }
         showPanel(false)
-        appendConsole("▶ js $name\n", Kind.INFO)
-        panelStatus.text = "JavaScript выполняется…"
+        appendConsole(if (name.endsWith(".pon", ignoreCase = true)) "▶ Понятный $name\n" else "▶ js $name\n", Kind.INFO)
+        panelStatus.text = if (name.endsWith(".pon", ignoreCase = true)) "Компилятор «Понятный» выполняется…" else "JavaScript выполняется…"
         js.run(code, name, object : JsRunner.Sink {
             override fun onOutput(text: String, error: Boolean) = appendConsole(text, if (error) Kind.ERR else Kind.OUT)
             override fun onPrompt(message: String, default: String, result: (String?) -> Unit) {
