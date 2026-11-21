@@ -979,6 +979,14 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         inputRow.visibility = View.VISIBLE
         python.run(code, name, cwd, object : PythonRunner.Sink {
             override fun onOutput(text: String, error: Boolean) = appendConsole(text, if (error) Kind.ERR else Kind.OUT)
+            override fun onPreview(html: String) {
+                panel.visibility = View.VISIBLE
+                panelTabs.check(R.id.tabPreview)
+                consoleBox.visibility = View.GONE
+                previewBox.visibility = View.VISIBLE
+                panelStatus.text = "Окно Python · Android preview"
+                ensurePreview().loadDataWithBaseURL("https://stroka.local/", html, "text/html", "utf-8", null)
+            }
             override fun onInputRequested(prompt: String) {
                 panelStatus.text = "Ждёт ввода…"
                 consoleInput.requestFocus()
