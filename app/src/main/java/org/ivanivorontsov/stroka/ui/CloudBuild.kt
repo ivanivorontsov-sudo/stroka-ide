@@ -10,28 +10,31 @@ import java.net.URL
 
 object CloudBuild {
     data class Result(val repo: String, val branch: String, val actionsUrl: String)
-    private data class GitState(val remote: String, val branch: String, val clean: Boolean, val pushed: Boolean)
+    private data class GitState(val remote: String, val branch: String, val clean: Boolean, val headSha: String)
 
     fun dispatch(context: Context, directory: File, sourceFile: File?, target: String, token: String): Result {
         require(token.isNotBlank()) { "GitHub-токен не задан" }
         val state = Git.open(directory).use { git ->
             val branch = git.repository.branch
-            val localHead = git.repository.resolve("HEAD")
-            val remoteHead = git.repository.resolve("refs/remotes/origin/$branch")
+            val localHead = git.repository.resolve("HEAD")?.name.orEmpty()
             GitState(
                 git.repository.config.getString("remote", "origin", "url").orEmpty(),
                 branch,
                 git.status().call().isClean,
-                localHead != null && remoteHead != null && localHead == remoteHead
+                localHead
             )
         }
         require(state.clean) { "В Git есть незакоммиченные изменения. Сначала сохраните их коммитом и выполните push: облачная сборка не должна незаметно собирать старый код." }
-        require(state.pushed) { "Локальная ветка не совпадает с origin/${state.branch}. Сначала выполните push последнего коммита, затем повторите сборку." }
         val match = Regex("(?:github\\.com[:/])([^/]+)/([^/]+?)(?:\\.git)?/?$").find(state.remote)
             ?: throw IllegalStateException("Удалённый адрес origin не похож на GitHub: ${state.remote}")
         val owner = match.groupValues[1]
         val name = match.groupValues[2]
         val fullName = "$owner/$name"
+        val branchUrl = "https://api.github.com/repos/$fullName/branches/" + java.net.URLEncoder.encode(state.branch, "UTF-8")
+        val (branchCode, branchBody) = request("GET", branchUrl, token)
+        if (branchCode != 200) throw IllegalStateException("Не удалось проверить ветку GitHub (HTTP $branchCode): " + branchBody.take(500))
+        val remoteSha = JSONObject(branchBody).optJSONObject("commit")?.optString("sha").orEmpty()
+        require(remoteSha == state.headSha) { "Последний локальный коммит не отправлен в origin/" + state.branch + ". Сначала выполните push и повторите сборку." }
         ensureWorkflow(context, fullName, token)
         val projectPath = findProjectPath(directory, sourceFile)
         val endpoint = "https://api.github.com/repos/$fullName/actions/workflows/project-build.yml/dispatches"
