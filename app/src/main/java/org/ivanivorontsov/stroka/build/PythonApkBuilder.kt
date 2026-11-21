@@ -49,8 +49,8 @@ object PythonApkBuilder {
             }
         }
         extras["assets/py/program.py"] = programBytes(source)
-        val shim = loadShim(assets)
-        extras["assets/py/stroka_tkinter.py"] = shim
+        extras["assets/py/stroka_tkinter.py"] = loadShim(assets)
+        extras["assets/py/stroka.py"] = loadShim(assets, "stroka.py")
         extras["assets/py/stroka_py_app.py"] = bootstrap().toByteArray(Charsets.UTF_8)
         extras["assets/py/FILENAME.txt"] = fileName.toByteArray(Charsets.UTF_8)
         val jars = ArrayList<File>()
@@ -109,10 +109,10 @@ object PythonApkBuilder {
         return null
     }
 
-    fun loadShim(assets: BuildAssets): ByteArray {
+    fun loadShim(assets: BuildAssets, file: String = "stroka_tkinter.py"): ByteArray {
         val ctx = PonyatnyJs.appContext
         if (ctx != null) {
-            try { return ctx.assets.open("python/stroka_tkinter.py").readBytes() } catch (_: Exception) {}
+            try { return ctx.assets.open("python/$file").readBytes() } catch (_: Exception) {}
         }
         val rootCandidates = listOf(
             assets.libDir,
@@ -124,12 +124,12 @@ object PythonApkBuilder {
             File("/home/box/work/stroka-ide")
         )
         val rels = listOf(
-            "python/stroka_tkinter.py",
-            "assets/python/stroka_tkinter.py",
-            "src/main/python/stroka_tkinter.py",
-            "src/main/assets/python/stroka_tkinter.py",
-            "app/src/main/python/stroka_tkinter.py",
-            "app/src/main/assets/python/stroka_tkinter.py"
+            "python/$file",
+            "assets/python/$file",
+            "src/main/python/$file",
+            "src/main/assets/python/$file",
+            "app/src/main/python/$file",
+            "app/src/main/assets/python/$file"
         )
         for (r in rootCandidates) {
             if (r == null) continue
@@ -138,7 +138,7 @@ object PythonApkBuilder {
                 if (f.isFile) return f.readBytes()
             }
         }
-        throw BuildException("Не найден модуль tkinter (stroka_tkinter.py).")
+        throw BuildException("Не найден модуль $file.")
     }
 
     fun pythonMain(assets: BuildAssets): String {
@@ -155,6 +155,8 @@ object PythonApkBuilder {
 
     fun bootstrap(): String = """
 import builtins, io, os, sys, traceback
+
+_job = {}
 
 
 class _Console(io.TextIOBase):
@@ -175,46 +177,71 @@ class _Console(io.TextIOBase):
         pass
 
 
-def run(activity):
+def prepare(activity):
     py = os.path.join(activity.getFilesDir().getAbsolutePath(), "py")
     if py not in sys.path:
         sys.path.insert(0, py)
     sys.stdout = _Console(activity, False)
     sys.stderr = _Console(activity, True)
+    name = "program.py"
+    try:
+        with open(os.path.join(py, "FILENAME.txt"), "r", encoding="utf-8-sig") as f:
+            name = f.read().strip() or name
+    except OSError:
+        pass
+    path = os.path.join(py, "program.py")
+    with open(path, "r", encoding="utf-8-sig") as f:
+        src = f.read()
+    import stroka
+    native = stroka.uses_native_ui(src)
+    stroka._bind(activity, native)
 
     def _input(prompt=""):
         if prompt:
             sys.stdout.write(str(prompt))
+        if stroka.is_native():
+            sys.stderr.write("\ninput() недоступен в программе с интерфейсом Android: используйте поля EditText.\n")
+            return ""
         line = activity.consoleInput(str(prompt))
         if line is None:
             raise EOFError("ввод закрыт")
         return str(line)
 
     builtins.input = _input
+    from stroka_tkinter import install
+    install(activity)
+    sys.argv = [name]
+    _job.update(src=src, name=name, path=path, activity=activity)
+    return "native" if native else "console"
+
+
+def _execute(ui):
+    activity = _job["activity"]
+    g = {"__name__": "__main__", "__file__": _job["path"], "__builtins__": builtins, "activity": activity}
     try:
-        from stroka_tkinter import install
-        install(activity)
-        name = "program.py"
-        try:
-            with open(os.path.join(py, "FILENAME.txt"), "r", encoding="utf-8-sig") as f:
-                name = f.read().strip() or name
-        except OSError:
-            pass
-        sys.argv = [name]
-        path = os.path.join(py, "program.py")
-        with open(path, "r", encoding="utf-8-sig") as f:
-            src = f.read()
-        g = {"__name__": "__main__", "__file__": path, "__builtins__": builtins}
-        exec(compile(src, name, "exec"), g)
+        exec(compile(_job["src"], _job["name"], "exec"), g)
     except SystemExit:
         pass
     except BaseException:
         traceback.print_exc()
+        if ui:
+            activity.showConsole()
     finally:
         try:
             sys.stdout.flush()
         except Exception:
             pass
-        activity.consoleDone()
+        if not ui:
+            activity.consoleDone()
+
+
+def run(activity=None):
+    if not _job:
+        prepare(activity)
+    _execute(False)
+
+
+def run_native(activity=None):
+    _execute(True)
 """.trimIndent() + "\n"
 }

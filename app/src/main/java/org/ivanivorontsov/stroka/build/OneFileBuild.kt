@@ -32,10 +32,10 @@ object OneFileBuild {
         work.mkdirs()
         val lower = fileName.lowercase()
         return when {
-            lower.endsWith(".java") || looksLikeAndroidJava(source) ->
-                buildJavaApk(source, fileName, label, work, assets, outApk, log)
-            lower.endsWith(".py") ->
+            lower.endsWith(".py") || lower.endsWith(".pyw") ->
                 PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log)
+            lower.endsWith(".java") ->
+                buildJavaApk(source, fileName, label, work, assets, outApk, log)
             lower.endsWith(".kt") || lower.endsWith(".kts") ->
                 throw BuildException("Сборка Kotlin в APK на телефоне пока требует исходник на Java (один файл Activity) или программу на «Понятном». Сохраните программу как .java или .pon.")
             else -> buildWebApk(source, fileName, label, work, assets, outApk, log, env)

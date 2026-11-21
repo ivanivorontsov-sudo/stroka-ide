@@ -8,6 +8,7 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
+import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
 import com.chaquo.python.android.AndroidPlatform;
 import java.io.ByteArrayOutputStream;
@@ -47,7 +48,23 @@ public class Main extends Activity {
                     if (!Python.isStarted()) Python.start(new AndroidPlatform(self));
                     File dir = new File(getFilesDir(), "py");
                     Python.getInstance().getModule("sys").get("path").callAttr("insert", 0, dir.getAbsolutePath());
-                    Python.getInstance().getModule("stroka_py_app").callAttr("run", self);
+                    final PyObject app = Python.getInstance().getModule("stroka_py_app");
+                    String mode = app.callAttr("prepare", self).toString();
+                    if ("native".equals(mode)) {
+                        main.post(new Runnable() {
+                            public void run() {
+                                try {
+                                    app.callAttr("run_native", self);
+                                } catch (Throwable e) {
+                                    String msg = e.getMessage() == null ? String.valueOf(e) : e.getMessage();
+                                    showConsole();
+                                    consoleWrite(msg + "\n", true);
+                                }
+                            }
+                        });
+                    } else {
+                        app.callAttr("run", self);
+                    }
                 } catch (Throwable e) {
                     String msg = e.getMessage() == null ? String.valueOf(e) : e.getMessage();
                     consoleWrite("Ошибка запуска Python: " + msg + "\n", true);
@@ -69,7 +86,7 @@ public class Main extends Activity {
     private void extractPy() throws Exception {
         File dir = new File(getFilesDir(), "py");
         if (!dir.isDirectory() && !dir.mkdirs()) throw new Exception("Не удалось создать папку " + dir);
-        String[] names = new String[] { "stroka_tkinter.py", "stroka_py_app.py", "program.py", "FILENAME.txt" };
+        String[] names = new String[] { "stroka.py", "stroka_tkinter.py", "stroka_py_app.py", "program.py", "FILENAME.txt" };
         for (int i = 0; i < names.length; i++) {
             byte[] data = readAll(getAssets().open("py/" + names[i]));
             FileOutputStream out = new FileOutputStream(new File(dir, names[i]));
@@ -122,6 +139,18 @@ public class Main extends Activity {
         } catch (InterruptedException e) {
             return null;
         }
+    }
+
+    public void showConsole() {
+        main.post(new Runnable() {
+            public void run() {
+                if (web.getParent() == null) {
+                    setContentView(web, new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT));
+                }
+            }
+        });
     }
 
     public void consoleDone() {

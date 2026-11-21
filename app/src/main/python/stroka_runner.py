@@ -107,6 +107,48 @@ def run(code, filename, cwd, cb):
     return status
 
 
+def uses_native_ui(code):
+    import stroka
+    return stroka.uses_native_ui(code)
+
+
+def run_native(code, filename, cwd, act):
+    import stroka
+    sys.stdout = _Out(act, False)
+    sys.stderr = _Out(act, True)
+
+    def _input(prompt=""):
+        if prompt:
+            sys.stdout.write(str(prompt))
+        sys.stderr.write("\ninput() недоступен в программе с интерфейсом Android: используйте поля EditText.\n")
+        return ""
+
+    builtins.input = _input
+    if cwd:
+        try:
+            os.chdir(cwd)
+        except OSError:
+            pass
+        if cwd not in sys.path:
+            sys.path.insert(0, cwd)
+    sys.argv = [filename]
+    stroka._bind(act, True)
+    g = {"__name__": "__main__", "__file__": filename, "__builtins__": builtins, "activity": act}
+    try:
+        exec(compile(code, filename, "exec"), g)
+        return 0
+    except SystemExit as e:
+        return e.code if isinstance(e.code, int) else 0
+    except BaseException:
+        et, ev, tb = sys.exc_info()
+        if tb is not None and tb.tb_next is not None:
+            tb = tb.tb_next
+        text = "".join(traceback.format_exception(et, ev, tb))
+        sys.stderr.write(text)
+        act.showError(text)
+        return 1
+
+
 def stop():
     tid = _state["tid"]
     if tid is None:

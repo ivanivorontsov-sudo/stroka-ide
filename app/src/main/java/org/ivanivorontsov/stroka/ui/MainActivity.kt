@@ -1025,6 +1025,16 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     private fun runPython(code: String, name: String, cwd: String) {
         if (python.isRunning || js.isRunning) { toast("Программа уже выполняется"); return }
+        if (PythonRunner.usesNativeUi(code)) {
+            showPanel(false)
+            appendConsole("▶ python $name (интерфейс Android)\n", Kind.INFO)
+            PythonUiActivity.sink = { text, err -> appendConsole(text, if (err) Kind.ERR else Kind.OUT) }
+            PythonUiActivity.pendingCode = code
+            startActivity(Intent(this, PythonUiActivity::class.java)
+                .putExtra(PythonUiActivity.EXTRA_NAME, name)
+                .putExtra(PythonUiActivity.EXTRA_CWD, cwd))
+            return
+        }
         showPanel(false)
         hideKeyboard()
         appendConsole("▶ python $name\n", Kind.INFO)
@@ -1534,7 +1544,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         appendConsole("Сборка ${kind.uppercase()} «${d.name}»…\n", Kind.INFO)
         panelStatus.text = "Сборка…"
         val source = d.text
-        val fileName = d.name
+        val fileName = if (d.lang.exts.isEmpty() || d.lang.exts.any { d.name.lowercase().endsWith(".$it") }) d.name
+            else d.name.substringBeforeLast('.') + "." + d.lang.exts.first()
         val label = d.name.substringBeforeLast('.').ifBlank { "Программа" }
         val t0 = System.nanoTime()
         io.execute {

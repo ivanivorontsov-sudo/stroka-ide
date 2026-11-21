@@ -61,10 +61,12 @@ class Stroka182PythonConsoleTest {
         File(py, "program.py").writeBytes(PythonApkBuilder.programBytes("\uFEFF" + File(root, "tools/fixtures/main.py").readText(Charsets.UTF_8)))
         File(py, "FILENAME.txt").writeText("main.py", Charsets.UTF_8)
         File(py, "stroka_tkinter.py").writeText("def install(cb):\n    pass\n", Charsets.UTF_8)
+        File(root, "app/src/main/python/stroka.py").copyTo(File(py, "stroka.py"))
         val driver = File(work, "driver.py")
         driver.writeText(
             """
             import sys
+            ARGS = list(sys.argv)
             sys.path.insert(0, sys.argv[1])
             import stroka_py_app
             out = []
@@ -72,7 +74,7 @@ class Stroka182PythonConsoleTest {
             done = []
             class D:
                 def getAbsolutePath(self):
-                    return sys.argv[2]
+                    return ARGS[2]
             class A:
                 def getFilesDir(self):
                     return D()
@@ -83,14 +85,19 @@ class Stroka182PythonConsoleTest {
                     return "Иван"
                 def consoleDone(self):
                     done.append(1)
+            mode = stroka_py_app.prepare(A())
             stroka_py_app.run(A())
             sys.__stdout__.write("".join(out) + "\n")
             sys.__stdout__.write("ASKED=" + "|".join(asked) + "\n")
             sys.__stdout__.write("DONE=" + str(len(done)) + "\n")
+            sys.__stdout__.write("MODE=" + mode + "\n")
+            import stroka
+            ui = open(ARGS[3], encoding="utf-8").read()
+            sys.__stdout__.write("NATIVE=" + str(stroka.uses_native_ui(ui)) + "\n")
             """.trimIndent() + "\n",
             Charsets.UTF_8
         )
-        val pb = ProcessBuilder(python!!, driver.absolutePath, py.absolutePath, File(work, "files").absolutePath)
+        val pb = ProcessBuilder(python!!, driver.absolutePath, py.absolutePath, File(work, "files").absolutePath, File(root, "tools/fixtures/android-ui.py").absolutePath)
             .directory(work).redirectErrorStream(true)
         pb.environment()["PYTHONIOENCODING"] = "utf-8"
         val p = pb.start()
@@ -105,5 +112,31 @@ class Stroka182PythonConsoleTest {
         assertTrue(text, text.contains("ASKED=Как тебя зовут? "))
         assertTrue(text, text.contains("DONE=1"))
         assertFalse(text, text.contains("E:"))
+        assertTrue(text, text.contains("MODE=console"))
+        assertTrue(text, text.contains("NATIVE=True"))
+    }
+
+    @Test
+    fun pythonWithAndroidApiIsNotRoutedToJava() {
+        val assets = BuildCoordinator.fromProject(root)
+        val runtime = PythonApkBuilder.findRuntimeApk(assets)
+        assumeTrue("Нужен APK Строки со средой Chaquopy", runtime != null && runtime.isFile)
+        PythonApkBuilder.runtimeApkOverride = runtime
+        val file = File(root, "tools/fixtures/android-ui.py")
+        val src = file.readText(Charsets.UTF_8)
+        assertTrue(src.contains("android.app.Activity"))
+        val work = File(root, "app/build/test-182-pyui")
+        work.deleteRecursively()
+        val apk = OneFileBuild.buildApk(src, "main.py", "Кнопки", work, assets, File(work, "knopki.apk"))
+        ZipFile(apk).use { z ->
+            assertArrayEquals(file.readBytes(), z.getInputStream(z.getEntry("assets/py/program.py")).readBytes())
+            assertTrue(z.getEntry("assets/py/stroka.py") != null)
+            val dex = z.getInputStream(z.getEntry("classes.dex")).readBytes().toString(Charsets.ISO_8859_1)
+            assertTrue(dex.contains("run_native"))
+            assertTrue(dex.contains("showConsole"))
+        }
+        assertTrue(org.ivanivorontsov.stroka.run.PythonRunner.usesNativeUi(src))
+        assertFalse(org.ivanivorontsov.stroka.run.PythonRunner.usesNativeUi(File(root, "tools/fixtures/main.py").readText(Charsets.UTF_8)))
+        PonyatnyCalculatorBuildTest.copyEvidence(root, apk, "knopki-python-1.8.2.apk")
     }
 }

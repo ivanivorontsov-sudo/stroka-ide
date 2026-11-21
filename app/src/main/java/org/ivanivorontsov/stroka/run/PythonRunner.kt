@@ -135,6 +135,13 @@ class PythonRunner(private val ctx: Context) {
     }
 
     companion object {
+        private val NATIVE = Regex(
+            "^\\s*(from\\s+(java|android|com\\.chaquo|stroka)\\b|import\\s+(java|android|stroka)\\b)|\\bjclass\\s*\\(|\\bdynamic_proxy\\s*\\(|\\bstatic_proxy\\s*\\(",
+            RegexOption.MULTILINE
+        )
+
+        fun usesNativeUi(code: String): Boolean = NATIVE.containsMatchIn(code)
+
         private val EOF = String(charArrayOf('\u0000', 'E', 'O', 'F'))
     }
 }

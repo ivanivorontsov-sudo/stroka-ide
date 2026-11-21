@@ -57,5 +57,10 @@
             android:exported="false"
             android:label="@string/self_tutor"
             android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.PythonUiActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>
