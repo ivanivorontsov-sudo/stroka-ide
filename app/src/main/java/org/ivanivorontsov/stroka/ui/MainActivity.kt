@@ -1151,7 +1151,6 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         }
         val explanation = TextView(this).apply {
             textSize = 13f
-            setTextColor(com.google.android.material.color.MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface))
             text = "Строка проверит проект и отправит сборку на отдельную машину GitHub Actions. Android SDK и Windows-компилятор не требуется запускать внутри телефона."
             setPadding(0, 0, 0, dp(12))
         }
