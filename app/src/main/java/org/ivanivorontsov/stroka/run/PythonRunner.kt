@@ -20,6 +20,7 @@ class PythonRunner(private val ctx: Context) {
 
     inner class Callback(private val sink: Sink) {
         private val buf = StringBuilder()
+        private val uiEvents = LinkedBlockingQueue<String>()
         private var lastErr = false
         private var scheduled = false
 
@@ -48,6 +49,8 @@ class PythonRunner(private val ctx: Context) {
         fun flush() = synchronized(buf) { flushLocked() }
 
         fun showPreview(html: String) { main.post { sink.onPreview(html) } }
+        fun waitUiEvent(): String = uiEvents.take()
+        fun postUiEvent(event: String) { uiEvents.offer(event) }
 
         fun readLine(prompt: String): String? {
             flush()
@@ -61,12 +64,15 @@ class PythonRunner(private val ctx: Context) {
     private val input = LinkedBlockingQueue<String>()
     private val running = AtomicBoolean(false)
     private var module: PyObject? = null
+    @Volatile private var activeCallback: Callback? = null
 
     val isRunning: Boolean get() = running.get()
 
     fun provideInput(line: String) {
         input.offer(line)
     }
+
+    fun provideUiEvent(event: String) { activeCallback?.postUiEvent(event) }
 
     fun run(code: String, fileName: String, cwd: String?, sink: Sink) {
         if (!running.compareAndSet(false, true)) return
@@ -75,6 +81,7 @@ class PythonRunner(private val ctx: Context) {
             val start = System.currentTimeMillis()
             var status = 1
             val cb = Callback(sink)
+            activeCallback = cb
             try {
                 if (!Python.isStarted()) Python.start(AndroidPlatform(ctx.applicationContext))
                 val m = module ?: Python.getInstance().getModule("stroka_runner").also { module = it }
@@ -84,6 +91,7 @@ class PythonRunner(private val ctx: Context) {
             } finally {
                 cb.flush()
                 running.set(false)
+                activeCallback = null
                 val ms = System.currentTimeMillis() - start
                 main.postDelayed({ sink.onFinished(status, ms) }, 60)
             }
@@ -93,6 +101,7 @@ class PythonRunner(private val ctx: Context) {
     fun stop() {
         if (!running.get()) return
         input.offer(EOF)
+        activeCallback?.postUiEvent("__stop__")
         try {
             module?.callAttr("stop")
         } catch (e: Throwable) {
