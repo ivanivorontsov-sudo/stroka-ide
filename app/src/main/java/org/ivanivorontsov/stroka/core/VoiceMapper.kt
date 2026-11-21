@@ -334,7 +334,7 @@ object VoiceMapper {
             return actions
         }
         if (literalMode != null) return listOf(VoiceAction.Insert(if (literalMode == "comment") commentText(trimmed, preferredLanguage) else trimmed))
-        if (listOf("конструктор сайта", "конструктор веб сайта", "визуальный конструктор", "собери сайт визуально", "visual website builder", "open visual builder").any(normalized::contains)) return listOf(VoiceAction.OpenVisualBuilder)
+        if (listOf("конструктор сайта", "конструктора сайта", "конструктор веб сайта", "конструктора веб сайта", "визуальный конструктор", "режим конструктора", "собери сайт визуально", "site builder", "website builder", "visual website builder", "open visual builder").any(normalized::contains)) return listOf(VoiceAction.OpenVisualBuilder)
         if (voiceMode == "off") return listOf(VoiceAction.Insert(trimmed))
         VoiceCodeTemplates.generate(trimmed, preferredLanguage, fileName, fullConstructs = voiceMode == "constructs")?.let {
             return listOf(VoiceAction.InsertBlock(it.title, it.code))
