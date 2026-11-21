@@ -202,6 +202,8 @@ jobs:
           assert Path("app/src/main/assets/ponyatny/std.json").is_file()
           assert Path("app/src/main/assets/ponyatny/СИНТАКСИС.md").is_file()
           assert "Lang.PONYATNY -> runJs" in main and "collectPonyatnyModules" in main
+          assert "action_ponyatny_help" in menu and "showPonyatnyHelp" in main
+          assert "ponyatny" in Path("app/src/main/java/org/ivanivorontsov/stroka/core/Templates.kt").read_text()
           print("Termux, Python APK, Tkinter and Pонятный integration static checks: passed")
           PY
           PYTHONPATH=app/src/main/python python3 - <<'PY'
