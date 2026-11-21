@@ -7,6 +7,7 @@
 - **Android APK** — debug APK, пригодный для установки и проверки.
 - **Android AAB** — debug Android App Bundle для проверки сборки.
 - **Windows EXE** — self-contained single-file .NET EXE для win-x64.
+- **Linux ELF** — self-contained single-file .NET-программа для Debian/Linux x64.
 - **Сайт** — собирает Node-проект или упаковывает статический сайт в ZIP.
 - **Python EXE** — PyInstaller one-file для Windows.
 
@@ -17,7 +18,7 @@
 1. Откройте проект из локального Git-репозитория.
 2. Настройте GitHub token в Настройки → Git и GitHub.
 3. У токена должно быть право **Actions: write**; для приватного репозитория нужен доступ к репозиторию. Для классического PAT обычно требуется scope `repo`.
-4. В основной ветке репозитория должен находиться `.github/workflows/project-build.yml`.
+4. Если `.github/workflows/project-build.yml` отсутствует, приложение может установить его в основную ветку автоматически. Для этого токену нужны права Contents: write и Actions: write.
 5. Сохраните изменения коммитом и отправьте их через push.
 6. Убедитесь, что локальная ветка совпадает с `origin/<branch>`. Центр сборки не отправляет код без спроса и не собирает случайно устаревший commit.
 
@@ -62,7 +63,7 @@ Single-file EXE привязан к ОС и архитектуре. Для ARM64
 - https://learn.microsoft.com/dotnet/core/deploying/single-file/overview
 - https://learn.microsoft.com/dotnet/core/deploying/
 
-### Python EXE
+### Linux ELF (.NET)\n\nВыберите Linux ELF, чтобы получить исполняемый файл для Debian 13 / Linux x86-64. Сборка выполняется на Ubuntu runner через .NET 8, self-contained single-file, RID `linux-x64`. Проверяется ELF-заголовок и выставляется executable bit. Это не AppImage и не универсальный бинарник для ARM64.\n\n### Python EXE
 
 Ожидается `main.py`, `app.py` или `run.py`, а также при наличии — `requirements.txt`. Сборщик устанавливает Python 3.12, зависимости и PyInstaller, затем создаёт Windows one-file EXE.
 
