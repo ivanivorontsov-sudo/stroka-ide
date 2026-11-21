@@ -60,9 +60,34 @@ class SettingsActivity : AppCompatActivity() {
             for (lang in listOf("ru", "en")) {
                 findPreference<Preference>("vosk_$lang")?.setOnPreferenceClickListener { onModelClick(lang); true }
             }
+            findPreference<Preference>("voice_legal")?.setOnPreferenceClickListener {
+                showVoiceLegalInfo()
+                true
+            }
             val tokenPref = findPreference<Preference>("git_token")
             updateTokenSummary(tokenPref)
             tokenPref?.setOnPreferenceClickListener { askToken(it); true }
+        }
+
+        private fun showVoiceLegalInfo() {
+            val ctx = requireContext()
+            val content = try {
+                ctx.assets.open("THIRD_PARTY_NOTICES.txt").bufferedReader().use { it.readText() }
+            } catch (e: Exception) {
+                "Не удалось открыть сведения о лицензиях: ${e.message}"
+            }
+            val text = android.widget.TextView(ctx).apply {
+                this.text = content
+                setTextIsSelectable(true)
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
+                setPadding(48, 24, 48, 24)
+            }
+            val scroll = android.widget.ScrollView(ctx).apply { addView(text) }
+            MaterialAlertDialogBuilder(ctx)
+                .setTitle("Голосовой ввод: данные и лицензии")
+                .setView(scroll)
+                .setPositiveButton("Понятно", null)
+                .show()
         }
 
         private fun updateTokenSummary(p: Preference?) {
