@@ -41,6 +41,11 @@
         </activity>
 
         <activity
+            android:name=".ui.SelfTutorActivity"
+            android:exported="false"
+            android:label="Самоучитель программирования" />
+
+        <activity
             android:name=".ui.VisualBuilderActivity"
             android:exported="false"
             android:label="Визуальный конструктор" />
