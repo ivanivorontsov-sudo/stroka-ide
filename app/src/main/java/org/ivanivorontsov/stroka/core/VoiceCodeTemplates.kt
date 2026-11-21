@@ -247,10 +247,10 @@ object VoiceCodeTemplates {
     }
 
     private fun conditionStatement(lang: Lang): String = when (lang) {
-        Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "if (condition) {\n    console.log(\\"Условие выполнено\\");\n}"
-        Lang.KOTLIN -> "if (condition) {\n    println(\\"Условие выполнено\\")\n}"
-        Lang.JAVA -> "if (condition) {\n    System.out.println(\\"Условие выполнено\\");\n}"
-        else -> "if condition:\n    print(\\"Условие выполнено\\")"
+        Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "if (condition) {\n    console.log(\"Условие выполнено\");\n}"
+        Lang.KOTLIN -> "if (condition) {\n    println(\"Условие выполнено\")\n}"
+        Lang.JAVA -> "if (condition) {\n    System.out.println(\"Условие выполнено\");\n}"
+        else -> "if condition:\n    print(\"Условие выполнено\")"
     }
 
     private fun title(intent: Intent): String = when (intent) {
