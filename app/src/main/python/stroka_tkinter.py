@@ -61,11 +61,11 @@ def install(callback):
             wid = str(self.widget_id)
             if isinstance(self, Label): return '<div class="label">' + esc + '</div>' + children
             if isinstance(self, Entry):
-                return '<input class="entry" data-wid="' + wid + '" oninput="window.Stroka&&Stroka.onUiEvent(\'i:' + wid + '|'+encodeURIComponent(this.value))" placeholder="' + esc + '" value="' + html.escape(str(self.value)) + '" type="' + ("password" if self.kind else "text") + '">' + children
+                return "<input class='entry' data-wid='" + wid + "' oninput=\"window.Stroka&&Stroka.onUiEvent('i:" + wid + "|'+encodeURIComponent(this.value))\" placeholder='" + esc + "' value='" + html.escape(str(self.value)) + "' type='" + ("password" if self.kind else "text") + "'>" + children
             if isinstance(self, Text):
-                return '<textarea class="entry" data-wid="' + wid + '" oninput="window.Stroka&&Stroka.onUiEvent(\'i:' + wid + '|'+encodeURIComponent(this.value))" rows="' + str(self.kwargs.get("height", 4)) + '">' + html.escape(str(self.value)) + '</textarea>' + children
+                return "<textarea class='entry' data-wid='" + wid + "' oninput=\"window.Stroka&&Stroka.onUiEvent('i:" + wid + "|'+encodeURIComponent(this.value))\" rows='" + str(self.kwargs.get("height", 4)) + "'>" + html.escape(str(self.value)) + "</textarea>" + children
             if isinstance(self, Button):
-                return '<button type="button" onclick="window.Stroka&&Stroka.onUiEvent(\'c:' + wid + '\')">' + esc + '</button>' + children
+                return "<button type='button' onclick=\"window.Stroka&&Stroka.onUiEvent('c:" + wid + "')\">" + esc + "</button>" + children
             if isinstance(self, Checkbutton): return '<label class="check"><input type="checkbox"> ' + esc + '</label>' + children
             if isinstance(self, Radiobutton): return '<label class="check"><input type="radio" name="choice"> ' + esc + '</label>' + children
             if isinstance(self, Listbox):
