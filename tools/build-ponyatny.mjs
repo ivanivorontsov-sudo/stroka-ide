@@ -133,7 +133,7 @@ function main() {
   if (o.target === "all" || o.target === "web") writeWeb(out, source, name, projectRoot, fileName);
   if (o.target === "all" || o.target === "android") {
     const webDir = path.join(out, "web");
-    if (!fs.existsSync(path.join(webDir, "index.html"))) writeWeb(out, source, name);
+    if (!fs.existsSync(path.join(webDir, "index.html"))) writeWeb(out, source, name, projectRoot, fileName);
     writeAndroid(out, webDir, name);
   }
   const targets = { "windows-x64": ["bun-windows-x64", ".exe"], "linux-x64": ["bun-linux-x64", ""], "linux-arm64": ["bun-linux-arm64", ""], "macos-x64": ["bun-darwin-x64", ""], "macos-arm64": ["bun-darwin-arm64", ""] };
