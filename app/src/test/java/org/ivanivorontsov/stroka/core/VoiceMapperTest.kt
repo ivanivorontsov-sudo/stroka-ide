@@ -257,6 +257,9 @@ class VoiceMapperTest {
         val ui = VoiceCodeTemplates.generate("сделай мне интерфейс с окном", Lang.JAVASCRIPT)
         assertNotNull(ui)
         assertEquals("Окно / диалог", ui?.title)
+        val simpleUi = VoiceCodeTemplates.generate("сделай интерфейс", Lang.PYTHON)
+        assertNotNull(simpleUi)
+        assertEquals("Окно / диалог", simpleUi?.title)
     }
 
     @Test
