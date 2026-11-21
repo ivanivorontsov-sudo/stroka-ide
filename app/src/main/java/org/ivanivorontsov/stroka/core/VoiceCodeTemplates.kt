@@ -7,7 +7,7 @@ package org.ivanivorontsov.stroka.core
 data class VoiceCodeBlock(val title: String, val language: Lang, val code: String)
 
 object VoiceCodeTemplates {
-    private enum class Intent { NAME_INPUT, WEB_FORM, WINDOW, HTML_PAGE, CSS_STYLES, FUNCTION, PROGRAM, LIBRARY }
+    private enum class Intent { CALCULATOR, OUTPUT, INPUT, LOOP, CONDITION, NAME_INPUT, WEB_FORM, WINDOW, HTML_PAGE, CSS_STYLES, FUNCTION, PROGRAM, LIBRARY }
 
     private fun normalize(text: String): String =
         text.lowercase()
@@ -63,54 +63,31 @@ object VoiceCodeTemplates {
         else -> Lang.PLAIN
     }
 
-    private fun detectIntent(text: String, lang: Lang): Intent? {
-        val libraries = listOf(
-            "requests", "numpy", "pandas", "flask", "fastapi", "tkinter", "math", "random", "json",
-            "axios", "react", "express", "lodash", "date-fns"
-        )
-        if (text.contains("библиотек") || text.contains("library") || text.contains("пакет") ||
-            text.contains("подключ") || text.contains("импортируй") || text.contains("import ") ||
-            libraries.any { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }
-        ) return Intent.LIBRARY
-
-        val hasForm = text.contains("форм") || text.contains("form") || text.contains("регистрац") ||
-            (text.contains("обратн") && text.contains("связ")) || text.contains("contact form") ||
-            text.contains("login form") || text.contains("web form")
-        if (lang == Lang.CSS) return Intent.CSS_STYLES
-        if (hasForm) return Intent.WEB_FORM
-
-        if (text.contains("окн") || text.contains("диалог") || text.contains("модаль") ||
-            text.contains("window") || text.contains("dialog") || text.contains("modal") ||
-            text.contains("popup") || text.contains("попап") ||
-            text.contains("интерфейс") || text.contains("interface") ||
-            text.contains("экран") || text.contains("screen") ||
-            text.contains("окош") || text.contains("window")
-        ) return Intent.WINDOW
-
-        if (text.contains("имя") || text.contains("имени") || text.contains("name") ||
-            text.contains("user name") || text.contains("username") ||
-            text.contains("get name") || text.contains("ask name")
-        ) return Intent.NAME_INPUT
-
+    private fun detectIntent(text: String, lang: Lang, fullConstructs: Boolean): Intent? {
+        val libraries = listOf("requests", "numpy", "pandas", "flask", "fastapi", "tkinter", "math", "random", "json", "axios", "react", "express", "lodash", "date-fns")
+        if (text.contains("библиотек") || text.contains("library") || text.contains("пакет") || text.contains("подключ") ||
+            text.contains("импортируй") || text.contains("import ") || libraries.any { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }) return Intent.LIBRARY
+        if (listOf("калькулятор", "calculator", "калькулятар", "калкулятор", "арифметик", "посчитать", "вычислить").any(text::contains)) return Intent.CALCULATOR
+        if (lang == Lang.CSS || text.contains("css") || text.contains("стил") || text.contains("оформлен") || text.contains("stylesheet")) return Intent.CSS_STYLES
+        if (text.contains("форм") || text.contains("form") || text.contains("регистрац") || (text.contains("обратн") && text.contains("связ"))) return Intent.WEB_FORM
+        if (text.contains("окн") || text.contains("диалог") || text.contains("модаль") || text.contains("window") || text.contains("dialog") ||
+            text.contains("modal") || text.contains("popup") || text.contains("попап") || text.contains("интерфейс") || text.contains("interface") ||
+            text.contains("экран") || text.contains("screen") || text.contains("окош")) return Intent.WINDOW
         if (text.contains("html") && text.contains("css")) return Intent.HTML_PAGE
-        if (text.contains("css") || text.contains("стил") || text.contains("оформлен") ||
-            text.contains("style") || text.contains("stylesheet")
-        ) return Intent.CSS_STYLES
-
-        if (text.contains("html") || text.contains("веб-страниц") || text.contains("веб страниц") ||
-            text.contains("web page") || text.contains("website") || text.contains("страниц")
-        ) return Intent.HTML_PAGE
-
-        if (text.contains("функц") || text.contains("function") || text.contains("метод") || text.contains("method"))
-            return Intent.FUNCTION
-
-        if (text.contains("программ") || text.contains("program") || text.contains("код") ||
-            text.contains("snippet") || text.contains("component")
-        ) return Intent.PROGRAM
+        if (text.contains("html") || text.contains("веб-страниц") || text.contains("веб страниц") || text.contains("web page") || text.contains("website") || text.contains("страниц")) return Intent.HTML_PAGE
+        if (text.contains("имя") || text.contains("имени") || text.contains("name") || text.contains("username") || text.contains("get name") || text.contains("ask name")) return Intent.NAME_INPUT
+        if (fullConstructs) {
+            if (listOf("выведи", "вывести", "напечатай", "напечатать", "покажи текст", "вывод", "print", "println", "console log", "output", "display").any(text::contains)) return Intent.OUTPUT
+            if (listOf("считай", "считать", "запроси", "получи ввод", "прочитай ввод", "input", "read input", "get input", "prompt").any(text::contains)) return Intent.INPUT
+            if (listOf("цикл", "повтори", "повторять", "перебери", "перебрать", "for loop", "while loop", "loop", "iterate").any(text::contains)) return Intent.LOOP
+            if (listOf("условие", "если", "проверь если", "проверить если", "if statement", "condition").any(text::contains)) return Intent.CONDITION
+        }
+        if (text.contains("функц") || text.contains("function") || text.contains("метод") || text.contains("method")) return Intent.FUNCTION
+        if (text.contains("программ") || text.contains("program") || text.contains("код") || text.contains("snippet") || text.contains("component")) return Intent.PROGRAM
         return null
     }
 
-    fun generate(utterance: String, preferredLanguage: Lang = Lang.PLAIN, fileName: String? = null): VoiceCodeBlock? {
+    fun generate(utterance: String, preferredLanguage: Lang = Lang.PLAIN, fileName: String? = null, fullConstructs: Boolean = false): VoiceCodeBlock? {
         val text = normalize(utterance)
             .replace("окошка", "окна").replace("окошко", "окно")
             .replace("формочку", "форму").replace("формочка", "форма")
@@ -131,8 +108,13 @@ object VoiceCodeTemplates {
         }
         val isPhp = language == Lang.PLAIN && (phpRequested || phpFile)
         if (language == Lang.PLAIN && !isPhp) return null
-        val intent = detectIntent(repaired, language) ?: return null
+        val intent = detectIntent(repaired, language, fullConstructs) ?: return null
         val code = if (isPhp) phpTemplate(intent) else when (intent) {
+            Intent.CALCULATOR -> calculator(language)
+            Intent.OUTPUT -> outputStatement(repaired, language)
+            Intent.INPUT -> inputStatement(language)
+            Intent.LOOP -> loopStatement(language)
+            Intent.CONDITION -> conditionStatement(language)
             Intent.NAME_INPUT -> nameInput(language)
             Intent.WEB_FORM -> webForm(language)
             Intent.WINDOW -> window(language)
@@ -146,6 +128,7 @@ object VoiceCodeTemplates {
     }
 
     private fun phpTemplate(intent: Intent): String = when (intent) {
+        Intent.CALCULATOR, Intent.OUTPUT, Intent.INPUT, Intent.LOOP, Intent.CONDITION -> "<?php echo 'Конструкция пока не реализована для PHP'; ?>"
         Intent.NAME_INPUT -> """
             <?php
             ${'$'}name = trim(${'$'}_POST['name'] ?? '');
@@ -185,7 +168,97 @@ object VoiceCodeTemplates {
         """
     }
 
+    private fun calculator(lang: Lang): String = when (lang) {
+        Lang.PYTHON -> """
+            import tkinter as tk
+            from tkinter import messagebox
+            def calculate():
+                try:
+                    result.set(str(eval(expression.get(), {"__builtins__": {}}, {})))
+                except Exception:
+                    messagebox.showerror("Ошибка", "Проверьте выражение")
+            root = tk.Tk()
+            root.title("Калькулятор")
+            root.geometry("340x420")
+            expression = tk.StringVar()
+            result = tk.StringVar(value="0")
+            tk.Entry(root, textvariable=expression, font=("Arial", 22), justify="right").pack(fill="x", padx=12, pady=16)
+            tk.Label(root, textvariable=result, font=("Arial", 20)).pack(fill="x", padx=12)
+            def add(value):
+                expression.set(expression.get() + value)
+            keys = tk.Frame(root); keys.pack(fill="both", expand=True, padx=12, pady=12)
+            for row in (("7","8","9","/"),("4","5","6","*"),("1","2","3","-"),("0",".","C","+")):
+                line = tk.Frame(keys); line.pack(fill="both", expand=True)
+                for key in row:
+                    command = (lambda: (expression.set(""), result.set("0"))) if key == "C" else (lambda value=key: add(value))
+                    tk.Button(line, text=key, command=command, font=("Arial", 18)).pack(side="left", fill="both", expand=True)
+            tk.Button(root, text="=", command=calculate, font=("Arial", 20)).pack(fill="x", padx=12)
+            root.mainloop()
+        """
+        Lang.JAVASCRIPT, Lang.TYPESCRIPT -> """
+            const root = document.createElement("main");
+            root.innerHTML = '<h1>Калькулятор</h1><input id="calc-expression" inputmode="decimal" placeholder="Например: 12*(3+4)"><button id="calc-equal">Посчитать</button><output id="calc-result">0</output>';
+            document.body.appendChild(root);
+            root.querySelector("#calc-equal").addEventListener("click", () => {
+                const expression = root.querySelector("#calc-expression").value;
+                const output = root.querySelector("#calc-result");
+                if (!/^[0-9+*/().% -]+$/.test(expression)) { output.textContent = "Недопустимое выражение"; return; }
+                try { output.textContent = String(Function('"use strict"; return (' + expression + ')')()); }
+                catch { output.textContent = "Ошибка выражения"; }
+            });
+        """
+        else -> """
+            <!doctype html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Калькулятор</title>
+            <style>*{box-sizing:border-box}body{font:18px system-ui;background:#f3f5fa;padding:24px}.calc{max-width:360px;margin:auto;background:white;padding:20px;border-radius:18px;box-shadow:0 8px 28px #0002}.calc input,.calc output{display:block;width:100%;padding:14px;margin:8px 0;font:24px monospace}.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.keys button{padding:16px;font-size:20px;border:0;border-radius:10px;background:#e8edfa}.keys .eq{grid-column:span 4;background:#2563eb;color:white}</style></head>
+            <body><main class="calc"><h1>Калькулятор</h1><input id="expression" inputmode="decimal" placeholder="0"><output id="result">0</output><div class="keys">
+            <button data-v="7">7</button><button data-v="8">8</button><button data-v="9">9</button><button data-v="/">÷</button>
+            <button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button><button data-v="*">×</button>
+            <button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="-">−</button>
+            <button data-v="0">0</button><button data-v=".">.</button><button data-v="C">C</button><button data-v="+">+</button>
+            <button class="eq" data-v="=">Посчитать</button></div></main>
+            <script>const e=document.querySelector("#expression"),o=document.querySelector("#result");document.querySelector(".keys").addEventListener("click",x=>{const v=x.target.dataset.v;if(!v)return;if(v==="C"){e.value="";o.value="0"}else if(v==="="){if(!/^[0-9+*/().% -]+$/.test(e.value)){o.value="Недопустимое выражение";return}try{o.value=String(Function('"use strict";return ('+e.value+')')())}catch{o.value="Ошибка"}}else e.value+=v});</script></body></html>
+        """
+    }
+
+    private fun outputStatement(text: String, lang: Lang): String {
+        val value = text.replace(Regex("^(.*?)(выведи|вывести|напечатай|напечатать|print|output|display)( на экран| текст| строку)?\\s*", RegexOption.IGNORE_CASE), "").trim().ifBlank { "Привет, мир" }
+        val safe = value.replace("\\", "\\\\").replace("\"", "\\\"")
+        return when (lang) {
+            Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "console.log(\"$safe\");"
+            Lang.KOTLIN -> "println(\"$safe\")"
+            Lang.JAVA -> "System.out.println(\"$safe\");"
+            Lang.HTML -> "<p>$value</p>"
+            else -> "print(\"$safe\")"
+        }
+    }
+
+    private fun inputStatement(lang: Lang): String = when (lang) {
+        Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "const userInput = prompt(\"Введите значение:\");"
+        Lang.KOTLIN -> "val userInput = readLine()"
+        Lang.JAVA -> "String userInput = new java.util.Scanner(System.in).nextLine();"
+        else -> "user_input = input(\"Введите значение: \")"
+    }
+
+    private fun loopStatement(lang: Lang): String = when (lang) {
+        Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "for (let i = 0; i < 5; i++) {\\n    console.log(i);\\n}"
+        Lang.KOTLIN -> "for (i in 0 until 5) {\\n    println(i)\\n}"
+        Lang.JAVA -> "for (int i = 0; i < 5; i++) {\\n    System.out.println(i);\\n}"
+        else -> "for i in range(5):\\n    print(i)"
+    }
+
+    private fun conditionStatement(lang: Lang): String = when (lang) {
+        Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "if (condition) {\\n    console.log(\\"Условие выполнено\\");\\n}"
+        Lang.KOTLIN -> "if (condition) {\\n    println(\\"Условие выполнено\\")\\n}"
+        Lang.JAVA -> "if (condition) {\\n    System.out.println(\\"Условие выполнено\\");\\n}"
+        else -> "if condition:\\n    print(\\"Условие выполнено\\")"
+    }
+
     private fun title(intent: Intent): String = when (intent) {
+        Intent.CALCULATOR -> "Калькулятор"
+        Intent.OUTPUT -> "Вывод текста"
+        Intent.INPUT -> "Ввод данных"
+        Intent.LOOP -> "Цикл"
+        Intent.CONDITION -> "Условие"
         Intent.NAME_INPUT -> "Ввод имени"
         Intent.WEB_FORM -> "Веб-форма"
         Intent.WINDOW -> "Окно / диалог"
