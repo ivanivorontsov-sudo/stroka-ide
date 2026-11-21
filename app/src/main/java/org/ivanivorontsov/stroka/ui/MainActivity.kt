@@ -1175,7 +1175,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         }
         val explanation = TextView(this).apply {
             textSize = 13f
-            text = "Есть два способа: облачная сборка через GitHub Actions или локальная ARM64-сборка APK/AAB через Termux. Для одного файла Python или «Понятный» выберите Android APK: Строка сама создаст проект, добавит runtime, компилятор и недостающие файлы, а также установит сборочное окружение при первом запуске. Для первого запуска откройте Termux, выполните termux-setup-storage и разрешите Строке дополнительное разрешение «Запуск команд в Termux». Затем нажмите «Подготовить локальную сборку»."
+            text = "По умолчанию Строка сначала пробует встроенную локальную сборку без Termux и облака. Сейчас встроенный движок самостоятельно упаковывает статические сайты в ZIP (index.html, CSS, JavaScript и ресурсы). Android APK/AAB и проекты на «Понятном» пока передаются существующему сборщику Termux; Windows/Linux и сложные проекты — GitHub Actions. Ничего из старых способов не удалено."
             setPadding(0, 0, 0, dp(12))
             setTextIsSelectable(true)
         }
@@ -1240,14 +1240,14 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(8) })
         val localSetupButton = Button(this).apply {
-            text = "Подготовить локальную сборку (Termux)"
+            text = "Подготовить Termux (резервный сборщик)"
             isAllCaps = false
         }
         content.addView(localSetupButton, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(8) })
         val localBuildButton = Button(this).apply {
-            text = "Собрать APK / AAB прямо на телефоне"
+            text = "Собрать локально без Termux"
             isAllCaps = false
         }
         content.addView(localBuildButton, LinearLayout.LayoutParams(
@@ -1290,24 +1290,57 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                     (0 until radioGroup.childCount).firstOrNull { radioGroup.getChildAt(it).id == id } ?: 0
                 }
                 val target = targets[index]
-                if (target != "android-apk" && target != "android-aab") {
-                    Toast.makeText(this, "Локально на ARM64 сейчас поддерживаются APK и AAB. Для остальных целей используйте облачную сборку.", Toast.LENGTH_LONG).show()
-                    return@setOnClickListener
-                }
                 val projectRoot = repo ?: source?.parentFile
                 if (projectRoot == null) {
                     Toast.makeText(this, "Не удалось определить папку проекта. Откройте файл из папки проекта.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
-                try {
-                    saveAllDirty()
-                    LocalTermuxBuild.start(this, projectRoot, target)
-                    dialog.dismiss()
-                } catch (e: Exception) {
-                    MaterialAlertDialogBuilder(this).setTitle("Локальная сборка не запущена")
-                        .setMessage(e.message ?: "Проверьте Termux и разрешения.")
-                        .setPositiveButton("Понятно", null).show()
+                saveAllDirty()
+                val kind = LocalBuildEngine.classify(projectRoot)
+                val localWebsiteRequested = target == "website" ||
+                    (target == "auto" && kind == LocalBuildEngine.ProjectKind.STATIC_WEBSITE)
+                if (localWebsiteRequested) {
+                    if (kind != LocalBuildEngine.ProjectKind.STATIC_WEBSITE) {
+                        Toast.makeText(this, "Для локальной сборки сайта нужен index.html или index.htm в корне проекта.", Toast.LENGTH_LONG).show()
+                        return@setOnClickListener
+                    }
+                    try {
+                        val result = LocalBuildEngine.buildStaticWebsite(this, projectRoot)
+                        val location = result.uri?.let { "Загрузки/StrokaBuild/stroka-website-build.zip" }
+                            ?: result.localPath
+                        Toast.makeText(this, "Сайт собран внутри Строки: ${result.files} файлов. Архив: $location", Toast.LENGTH_LONG).show()
+                        dialog.dismiss()
+                    } catch (e: Exception) {
+                        MaterialAlertDialogBuilder(this).setTitle("Локальная сборка сайта не удалась")
+                            .setMessage(e.message ?: "Не удалось создать архив сайта.")
+                            .setPositiveButton("Понятно", null).show()
+                    }
+                    return@setOnClickListener
                 }
+
+                val androidTarget = target == "android-apk" || target == "android-aab" ||
+                    (target == "auto" && (kind == LocalBuildEngine.ProjectKind.ANDROID_GRADLE ||
+                        kind == LocalBuildEngine.ProjectKind.PONYATNY))
+                if (androidTarget) {
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Для APK/AAB нужен резервный сборщик")
+                        .setMessage("Встроенная сборка Android APK/AAB ещё не поддерживает Android Gradle Toolchain на самом устройстве. Можно запустить сохранённую сборку Termux; GitHub Actions тоже остаётся доступен. Встроенный движок не будет выдавать ZIP или пустой файл за APK.")
+                        .setPositiveButton("Запустить Termux") { _, _ ->
+                            try {
+                                LocalTermuxBuild.start(this, projectRoot, target.takeIf { it != "auto" } ?: "android-apk")
+                                dialog.dismiss()
+                            } catch (e: Exception) {
+                                MaterialAlertDialogBuilder(this).setTitle("Termux не запущен")
+                                    .setMessage(e.message ?: "Проверьте Termux и разрешения.")
+                                    .setPositiveButton("Понятно", null).show()
+                            }
+                        }
+                        .setNegativeButton("Отмена", null)
+                        .show()
+                    return@setOnClickListener
+                }
+
+                Toast.makeText(this, "Этот тип проекта пока не поддержан встроенным сборщиком. Используйте «Проверить и собрать» через GitHub Actions.", Toast.LENGTH_LONG).show()
             }
             repoButton.setOnClickListener {
                 dialog.dismiss()
