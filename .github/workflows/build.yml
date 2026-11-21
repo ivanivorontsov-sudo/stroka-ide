@@ -63,12 +63,23 @@ jobs:
           bridge = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/LocalTermuxBuild.kt").read_text()
           runner = Path("app/src/main/assets/build-local.sh").read_text()
           setup = Path("app/src/main/assets/setup-termux.sh").read_text()
+          tkinter = Path("app/src/main/python/stroka_tkinter.py").read_text()
+          main = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/MainActivity.kt").read_text()
+          menu = Path("app/src/main/res/menu/main.xml").read_text()
+          tutor = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/SelfTutorActivity.kt").read_text()
           assert "com.termux.permission.RUN_COMMAND" in manifest
           assert "com.termux.app.RunCommandService" in bridge
+          assert "stroka_runner.py" in bridge and "stroka_tkinter.py" in bridge
           assert "android-apk" in runner and "android-aab" in runner
+          assert "Python-project" not in runner
+          assert "stroka-android" in runner and "com.chaquo.python" in runner
           assert "aapt2FromMavenOverride" in setup
           assert "15859902_latest.zip" in setup
-          print("Local ARM64 build bridge and scripts: static checks passed")
+          assert "action_copy_menu" in main and "action_copy_menu" in menu
+          assert "Описание скопировано" in main and "setTextIsSelectable(true)" in main
+          assert "setTextIsSelectable(true)" in tutor
+          assert "self.variable.get()" in tkinter
+          print("Termux bridge, Python APK scaffold, Tkinter preview and copy actions: static checks passed")
           PY
 
       - name: Unit tests
