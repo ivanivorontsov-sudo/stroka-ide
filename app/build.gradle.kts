@@ -11,12 +11,16 @@ android {
     namespace = "org.ivanivorontsov.stroka"
     compileSdk = 36
 
+    // Python files are also copied into the APK assets: LocalTermuxBuild
+    // stages the same runner modules into Termux before invoking build-local.sh.
+    sourceSets.getByName("main").assets.srcDir("src/main/python")
+
     defaultConfig {
         applicationId = "org.ivanivorontsov.stroka"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.5"
+        versionCode = 8
+        versionName = "1.6"
         ndk {
             abiFilters.clear()
             abiFilters += abiList
