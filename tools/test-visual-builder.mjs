@@ -6,6 +6,9 @@ const html = fs.readFileSync('app/src/main/assets/visual_builder.html', 'utf8');
 const activity = fs.readFileSync('app/src/main/java/org/ivanivorontsov/stroka/ui/VisualBuilderActivity.kt', 'utf8');
 const localBuild = fs.readFileSync('app/src/main/java/org/ivanivorontsov/stroka/ui/LocalBuildEngine.kt', 'utf8');
 const projectTemplates = fs.readFileSync('app/src/main/java/org/ivanivorontsov/stroka/core/Templates.kt', 'utf8');
+const localBuildSource = fs.readFileSync('app/src/main/java/org/ivanivorontsov/stroka/ui/LocalBuildEngine.kt', 'utf8');
+const ponyCompilerSource = fs.readFileSync('app/src/main/assets/ponyatny/yadro.js', 'utf8');
+const ponyStandardLibrary = JSON.parse(fs.readFileSync('app/src/main/assets/ponyatny/std.json', 'utf8'));
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
 assert.ok(scripts.length, 'visual builder must contain its inline script');
 for (const source of scripts) new vm.Script(source, { filename: 'visual_builder.html' });
@@ -75,4 +78,34 @@ assert.ok(html.includes('class="item site-section" draggable="true"'), 'website 
 assert.ok(localBuild.includes('fun buildStaticWebsite') && localBuild.includes('MediaStore.Downloads'), 'static site build must create a real ZIP in Downloads');
 assert.ok(localBuild.includes('fun buildPonyatnyWebsite') && localBuild.includes('ponyatny/yadro.js'), 'offline Ponyatny compiler must be embedded in website export');
 assert.ok(projectTemplates.includes('адаптивный премиум-шаблон') && projectTemplates.includes('YOURSTUDIO'), 'new web projects must start from the premium template');
+
+const appRunnerMatch = localBuildSource.match(/val appJs = """([\\s\\S]*?)""".trimIndent\(\)/);
+assert.ok(appRunnerMatch, 'offline Ponyatny browser runner must be generated');
+const ponyProgram = 'запиши_файл("data.txt", "сохранено")\\nпиши прочитай_файл("data.txt")\\nподключи "стд/математика.pon" как мат\\nпиши "Факториал: " + строка(мат.факториал(5))';
+const appRunner = appRunnerMatch[1]
+  .replace(/\\$\\{JSONObject\\.quote\\(source\\)\\}/g, JSON.stringify(ponyProgram))
+  .replace(/\\$\\{JSONObject\\.quote\\(entryName\\)\\}/g, JSON.stringify('main.pon'))
+  .replace(/\\$\\{modules\\}/g, '{}')
+  .replace(/\\$standard/g, JSON.stringify(ponyStandardLibrary));
+new vm.Script(appRunner, { filename: 'LocalBuildEngine.kt app.js' });
+const compilerSandbox = { module: { exports: {} } };
+vm.createContext(compilerSandbox);
+new vm.Script(ponyCompilerSource, { filename: 'ponyatny/yadro.js' }).runInContext(compilerSandbox);
+const elements = {
+  output: { textContent: '' }, source: { value: '' }, status: { textContent: '' },
+  run: { addEventListener(name, callback) { this.callback = callback; } },
+  save: { addEventListener() {} }
+};
+const stored = new Map();
+const localStorageMock = { getItem(key) { return stored.get(key) || null; }, setItem(key, value) { stored.set(key, value); } };
+const browserContext = {
+  window: { PonyatnyYadro: compilerSandbox.module.exports, prompt: () => 'ответ' },
+  document: { getElementById(id) { return elements[id]; } },
+  localStorage: localStorageMock
+};
+vm.createContext(browserContext);
+new vm.Script(appRunner, { filename: 'generated Ponyatny web app' }).runInContext(browserContext);
+elements.run.callback();
+assert.equal(elements.output.textContent, 'сохранено\\nФакториал: 120\\n', 'offline compiler must run standard modules and virtual file I/O');
+assert.ok(stored.has('stroka-ponyatny-files-v1'), 'virtual file writes must persist in browser storage');
 console.log('Visual builder: syntax OK; bilingual voice/theme/grid regression cases passed; 9 themes and explainer/templates present.');
