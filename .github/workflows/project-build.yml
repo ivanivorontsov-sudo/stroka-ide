@@ -94,7 +94,10 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
@@ -234,7 +237,7 @@ jobs:
             npm run build --if-present
             if [[ -d dist ]]; then cp -R dist/. "$GITHUB_WORKSPACE/dist/site/"
             elif [[ -d build ]]; then cp -R build/. "$GITHUB_WORKSPACE/dist/site/"
-            else cp -R . "$GITHUB_WORKSPACE/dist/site/"; fi
+            elif [[ -f index.html ]]; then cp index.html "$GITHUB_WORKSPACE/dist/site/"; else echo 'Build completed but no dist/, build/ or root index.html was found.'; exit 4; fi
           else
             test -f "$PROJECT/index.html"
             cp -R "$PROJECT"/. dist/site/
