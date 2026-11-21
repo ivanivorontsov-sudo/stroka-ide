@@ -17,7 +17,7 @@ object VoiceCodeTemplates {
             .trim()
 
     private val requestWords = listOf(
-        "нужна", "нужен", "нужно", "хочу", "создай", "создать", "сделай", "сделать",
+        "нужна", "нужен", "нужно", "хочу", "создай", "создать", "сделай", "сделать", "пиши", "понятный",
         "сгенерируй", "сгенерировать", "напиши", "написать", "добавь", "добавить", "вставь", "вставить",
         "подключи", "подключить", "импортируй", "импортировать", "установи", "установить",
         "программа", "часть кода", "кусок кода", "блок кода", "фрагмент кода", "сниппет",
@@ -51,6 +51,7 @@ object VoiceCodeTemplates {
     private fun hasRequest(text: String): Boolean = requestWords.any { text.contains(it) }
 
     private fun languageFrom(text: String, fallback: Lang): Lang = when {
+        Regex("понятный|язык пон|\\.pon\\b").containsMatchIn(text) -> Lang.PONYATNY
         Regex("\\bpython\\b|питон").containsMatchIn(text) -> Lang.PYTHON
         Regex("\\btypescript\\b|\\bts\\b").containsMatchIn(text) -> Lang.TYPESCRIPT
         Regex("\\bjavascript\\b|\\bjava script\\b|джаваскрипт|\\bjs\\b").containsMatchIn(text) -> Lang.JAVASCRIPT
@@ -69,7 +70,7 @@ object VoiceCodeTemplates {
             text.contains("импортируй") || text.contains("import ") || libraries.any { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(text) }) return Intent.LIBRARY
         if (listOf("калькулятор", "calculator", "калькулятар", "калкулятор", "арифметик", "посчитать", "вычислить").any(text::contains)) return Intent.CALCULATOR
         if (fullConstructs) {
-            if (listOf("выведи", "вывести", "напечатай", "напечатать", "покажи текст", "вывод", "print", "println", "console log", "output", "display").any(text::contains)) return Intent.OUTPUT
+            if (listOf("выведи", "вывести", "напечатай", "напечатать", "пиши", "покажи текст", "вывод", "print", "println", "console log", "output", "display").any(text::contains)) return Intent.OUTPUT
             if (listOf("считай", "считать", "запроси", "получи ввод", "прочитай ввод", "input", "read input", "get input", "prompt").any(text::contains)) return Intent.INPUT
             if (listOf("цикл", "повтори", "повторять", "перебери", "перебрать", "for loop", "while loop", "loop", "iterate").any(text::contains)) return Intent.LOOP
             if (listOf("условие", "если", "проверь если", "проверить если", "if statement", "condition").any(text::contains)) return Intent.CONDITION
@@ -169,6 +170,11 @@ object VoiceCodeTemplates {
     }
 
     private fun calculator(lang: Lang): String = when (lang) {
+        Lang.PONYATNY -> """
+            пусть первое = число(спроси("Первое число: "))
+            пусть второе = число(спроси("Второе число: "))
+            пиши "Сумма: " + строка(первое + второе)
+        """
         Lang.PYTHON -> """
             import tkinter as tk
             from tkinter import messagebox
@@ -221,12 +227,13 @@ object VoiceCodeTemplates {
     }
 
     private fun outputStatement(text: String, lang: Lang): String {
-        val value = text.replace(Regex("^(.*?)(выведи|вывести|напечатай|напечатать|print|output|display)( на экран| текст| строку)?\\s*", RegexOption.IGNORE_CASE), "").trim().ifBlank { "Привет, мир" }
+        val value = text.replace(Regex("^(.*?)(пиши|напиши|выведи|вывести|напечатай|напечатать|print|output|display)( на экран| текст| строку)?\\s*", RegexOption.IGNORE_CASE), "").trim().ifBlank { "Привет, мир" }
         val safe = value.replace("\\", "\\\\").replace("\"", "\\\"")
         return when (lang) {
             Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "console.log(\"$safe\");"
             Lang.KOTLIN -> "println(\"$safe\")"
             Lang.JAVA -> "System.out.println(\"$safe\");"
+            Lang.PONYATNY -> "пиши \"$safe\""
             Lang.HTML -> "<p>$value</p>"
             else -> "print(\"$safe\")"
         }
@@ -236,6 +243,7 @@ object VoiceCodeTemplates {
         Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "const userInput = prompt(\"Введите значение:\");"
         Lang.KOTLIN -> "val userInput = readLine()"
         Lang.JAVA -> "String userInput = new java.util.Scanner(System.in).nextLine();"
+        Lang.PONYATNY -> "пусть ввод = спроси(\"Введите значение: \")"
         else -> "user_input = input(\"Введите значение: \")"
     }
 
@@ -243,6 +251,7 @@ object VoiceCodeTemplates {
         Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "for (let i = 0; i < 5; i++) {\n    console.log(i);\n}"
         Lang.KOTLIN -> "for (i in 0 until 5) {\n    println(i)\n}"
         Lang.JAVA -> "for (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}"
+        Lang.PONYATNY -> "повтори 5 раза\n    пиши счет\nконец"
         else -> "for i in range(5):\n    print(i)"
     }
 
@@ -250,6 +259,7 @@ object VoiceCodeTemplates {
         Lang.JAVASCRIPT, Lang.TYPESCRIPT -> "if (condition) {\n    console.log(\"Условие выполнено\");\n}"
         Lang.KOTLIN -> "if (condition) {\n    println(\"Условие выполнено\")\n}"
         Lang.JAVA -> "if (condition) {\n    System.out.println(\"Условие выполнено\");\n}"
+        Lang.PONYATNY -> "если условие то\n    пиши \"Условие выполнено\"\nконец"
         else -> "if condition:\n    print(\"Условие выполнено\")"
     }
 
@@ -270,6 +280,10 @@ object VoiceCodeTemplates {
     }
 
     private fun nameInput(lang: Lang): String = when (lang) {
+        Lang.PONYATNY -> """
+            пусть имя = спроси("Как тебя зовут? ")
+            пиши "Привет, " + имя + "!"
+        """
         Lang.PYTHON, Lang.PLAIN -> """
             name = input("Как вас зовут? ").strip()
             if name:
@@ -518,6 +532,12 @@ object VoiceCodeTemplates {
     """
 
     private fun function(lang: Lang): String = when (lang) {
+        Lang.PONYATNY -> """
+            функция обработать(значение)
+                верни значение
+            конец
+            пиши обработать("Пример")
+        """
         Lang.PYTHON -> """
             def process_data(value):
                 result = value
@@ -549,6 +569,11 @@ object VoiceCodeTemplates {
     }
 
     private fun program(lang: Lang): String = when (lang) {
+        Lang.PONYATNY -> """
+            # Программа на языке «Понятный» 2.5
+            пусть имя = спроси("Как тебя зовут? ")
+            пиши "Привет, " + имя + "!"
+        """
         Lang.PYTHON, Lang.PLAIN -> """
             def main():
                 print("Программа запущена")
