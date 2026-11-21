@@ -1,6 +1,7 @@
 package org.ivanivorontsov.stroka.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 class VoiceMapperTest {
