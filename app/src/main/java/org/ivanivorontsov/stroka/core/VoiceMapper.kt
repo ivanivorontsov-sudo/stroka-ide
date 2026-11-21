@@ -25,6 +25,7 @@ sealed class VoiceAction {
     data class Find(val query: String) : VoiceAction()
     data class GoToLine(val line: Int) : VoiceAction()
     data class SetLiteralMode(val kind: String?) : VoiceAction()
+    object OpenVisualBuilder : VoiceAction()
 }
 
 object VoiceMapper {
@@ -333,6 +334,7 @@ object VoiceMapper {
             return actions
         }
         if (literalMode != null) return listOf(VoiceAction.Insert(if (literalMode == "comment") commentText(trimmed, preferredLanguage) else trimmed))
+        if (listOf("конструктор сайта", "конструктор веб сайта", "визуальный конструктор", "собери сайт визуально", "visual website builder", "open visual builder").any(normalized::contains)) return listOf(VoiceAction.OpenVisualBuilder)
         if (voiceMode == "off") return listOf(VoiceAction.Insert(trimmed))
         VoiceCodeTemplates.generate(trimmed, preferredLanguage, fileName, fullConstructs = voiceMode == "constructs")?.let {
             return listOf(VoiceAction.InsertBlock(it.title, it.code))
