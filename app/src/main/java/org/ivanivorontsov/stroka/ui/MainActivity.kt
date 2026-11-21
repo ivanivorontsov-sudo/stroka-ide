@@ -982,7 +982,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val cwd = (d.ref as? DocRef.Local)?.let { File(it.path).parent } ?: File(projectsDir, "Песочница").absolutePath
         when (d.lang) {
             Lang.PYTHON -> runPython(code, d.name, cwd)
-            Lang.JAVASCRIPT, Lang.PONYATNY -> runJs(code, d.name)
+            Lang.JAVASCRIPT -> runJs(code, d.name)
+            Lang.PONYATNY -> runJs(code, d.name, collectPonyatnyModules(cwd, d.name))
             Lang.HTML, Lang.CSS, Lang.MARKDOWN -> openPreview()
             else -> {
                 showPanel(false)
@@ -1024,7 +1025,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         })
     }
 
-    private fun runJs(code: String, name: String) {
+    private fun runJs(code: String, name: String, modules: Map<String, String> = emptyMap()) {
         if (python.isRunning || js.isRunning) { toast("Программа уже выполняется"); return }
         showPanel(false)
         appendConsole(if (name.endsWith(".pon", ignoreCase = true)) "▶ Понятный $name\n" else "▶ js $name\n", Kind.INFO)
@@ -1044,7 +1045,28 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 panelStatus.text = "Завершено: код $code, $millis мс"
                 appendConsole("■ код выхода $code ($millis мс)\n", if (code == 0) Kind.INFO else Kind.ERR)
             }
-        })
+        }, modules)
+    }
+
+    private fun collectPonyatnyModules(rootPath: String, currentName: String): Map<String, String> {
+        val root = File(rootPath)
+        if (!root.isDirectory) return emptyMap()
+        val result = linkedMapOf<String, String>()
+        var totalBytes = 0L
+        root.walkTopDown().maxDepth(6)
+            .onEnter { dir -> dir == root || (!dir.name.startsWith(".") && dir.name !in setOf("build", "node_modules", ".gradle", "target", "dist")) }
+            .filter { it.isFile && it.extension.equals("pon", ignoreCase = true) && it.name != currentName }
+            .take(100)
+            .forEach { file ->
+                val size = file.length()
+                if (size in 1..262144 && totalBytes + size <= 1_500_000L) {
+                    try {
+                        result[file.relativeTo(root).invariantSeparatorsPath] = file.readText()
+                        totalBytes += size
+                    } catch (_: Exception) { }
+                }
+            }
+        return result
     }
 
     private fun stopRun() {
