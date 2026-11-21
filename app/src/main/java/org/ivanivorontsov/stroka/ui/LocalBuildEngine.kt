@@ -97,29 +97,29 @@ object LocalBuildEngine {
   editor.value = source;
   const write = value => { output.textContent += String(value) + "\\n"; };
   function cleanPath(value, importer) {
-    const raw = String(value || "").replace(/\\\\/g, "/");
+    const raw = String(value || "").replace(/\\/g, "/");
     const parts = (raw.startsWith("./") || raw.startsWith("../"))
-      ? String(importer || "").replace(/\\\\/g, "/").split("/").slice(0, -1) : [];
+      ? String(importer || "").replace(/\\/g, "/").split("/").slice(0, -1) : [];
     for (const part of raw.split("/")) {
       if (!part || part === ".") continue;
       if (part === "..") parts.pop(); else parts.push(part);
     }
     let key = parts.join("/");
-    if (!/\\.pon$/i.test(key)) key += ".pon";
+    if (!/\.pon$/i.test(key)) key += ".pon";
     return key;
   }
   function resolve(request, importer) {
-    const raw = String(request || "").replace(/\\\\/g, "/");
+    const raw = String(request || "").replace(/\\/g, "/");
     const key = cleanPath(raw, importer);
     if (Object.prototype.hasOwnProperty.call(modules, key)) {
       return { id: "project:" + key, name: key, source: modules[key] };
     }
-    const direct = raw.replace(/^\\.\\//, "");
-    const directKey = /\\.pon$/i.test(direct) ? direct : direct + ".pon";
+    const direct = raw.replace(/^\.\//, "");
+    const directKey = /\.pon$/i.test(direct) ? direct : direct + ".pon";
     if (Object.prototype.hasOwnProperty.call(modules, directKey)) {
       return { id: "project:" + directKey, name: directKey, source: modules[directKey] };
     }
-    const standardKey = raw.replace(/^стд\\//, "").replace(/\\.pon$/i, "");
+    const standardKey = raw.replace(/^стд\//, "").replace(/\.pon$/i, "");
     if (Object.prototype.hasOwnProperty.call(standard, standardKey)) {
       return { id: "std:" + standardKey, name: "стд/" + standardKey + ".pon", source: standard[standardKey] };
     }
