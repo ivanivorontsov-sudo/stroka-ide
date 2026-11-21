@@ -10,9 +10,13 @@ LOG="$DOWNLOADS/output/build.log"
 exec > >(tee "$LOG") 2>&1
 fail() { echo; echo "ОШИБКА: $*"; echo "Подробный журнал: $LOG"; exit 1; }
 [ -f "$ZIP" ] || fail "Архив проекта не найден: $ZIP"
-[ -d "$SDK/platforms/android-36" ] || fail "Android SDK не установлен. Один раз выполните в Termux: bash ~/storage/downloads/StrokaBuild/setup-termux.sh"
-command -v java >/dev/null || fail "Не найден Java. Выполните setup-termux.sh"
-command -v aapt2 >/dev/null || fail "Не найден ARM64 AAPT2. Выполните setup-termux.sh"
+if [ ! -d "$SDK/platforms/android-36" ] || ! command -v java >/dev/null 2>&1 || ! command -v aapt2 >/dev/null 2>&1 || ! command -v node >/dev/null 2>&1; then
+  [ -f "$DOWNLOADS/setup-termux.sh" ] || fail "Не найден установщик окружения. Обновите приложение «Строка» и повторите сборку."
+  echo "Автоматически подготавливаю Android SDK, JDK, Gradle и Node.js..."
+  bash "$DOWNLOADS/setup-termux.sh" || fail "Автоматическая установка окружения завершилась ошибкой."
+fi
+command -v java >/dev/null || fail "JDK не установлен после подготовки окружения."
+command -v aapt2 >/dev/null || fail "Android Build Tools не установлены после подготовки окружения."
 rm -rf "$WORK"
 mkdir -p "$WORK"
 unzip -q "$ZIP" -d "$WORK"
@@ -20,6 +24,21 @@ ROOT=""
 while IFS= read -r -d '' f; do ROOT="$(dirname "$f")"; break; done < <(find "$WORK" -maxdepth 4 \( -name settings.gradle -o -name settings.gradle.kts \) -print0)
 if [ -z "$ROOT" ]; then
   while IFS= read -r -d '' f; do ROOT="$(dirname "$f")"; break; done < <(find "$WORK" -maxdepth 4 \( -name build.gradle -o -name build.gradle.kts \) -print0)
+fi
+if [ -z "$ROOT" ]; then
+  PONFILE="$(find "$WORK" -maxdepth 5 -type f -name '*.pon' ! -path '*/std/*' -print -quit || true)"
+  if [ -n "$PONFILE" ]; then
+    command -v node >/dev/null 2>&1 || fail "Node.js не установлен. Повторите сборку: Строка установит окружение автоматически."
+    BUILDER="$WORK/tools/build-ponyatny.mjs"
+    [ -s "$BUILDER" ] || fail "В архив не попал сборщик языка «Понятный». Обновите Строку."
+    PONY_OUT="$HOME/.cache/stroka-build/ponyatny"
+    rm -rf "$PONY_OUT"
+    mkdir -p "$PONY_OUT"
+    echo "Обнаружен исходник «Понятный»: $PONFILE"
+    node "$BUILDER" "$PONFILE" --target android --out "$PONY_OUT" --name App || fail "Не удалось автоматически создать Android-проект из файла .pon."
+    ROOT="$PONY_OUT/android-project"
+    echo "Автоматически создан Android-проект: $ROOT"
+  fi
 fi
 if [ -z "$ROOT" ]; then
   PYFILE="$(find "$WORK" -maxdepth 3 -type f -name 'main.py' | head -n 1 || true)"
