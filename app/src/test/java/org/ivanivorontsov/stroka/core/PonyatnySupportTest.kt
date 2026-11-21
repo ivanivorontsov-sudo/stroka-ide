@@ -36,4 +36,15 @@ class PonyatnySupportTest {
     @Test fun completionSuggestsNativeKeywords() {
         assertTrue(Completer.suggest("пу", 2, Lang.PONYATNY).contains("пусть"))
     }
+
+    @Test fun starterTemplateCreatesRunnablePonProject() {
+        val template = Templates.all.first { it.id == "ponyatny" }
+        assertEquals("main.pon", template.main)
+        assertTrue(template.files.getValue("main.pon").contains("подключи \"стд/математика.pon\""))
+    }
+
+    @Test fun spokenStopIsCodeButMicrophoneCommandStillStopsListening() {
+        assertEquals(listOf(VoiceAction.Insert("стоп")), VoiceMapper.map("стоп", Lang.PONYATNY, "main.pon"))
+        assertEquals(listOf(VoiceAction.StopListening), VoiceMapper.map("выключи микрофон", Lang.PONYATNY, "main.pon"))
+    }
 }
