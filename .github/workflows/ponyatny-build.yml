@@ -22,7 +22,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ponyatny-cross-build-\${{ github.repository }}-\${{ github.ref }}
+  group: ponyatny-cross-build-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   build:
@@ -31,8 +31,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: \${{ github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -53,8 +51,8 @@ jobs:
         id: entry
         shell: bash
         env:
-          PROJECT_PATH: \${{ inputs.project_path }}
-          ENTRY_FILE: \${{ inputs.entry_file }}
+          PROJECT_PATH: ${{ inputs.project_path }}
+          ENTRY_FILE: ${{ inputs.entry_file }}
         run: |
           set -euo pipefail
           case "$PROJECT_PATH" in ""|/*|../*|*/../*|*/..) echo "Unsafe project path"; exit 2 ;; esac
@@ -71,7 +69,7 @@ jobs:
         run: node --check tools/build-ponyatny.mjs
       - name: Build portable Node.js and Web versions, prepare Android project
         env:
-          ENTRY: \${{ steps.entry.outputs.entry }}
+          ENTRY: ${{ steps.entry.outputs.entry }}
         run: |
           set -euo pipefail
           node tools/build-ponyatny.mjs "$ENTRY" --target all --out dist/ponyatny --name App
@@ -80,7 +78,7 @@ jobs:
           test -s dist/ponyatny/android-project/app/src/main/assets/index.html
       - name: Build native Windows, Linux and macOS executables
         env:
-          ENTRY: \${{ steps.entry.outputs.entry }}
+          ENTRY: ${{ steps.entry.outputs.entry }}
         run: |
           set -euo pipefail
           for TARGET in windows-x64 linux-x64 linux-arm64 macos-x64 macos-arm64; do
