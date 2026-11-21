@@ -165,6 +165,11 @@ jobs:
           main = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/MainActivity.kt").read_text()
           menu = Path("app/src/main/res/menu/main.xml").read_text()
           tutor = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/SelfTutorActivity.kt").read_text()
+          lang = Path("app/src/main/java/org/ivanivorontsov/stroka/core/Lang.kt").read_text()
+          spec = Path("app/src/main/java/org/ivanivorontsov/stroka/core/LangSpec.kt").read_text()
+          voice = Path("app/src/main/java/org/ivanivorontsov/stroka/core/VoiceMapper.kt").read_text()
+          pony_voice = Path("app/src/main/java/org/ivanivorontsov/stroka/core/PonyatnyVoiceMapper.kt").read_text()
+          js_runner = Path("app/src/main/java/org/ivanivorontsov/stroka/run/JsRunner.kt").read_text()
           assert "com.termux.permission.RUN_COMMAND" in manifest
           assert "com.termux.app.RunCommandService" in bridge
           assert "stroka_runner.py" in bridge and "stroka_tkinter.py" in bridge
@@ -178,7 +183,15 @@ jobs:
           assert "Описание скопировано" in main and "setTextIsSelectable(true)" in main
           assert "setTextIsSelectable(true)" in tutor
           assert "self.variable.get()" in tkinter
-          print("Termux bridge, Python APK scaffold, Tkinter preview and copy actions: static checks passed")
+          assert "PONYATNY" in lang and '"pon"' in lang
+          assert "Lang.PONYATNY -> LangSpec" in spec
+          assert "PonyatnyVoiceMapper.map" in voice
+          assert "NumberWords.parse" in pony_voice
+          assert "PonyatnyYadro.run" in js_runner and "ponyatny/yadro.js" in js_runner
+          assert Path("app/src/main/assets/ponyatny/yadro.js").is_file()
+          assert Path("app/src/main/assets/ponyatny/СИНТАКСИС.md").is_file()
+          assert "Lang.JAVASCRIPT, Lang.PONYATNY -> runJs" in main
+          print("Termux, Python APK, Tkinter and Pонятный integration static checks: passed")
           PY
           PYTHONPATH=app/src/main/python python3 - <<'PY'
           from stroka_tkinter import install
