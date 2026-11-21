@@ -95,6 +95,40 @@ object LocalBuildEngine {
   const editor = document.getElementById("source");
   const status = document.getElementById("status");
   editor.value = source;
+  const fileData = new Map();
+  const storageKey = "stroka-ponyatny-files-v1";
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    Object.keys(saved).forEach(key => fileData.set(key, String(saved[key])));
+  } catch (ignored) {}
+  function safeFile(path) {
+    const parts = [];
+    String(path || "").replace(/\\\\/g, "/").split("/").forEach(part => {
+      if (!part || part === ".") return;
+      if (part === "..") parts.pop(); else parts.push(part);
+    });
+    return parts.join("/");
+  }
+  function persistFiles() {
+    try { localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(fileData))); } catch (ignored) {}
+  }
+  const virtualFs = {
+    readFileSync(path) {
+      const key = safeFile(path);
+      if (!fileData.has(key)) throw new Error("Файл не найден: " + key);
+      return fileData.get(key);
+    },
+    writeFileSync(path, value) {
+      fileData.set(safeFile(path), String(value));
+      persistFiles();
+    },
+    appendFileSync(path, value) {
+      const key = safeFile(path);
+      fileData.set(key, (fileData.get(key) || "") + String(value));
+      persistFiles();
+    },
+    existsSync(path) { return fileData.has(safeFile(path)); }
+  };
   const write = value => { output.textContent += String(value) + "\\n"; };
   function cleanPath(value, importer) {
     const raw = String(value || "").replace(/\\/g, "/");
@@ -132,7 +166,7 @@ object LocalBuildEngine {
         file: fileName, resolve, write,
         writeErr: value => write("Ошибка: " + value),
         ask: question => window.prompt(String(question || "Введите значение:"), "") ?? "",
-        maxSteps: 1000000, guard: true
+        fs: virtualFs, maxSteps: 1000000, guard: true
       });
       status.textContent = "Выполнено";
     } catch (error) {
@@ -162,7 +196,7 @@ button{border:0;border-radius:999px;padding:13px 20px;margin:12px 8px 12px 0;bac
 button.secondary{background:#263753;color:#edf2ff}pre{min-height:90px;white-space:pre-wrap;overflow-wrap:anywhere;background:#080f1e;border:1px solid #354666;border-radius:14px;padding:16px;color:#c8f3df}
 #status{color:#b9b1ff;font-size:13px}.foot{font-size:12px;color:#7789a8;margin-top:20px}
 </style></head><body><main><span class="tag">OFFLINE · КОМПИЛЯТОР ВНУТРИ САЙТА</span>
-<h1>Ваша программа на языке «Понятный»</h1><p>Изменяйте исходный код, запускайте его прямо в браузере. Компилятор и стандартные модули уже включены — интернет и Node.js не нужны.</p>
+<h1>Ваша программа на языке «Понятный»</h1><p>Изменяйте исходный код, запускайте его прямо в браузере. Компилятор и стандартные модули уже включены — интернет и Node.js не нужны. Файлы программы сохраняются в локальном хранилище браузера.</p>
 <section class="card"><h2>Исходный код</h2><textarea id="source" spellcheck="false"></textarea><br>
 <button id="run">▶ Запустить программу</button><button class="secondary" id="save">Скачать .pon</button><span id="status">Готово</span>
 <h2>Результат выполнения</h2><pre id="output"></pre></section>
