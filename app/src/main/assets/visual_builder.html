@@ -169,7 +169,8 @@ function voiceCommand(raw){
  const text=n.match(/(назови|текст|надпись|text|label|title)\s+(.+)/);if(text&&selected){let el=selected.querySelector('h1,h2,p,button,output');if(el)el.textContent=text[2];else selected.textContent=text[2];select(selected);update();return}
  document.querySelector('#voice').textContent='🎙 Не поняла';
 }
-window.onVoiceResult=voiceCommand;
+window.onVoiceStatus=(text)=>{const b=document.querySelector('#voice');if(b)b.textContent='🎙 '+text};
+window.onVoiceResult=(text)=>{const b=document.querySelector('#voice');if(b)b.textContent='🎙 Голос';if(text)voiceCommand(text)};
 
 let seed=decodeURIComponent(location.hash.slice(1));if(seed){try{let d=new DOMParser().parseFromString(seed,'text/html');stage.innerHTML=d.body.querySelector('.page')?.innerHTML||d.body.innerHTML}catch(e){}}
 document.body.dataset.theme=pageTheme;document.querySelectorAll('[data-theme]').forEach(x=>x.classList.toggle('active',x.dataset.theme===pageTheme));
