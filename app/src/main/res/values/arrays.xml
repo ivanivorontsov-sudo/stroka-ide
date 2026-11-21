@@ -40,4 +40,4 @@
         <item>ru</item>
         <item>en</item>
     </string-array>
-</resources>
+    <string-array name="voice_mode_names"><item>Блоки кода</item><item>Блоки и полные конструкции</item><item>Выключено — обычная диктовка</item></string-array>\n    <string-array name="voice_mode_values"><item>blocks</item><item>constructs</item><item>off</item></string-array>\n</resources>
