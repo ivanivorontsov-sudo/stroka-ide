@@ -21,6 +21,7 @@
         <ListPreference app:key="voice_lang" app:title="Язык по умолчанию" app:defaultValue="ru" app:entries="@array/lang_names" app:entryValues="@array/lang_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <Preference app:key="vosk_ru" app:title="Офлайн-модель Vosk: русский" app:iconSpaceReserved="false" />
         <Preference app:key="vosk_en" app:title="Офлайн-модель Vosk: английский" app:iconSpaceReserved="false" />
+        <Preference app:key="voice_legal" app:title="Конфиденциальность и лицензии" app:summary="Как обрабатывается голос и какие лицензии используются" app:iconSpaceReserved="false" />
     </PreferenceCategory>
     <PreferenceCategory app:title="Git и GitHub" app:iconSpaceReserved="false">
         <EditTextPreference app:key="git_user" app:title="Логин GitHub" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
