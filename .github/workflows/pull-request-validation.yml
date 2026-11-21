@@ -52,7 +52,7 @@ jobs:
       - name: Run unit tests and compile debug APK
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon testDebugUnitTest assembleDebug
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleRelease
       - name: Verify debug APK
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
@@ -60,6 +60,19 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='org.ivanivorontsov.stroka'"
           sha256sum "$APK" > app-debug.sha256
+          RELEASE_APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$RELEASE_APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$RELEASE_APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$RELEASE_APK" | grep "package: name='org.ivanivorontsov.stroka'"
+          sha256sum "$RELEASE_APK" > app-release.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Stroka-release-candidate
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app-release.sha256
+          if-no-files-found: error
+          retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
           name: Stroka-debug-validation
