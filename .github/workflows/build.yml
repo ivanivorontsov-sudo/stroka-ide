@@ -53,6 +53,24 @@ jobs:
           node --check /tmp/visual_builder.js
           node tools/test-visual-builder.mjs
 
+      - name: Validate local ARM64 build scripts
+        run: |
+          bash -n app/src/main/assets/setup-termux.sh
+          bash -n app/src/main/assets/build-local.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          manifest = Path("app/src/main/AndroidManifest.xml").read_text()
+          bridge = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/LocalTermuxBuild.kt").read_text()
+          runner = Path("app/src/main/assets/build-local.sh").read_text()
+          setup = Path("app/src/main/assets/setup-termux.sh").read_text()
+          assert "com.termux.permission.RUN_COMMAND" in manifest
+          assert "com.termux.app.RunCommandService" in bridge
+          assert "android-apk" in runner and "android-aab" in runner
+          assert "aapt2FromMavenOverride" in setup
+          assert "15859902_latest.zip" in setup
+          print("Local ARM64 build bridge and scripts: static checks passed")
+          PY
+
       - name: Unit tests
         run: |
           chmod +x gradlew
