@@ -135,7 +135,7 @@ object VoiceMapper {
         sym("}", Glue.NONE, "right curly bracket", "close curly bracket", "close curly brace")
         sym("[", Glue.BOTH, "open square bracket")
         sym("]", Glue.BEFORE, "close square bracket")
-        sym("\\"", Glue.NONE, "open quote", "close quote", "double quotes")
+        sym("\"", Glue.NONE, "open quote", "close quote", "double quotes")
         sym("'", Glue.NONE, "single quotes")
         sym(" ", Glue.BOTH, "пробел", "space")
         act(VoiceAction.NewLine, "новая строка", "новую строку", "с новой строки", "перенос строки", "перевод строки", "энтер", "ввод", "new line", "newline", "next line", "enter")
