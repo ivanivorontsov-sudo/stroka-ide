@@ -110,4 +110,29 @@ class VoiceMapperTest {
         assertEquals(7L, NumberWords.parseAll("7"))
         assertEquals(null, NumberWords.parseAll("пять пять"))
     }
+
+    @Test
+    fun tolerantRussianCommands() {
+        assertEquals(listOf(VoiceAction.Save), VoiceMapper.map("сахранить"))
+        assertEquals(listOf(VoiceAction.Run), VoiceMapper.map("запусти код"))
+        assertEquals(listOf(VoiceAction.Undo), VoiceMapper.map("отмени последнее"))
+        assertEquals(listOf(VoiceAction.StopListening), VoiceMapper.map("стоп запись"))
+    }
+
+    @Test
+    fun alternateRecognitionHypothesisCanRecoverCommand() {
+        assertEquals("сохранить", VoiceMapper.bestCandidate(listOf("сохрани это", "сохранить")))
+        assertEquals(
+            listOf(VoiceAction.Save),
+            VoiceMapper.map(VoiceMapper.bestCandidate(listOf("сохрани это", "сохранить")))
+        )
+    }
+
+    @Test
+    fun commandHintsContainCommonEditorActions() {
+        val hints = VoiceMapper.recognitionHints()
+        assert(hints.contains("сохранить"))
+        assert(hints.contains("запусти код"))
+        assert(hints.contains("open paren"))
+    }
 }
