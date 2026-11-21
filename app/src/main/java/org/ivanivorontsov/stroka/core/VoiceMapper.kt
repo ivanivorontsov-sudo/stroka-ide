@@ -316,10 +316,10 @@ object VoiceMapper {
         return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(260)
     }
 
-    fun map(utterance: String, preferredLanguage: Lang = Lang.PLAIN): List<VoiceAction> {
+    fun map(utterance: String, preferredLanguage: Lang = Lang.PLAIN, fileName: String? = null): List<VoiceAction> {
         val trimmed = utterance.trim()
         if (trimmed.isEmpty()) return emptyList()
-        VoiceCodeTemplates.generate(trimmed, preferredLanguage)?.let {
+        VoiceCodeTemplates.generate(trimmed, preferredLanguage, fileName)?.let {
             return listOf(VoiceAction.InsertBlock(it.title, it.code))
         }
         parseCommand(trimmed)?.let { return listOf(it) }

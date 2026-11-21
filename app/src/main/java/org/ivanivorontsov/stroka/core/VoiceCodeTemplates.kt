@@ -60,7 +60,7 @@ object VoiceCodeTemplates {
         Regex("\\bjava\\b|джава").containsMatchIn(text) -> Lang.JAVA
         Regex("\\bc\\+\\+\\b|\\bcpp\\b").containsMatchIn(text) -> Lang.CPP
         fallback != Lang.PLAIN -> fallback
-        else -> Lang.PYTHON
+        else -> Lang.PLAIN
     }
 
     private fun detectIntent(text: String, lang: Lang): Intent? {
@@ -110,7 +110,7 @@ object VoiceCodeTemplates {
         return null
     }
 
-    fun generate(utterance: String, preferredLanguage: Lang = Lang.PLAIN): VoiceCodeBlock? {
+    fun generate(utterance: String, preferredLanguage: Lang = Lang.PLAIN, fileName: String? = null): VoiceCodeBlock? {
         val text = normalize(utterance)
             .replace("окошка", "окна").replace("окошко", "окно")
             .replace("формочку", "форму").replace("формочка", "форма")
@@ -118,11 +118,23 @@ object VoiceCodeTemplates {
             .replace("питон", "python").replace("джаваскрипт", "javascript")
         val repaired = repairCommonSpeechTypos(text)
         if (!hasRequest(repaired)) return null
-        val language = languageFrom(repaired, preferredLanguage)
+        val explicitLanguage = languageFrom(repaired, Lang.PLAIN)
+        val phpRequested = Regex("\\bphp\\b", RegexOption.IGNORE_CASE).containsMatchIn(repaired)
+        val extension = fileName?.substringAfterLast('.', "")?.lowercase().orEmpty()
+        val phpFile = extension == "php"
+        val language = when {
+            explicitLanguage != Lang.PLAIN -> explicitLanguage
+            phpRequested || phpFile -> Lang.PLAIN
+            fileName != null -> Lang.forName(fileName)
+            preferredLanguage != Lang.PLAIN -> preferredLanguage
+            else -> Lang.PLAIN
+        }
+        val isPhp = language == Lang.PLAIN && (phpRequested || phpFile)
+        if (language == Lang.PLAIN && !isPhp) return null
         val intent = detectIntent(repaired, language) ?: return null
         val code = when (intent) {
             Intent.NAME_INPUT -> nameInput(language)
-            Intent.WEB_FORM -> webForm(language)
+            Intent.WEB_FORM -> webForm(language, isPhp)
             Intent.WINDOW -> window(language)
             Intent.HTML_PAGE -> htmlPage()
             Intent.CSS_STYLES -> cssStyles(language)
@@ -201,23 +213,50 @@ object VoiceCodeTemplates {
         """
     }
 
-    private fun webForm(lang: Lang): String = when (lang) {
-        Lang.CSS -> cssStyles(Lang.CSS)
-        Lang.JAVASCRIPT, Lang.TYPESCRIPT -> """
+    private fun webForm(lang: Lang, php: Boolean = false): String = when {
+        php -> """
+            <?php
+            $name = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $message = trim($_POST['message'] ?? '');
+            $valid = $name !== '' && $message !== '' && filter_var($email, FILTER_VALIDATE_EMAIL);
+            function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+            ?>
+            <!doctype html>
+            <html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Форма обратной связи</title>
+            <style>
+              body { margin: 0; padding: 24px; background: #f4f6fb; color: #172033; font-family: system-ui, sans-serif; }
+              form { display: grid; gap: 12px; max-width: 560px; margin: 24px auto; padding: 24px; border-radius: 16px; background: white; box-shadow: 0 8px 30px #17203318; }
+              input, textarea, button { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; }
+              button { border: 0; background: #2563eb; color: white; }
+            </style></head><body>
+            <form method="post">
+              <h1>Форма обратной связи</h1>
+              <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
+                <p><?= $valid ? 'Спасибо! Форма проверена.' : 'Заполните поля и укажите корректный email.' ?></p>
+              <?php endif; ?>
+              <label>Имя<input name="name" value="<?= h($name) ?>" required></label>
+              <label>Email<input type="email" name="email" value="<?= h($email) ?>" required></label>
+              <label>Сообщение<textarea name="message" rows="5" required><?= h($message) ?></textarea></label>
+              <button type="submit">Отправить</button>
+            </form></body></html>
+        """
+        lang == Lang.CSS -> cssStyles(Lang.CSS)
+        lang == Lang.JAVASCRIPT || lang == Lang.TYPESCRIPT -> """
             const form = document.createElement("form");
             form.className = "contact-form";
             form.innerHTML = '<label>Name <input name="name" required></label>' +
                 '<label>Email <input name="email" type="email" required></label>' +
-                '<label>Message <textarea name="message" required></textarea></label>' +
+                '<label>Message <textarea name="message" required></label>' +
                 '<button type="submit">Send</button>';
             form.addEventListener("submit", (event) => {
                 event.preventDefault();
-                const data = Object.fromEntries(new FormData(form).entries());
-                console.log("Form submitted:", data);
+                console.log("Form submitted:", Object.fromEntries(new FormData(form).entries()));
             });
             document.body.appendChild(form);
         """
-        Lang.PYTHON -> """
+        lang == Lang.PYTHON -> """
             import tkinter as tk
             from tkinter import messagebox
 
@@ -251,23 +290,11 @@ object VoiceCodeTemplates {
                 .contact-form button { color: #fff; background: #2563eb; cursor: pointer; }
             </style>
             <form class="contact-form" id="contact-form">
-                <label for="contact-name">Имя</label>
-                <input id="contact-name" name="name" autocomplete="name" required>
-                <label for="contact-email">Email</label>
-                <input id="contact-email" name="email" type="email" autocomplete="email" required>
-                <label for="contact-message">Сообщение</label>
-                <textarea id="contact-message" name="message" rows="4" required></textarea>
+                <label for="contact-name">Имя</label><input id="contact-name" name="name" required>
+                <label for="contact-email">Email</label><input id="contact-email" name="email" type="email" required>
+                <label for="contact-message">Сообщение</label><textarea id="contact-message" name="message" rows="4" required></textarea>
                 <button type="submit">Отправить</button>
-                <p id="form-status" role="status" aria-live="polite"></p>
             </form>
-            <script>
-                document.getElementById("contact-form").addEventListener("submit", (event) => {
-                    event.preventDefault();
-                    const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-                    document.getElementById("form-status").textContent = "Спасибо, " + data.name + "!";
-                    console.log("Форма:", data);
-                });
-            </script>
         """
     }
 

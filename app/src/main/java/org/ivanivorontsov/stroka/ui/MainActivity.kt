@@ -1239,7 +1239,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     override fun onFinal(text: String) {
         voicePartial.text = ""
         val activeLanguage = docs.getOrNull(current)?.lang ?: Lang.PLAIN
-        val actions = VoiceMapper.map(text, activeLanguage)
+        val actions = VoiceMapper.map(text, activeLanguage, docs.getOrNull(current)?.name)
         voiceLast.text = "«$text» → " + actions.joinToString(" ") { describe(it) }
         for (a in actions) applyVoice(a)
     }
