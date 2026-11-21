@@ -305,7 +305,7 @@ object VoiceMapper {
             "dot", "equals", "double equals", "not equal", "new line", "indent", "underscore",
             "нужна программа", "кусок кода", "часть кода", "блок кода", "фрагмент кода",
             "получить имя", "ввод имени", "веб форма", "форма обратной связи",
-            "модальное окно", "диалоговое окно", "создай html страницу", "css оформление",
+            "модальное окно", "диалоговое окно", "создай html страницу", "создай сайт", "создай визитку", "сделай лендинг", "business card", "landing page", "css оформление",
             "подключи библиотеку", "импортируй пакет", "сгенерируй функцию",
             "requests", "numpy", "pandas", "flask", "fastapi", "tkinter",
             "axios", "react", "express", "lodash", "date-fns",
@@ -334,7 +334,12 @@ object VoiceMapper {
             return actions
         }
         if (literalMode != null) return listOf(VoiceAction.Insert(if (literalMode == "comment") commentText(trimmed, preferredLanguage) else trimmed))
-        if (listOf("конструктор сайта", "конструктора сайта", "конструктор веб сайта", "конструктора веб сайта", "визуальный конструктор", "режим конструктора", "собери сайт визуально", "site builder", "website builder", "visual website builder", "open visual builder").any(normalized::contains)) return listOf(VoiceAction.OpenVisualBuilder)
+        // Example/code quotation is content, not an instruction to generate a new block.
+        val exampleLeadIns = listOf("пример кода", "код для примера", "вот пример", "например,", "например ", "показываю пример", "в примере", "example code", "here is an example", "for example", "sample code")
+        if (exampleLeadIns.any(normalized::startsWith) || trimmed.contains("​```")) return listOf(VoiceAction.Insert(trimmed))
+        val asksForSite = listOf("создай", "создать", "сделай", "сделать", "собери", "собрать", "построй", "построить", "хочу", "нужен", "нужна", "create", "make", "build", "design", "i want", "need").any(normalized::contains)
+        val namesSite = listOf("сайт", "веб-сайт", "веб сайт", "визитк", "лендинг", "website", "web site", "business card", "landing page", "portfolio site").any(normalized::contains)
+        if ((asksForSite && namesSite) || listOf("конструктор сайта", "конструктора сайта", "конструктор веб сайта", "конструктора веб сайта", "визуальный конструктор", "режим конструктора", "собери сайт визуально", "site builder", "website builder", "visual website builder", "open visual builder").any(normalized::contains)) return listOf(VoiceAction.OpenVisualBuilder)
         if (voiceMode == "off") return listOf(VoiceAction.Insert(trimmed))
         VoiceCodeTemplates.generate(trimmed, preferredLanguage, fileName, fullConstructs = voiceMode == "constructs")?.let {
             return listOf(VoiceAction.InsertBlock(it.title, it.code))
