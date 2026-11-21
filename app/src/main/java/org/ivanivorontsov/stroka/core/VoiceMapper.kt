@@ -287,6 +287,11 @@ object VoiceMapper {
         val commands = commandTable.flatMap { it.first }
         val codeWords = listOf(
             "print", "println", "input", "range", "len", "console", "console log", "log",
+            "понятный", "пиши", "пусть", "константа", "навсегда", "если", "то", "иначе", "пока",
+            "повтори", "раза", "функция", "верни", "конец", "истина", "ложь", "ничего", "спроси",
+            "число", "строка", "длина", "сумма", "макс", "мин", "класс", "структура", "выбор",
+            "вариант", "когда", "подключи", "перечисление", "интерфейс", "множество", "асинхронная",
+            "поток", "метка", "иди к", "проверить", "напечатай", "выведи", "ежели", "покуда",
             "function", "func", "def", "lambda", "return", "yield", "class", "new", "this", "self",
             "import", "from", "as", "package", "public", "private", "protected", "static", "final",
             "if", "else", "elif", "for", "foreach", "while", "do", "break", "continue", "pass",
@@ -350,6 +355,10 @@ object VoiceMapper {
             return listOf(VoiceAction.InsertBlock(it.title, it.code))
         }
         parseCommand(trimmed)?.let { return listOf(it) }
+        val ponyatnyFile = fileName?.substringAfterLast('.', "")?.equals("pon", ignoreCase = true) == true
+        if (preferredLanguage == Lang.PONYATNY || ponyatnyFile) {
+            PonyatnyVoiceMapper.map(trimmed)?.let { return listOf(VoiceAction.Insert(it)) }
+        }
         val fixed = fixCapitalization(trimmed).let { if (it.length > 1 && it.endsWith(".") && !it.endsWith("..") && it[it.length - 2].isLetter()) it.dropLast(1) else it }
         return dictate(fixed)
     }
