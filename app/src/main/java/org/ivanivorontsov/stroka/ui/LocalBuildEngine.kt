@@ -103,7 +103,7 @@ object LocalBuildEngine {
   } catch (ignored) {}
   function safeFile(path) {
     const parts = [];
-    String(path || "").replace(/\\\\/g, "/").split("/").forEach(part => {
+    String(path || "").replace(/\\/g, "/").split("/").forEach(part => {
       if (!part || part === ".") return;
       if (part === "..") parts.pop(); else parts.push(part);
     });
@@ -129,7 +129,7 @@ object LocalBuildEngine {
     },
     existsSync(path) { return fileData.has(safeFile(path)); }
   };
-  const write = value => { output.textContent += String(value) + "\\n"; };
+  const write = value => { output.textContent += String(value) + "\n"; };
   function cleanPath(value, importer) {
     const raw = String(value || "").replace(/\\/g, "/");
     const parts = (raw.startsWith("./") || raw.startsWith("../"))
