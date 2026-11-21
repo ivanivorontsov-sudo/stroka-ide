@@ -102,7 +102,7 @@ jobs:
           set -euo pipefail
           cd dist/ponyatny/web
           zip -qr ../Ponyatny-Web.zip .
-          cd ../..
+          cd "$GITHUB_WORKSPACE"
           find dist/ponyatny -type f -not -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > dist/ponyatny/SHA256SUMS.txt
           echo "## Pонятный — cross-platform build" >> "$GITHUB_STEP_SUMMARY"
           echo "- Android: APK + AAB" >> "$GITHUB_STEP_SUMMARY"
