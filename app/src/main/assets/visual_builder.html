@@ -138,6 +138,9 @@ function voiceCommand(raw){
  const n=normalizeVoiceCommand(raw);
  if(!n)return;
  applyStyleHints(n);
+ const styleOnly=/(?:темн|черн|ночн|светл|бел|дневн|dark mode|dark theme|night mode|light mode|light theme|day mode|премиум|премиаль|luxury|premium style|material\\s*3|material design|fluent design|как windows 11|shadcn|shadсн|шадсн|ant design|antd|ант дизайн|carbon|карбон|океан|морск|ocean|аврора|aurora|минимал|minimal|две|два|two|three|четыре|четыре|\\b[234]\\s*(?:x|×)\\s*[234]\\b|grid of [234]|center align|align center|rounded corners|drop shadow|more spacing|more padding)/.test(n);
+ const contentIntent=/(?:визитк|business\\s*card|contact\\s*card|лендинг|landing|сайт|website|web\\s*site|портфолио|portfolio|магазин|shop|store|галере|gallery|форм|form|кноп|button|калькулятор|calculator|заголов|heading|изображ|image|блок|block)/.test(n);
+ if(styleOnly&&!contentIntent){update();return}
  const typeOf=(v)=>/визитк|business\s*card|contact\s*card|digital\s*card/.test(v)?'card':/услуг|service/.test(v)?'services':/отзыв|review|testimonial/.test(v)?'reviews':/цен|price|тариф/.test(v)?'pricing':/вопрос|faq|часто задаваем/.test(v)?'faq':/контакт|contact/.test(v)?'contacts':/магазин|store|shop|e-commerce/.test(v)?'shop':/портфолио|portfolio/.test(v)?'portfolio':/галере|gallery/.test(v)?'gallery':/о нас|about/.test(v)?'about':/лендинг|landing\s*page|сайт|website|web\s*site|главная страница/.test(v)?'landing':/калькулятор|calculator/.test(v)?'calculator':/форм|form/.test(v)?'form':/изображ|картин|image|picture/.test(v)?'image':/кноп|button/.test(v)?'button':/заголов|header|heading|title/.test(v)?'hero':/раздел|divider/.test(v)?'spacer':'text';
  const ordinal=n.match(/^(?:сделай|make)?\s*(?:блок|block)\s+(один|первый|раз|два|второй|три|третий|четыре|четвертый|пять|пятый|one|first|two|second|three|third|four|fourth|five|fifth|1|2|3|4|5)(?:\s+(.+))?$/);
  if(ordinal){
@@ -148,7 +151,7 @@ function voiceCommand(raw){
  }
  if(/визитк|business\s*card|contact\s*card/.test(n)){const el=block('card');snap();stage.replaceChildren(el);select(el);applyStyleHints(n);update();return}
  if(/лендинг|landing\s*page|создай сайт|create (?:a )?website/.test(n)){const el=block('landing');snap();stage.replaceChildren(el);select(el);applyStyleHints(n);update();return}
- if(/добавь|создай|вставь|нужен|нужна|хочу|add|create|insert|need|want|make/.test(n)){
+ if(/добавь|создай|сделай|сделать|вставь|нужен|нужна|хочу|add|create|insert|need|want|make/.test(n)){
   const el=block(typeOf(n));snap();
   const target=selected&&/(внутрь|в форму|в блок|inside|into selected)/.test(n)?selected:stage;
   target.append(el);select(el);applyStyleHints(n);update();return
