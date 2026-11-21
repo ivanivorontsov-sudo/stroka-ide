@@ -38,6 +38,20 @@ jobs:
           V=$(grep -Po 'versionName = "\K[^"]+' app/build.gradle.kts)
           echo "VERSION=$V" >> "$GITHUB_ENV"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate visual builder JavaScript
+        run: |
+          python3 - <<'PY'
+          import re
+          source = open("app/src/main/assets/visual_builder.html", encoding="utf-8").read()
+          scripts = re.findall(r"<script>(.*?)</script>", source, flags=re.S | re.I)
+          assert scripts, "No inline builder script found"
+          open("/tmp/visual_builder.js", "w", encoding="utf-8").write("\n".join(scripts))
+          PY
+          node --check /tmp/visual_builder.js
+
       - name: Unit tests
         run: |
           chmod +x gradlew
