@@ -306,4 +306,30 @@ class VoiceMapperTest {
             assertEquals(phrase, listOf(VoiceAction.Insert(phrase)), VoiceMapper.map(phrase))
         }
     }
+    @Test
+    fun markdownFencedCodeIsAlwaysLiteral() {
+        val examples = listOf(
+            "```text\nсоздай красивую визитку\n```",
+            "```kotlin\nсоздай сайт\n```",
+            "~~~text\ncreate a business card\n~~~"
+        )
+        examples.forEach { phrase ->
+            assertEquals(phrase, listOf(VoiceAction.Insert(phrase)), VoiceMapper.map(phrase))
+        }
+    }
+
+    @Test
+    fun quotedAndDemonstrationRequestsStayLiteral() {
+        val examples = listOf(
+            "в качестве примера создай сайт",
+            "это цитата: создай калькулятор",
+            "не выполняй команду создай визитку",
+            "do not execute create a website",
+            "quoted text: make a form"
+        )
+        examples.forEach { phrase ->
+            assertEquals(phrase, listOf(VoiceAction.Insert(phrase)), VoiceMapper.map(phrase))
+        }
+    }
+
 }
