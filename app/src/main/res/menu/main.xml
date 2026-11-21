@@ -17,6 +17,7 @@
     <item android:id="@+id/action_wrap" android:checkable="true" android:title="@string/word_wrap" app:showAsAction="never" />
     <item android:id="@+id/action_theme" android:checkable="true" android:title="@string/toggle_theme" app:showAsAction="never" />
     <item android:id="@+id/action_self_tutor" android:title="Самоучитель" app:showAsAction="never" />
+    <item android:id="@+id/action_ponyatny_help" android:title="Синтаксис языка «Понятный»" app:showAsAction="never" />
     <item android:id="@+id/action_voice_help" android:title="@string/voice_commands" app:showAsAction="never" />
     <item android:id="@+id/action_close" android:title="@string/close_current" app:showAsAction="never" />
     <item android:id="@+id/action_settings" android:title="@string/settings" app:showAsAction="never" />
