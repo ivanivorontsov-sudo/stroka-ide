@@ -13,6 +13,7 @@ class PythonRunner(private val ctx: Context) {
 
     interface Sink {
         fun onOutput(text: String, error: Boolean)
+        fun onPreview(html: String)
         fun onInputRequested(prompt: String)
         fun onFinished(code: Int, millis: Long)
     }
@@ -45,6 +46,8 @@ class PythonRunner(private val ctx: Context) {
         }
 
         fun flush() = synchronized(buf) { flushLocked() }
+
+        fun showPreview(html: String) { main.post { sink.onPreview(html) } }
 
         fun readLine(prompt: String): String? {
             flush()
