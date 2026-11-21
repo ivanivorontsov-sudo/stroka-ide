@@ -249,6 +249,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             R.id.action_undo -> editor.undo()
             R.id.action_redo -> editor.redo()
             R.id.action_run -> runCurrent()
+            R.id.action_build -> showBuildCenter()
             R.id.action_save -> saveCurrent(silent = false)
             R.id.action_find -> showFind(null)
             R.id.action_goto -> askGoToLine()
@@ -1132,6 +1133,72 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val html = if (target.lang == Lang.MARKDOWN) MarkdownHtml.render(target.text, isNight()) else target.text
         panelStatus.text = "Просмотр: ${target.name}"
         w.loadDataWithBaseURL(base, html, "text/html", "utf-8", null)
+    }
+
+    private fun showBuildCenter() {
+        val doc = docs.getOrNull(current)
+        val source = (doc?.ref as? DocRef.Local)?.let { File(it.path) }
+        val repo = git.findRepoRoot(source?.parentFile)
+        val token = SecureStore(this).get("github_token")
+        val options = arrayOf("Автоопределение проекта", "Android APK", "Android App Bundle (AAB)", "Windows EXE", "Сайт (HTML / Node.js)", "Python EXE (Windows)")
+        var selected = 0
+        val details = TextView(this).apply {
+            textSize = 13f
+            setPadding(dp(18), dp(8), dp(18), dp(8))
+            text = buildString {
+                append("Строка проверит проект и отправит сборку на отдельную машину GitHub Actions. ")
+                append("Это нужно потому, что Android SDK и Windows-компилятор нельзя надёжно запускать внутри Android-приложения.\n\n")
+                append("Текущий файл: ").append(doc?.name ?: "не выбран").append("\n")
+                append("Репозиторий: ").append(repo?.name ?: "не найден").append("\n")
+                append("GitHub-токен: ").append(if (token.isNullOrBlank()) "не настроен" else "есть").append("\n\n")
+                append("Важно: сборка берёт только уже отправленный (push) код. Незакоммиченные изменения не попадут в неё.")
+            }
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Собрать проект")
+            .setSingleChoiceItems(options, 0) { _, which -> selected = which }
+            .setView(details)
+            .setPositiveButton("Проверить и собрать") { _, _ ->
+                val target = listOf("auto", "android-apk", "android-aab", "windows-exe", "website", "python-exe")[selected]
+                if (repo == null) {
+                    MaterialAlertDialogBuilder(this).setTitle("Не найден Git-репозиторий")
+                        .setMessage("Откройте файл внутри проекта, созданного или клонированного через Git, либо сначала инициализируйте репозиторий. Облачная сборка работает с отправленным на GitHub исходным кодом.")
+                        .setPositiveButton("Открыть Git", null).show()
+                    return@setPositiveButton
+                }
+                if (token.isNullOrBlank()) {
+                    MaterialAlertDialogBuilder(this).setTitle("Нужен GitHub-токен")
+                        .setMessage("Добавьте токен в Настройки → Git и GitHub. Для запуска workflow требуется право Actions: write, а для приватного репозитория — доступ к Contents.")
+                        .setPositiveButton("Понятно", null).show()
+                    return@setPositiveButton
+                }
+                if (prefs.autosave) saveAllDirty()
+                showPanel(false)
+                appendConsole("▶ Проверка проекта перед сборкой…\n", Kind.INFO)
+                panelStatus.text = "Подготовка облачной сборки…"
+                gitIo.execute {
+                    try {
+                        val result = CloudBuild.dispatch(repo, target, token)
+                        main.post {
+                            appendConsole("✓ Сборка отправлена: ${result.repo} / ${result.branch}\n", Kind.INFO)
+                            appendConsole("Откройте страницу Actions, чтобы наблюдать сборку и скачать проверенный артефакт.\n", Kind.INFO)
+                            panelStatus.text = "Сборка запущена на GitHub Actions"
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(result.actionsUrl)))
+                        }
+                    } catch (e: Throwable) {
+                        val message = (e.message ?: e.toString()).replace(token, "***")
+                        main.post {
+                            appendConsole("✕ Сборка не запущена: $message\n", Kind.ERR)
+                            panelStatus.text = "Сборка не запущена"
+                            MaterialAlertDialogBuilder(this).setTitle("Не удалось запустить сборку")
+                                .setMessage(message + "\n\nПроверьте, что рабочая папка чистая, изменения отправлены в GitHub, а файл .github/workflows/project-build.yml уже находится в основной ветке.")
+                                .setPositiveButton("Понятно", null).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     private fun showGitMenu() {
