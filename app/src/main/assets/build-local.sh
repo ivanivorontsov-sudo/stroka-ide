@@ -25,9 +25,15 @@ if [ -z "$ROOT" ]; then
   PYFILE="$(find "$WORK" -maxdepth 3 -type f -name '*.py' ! -name 'stroka_runner.py' ! -name 'stroka_tkinter.py' | head -n 1 || true)"
   [ -n "$PYFILE" ] || fail "Не найден Android Gradle-проект или Python-файл."
   echo "Обнаружен Python-проект без файлов сборки: $PYFILE"
-  APP="$WORK/.stroka-android"
+  APP="$HOME/.cache/stroka-build/python-app"
+  rm -rf "$APP"
+  PYROOT="$(dirname "$PYFILE")"
   mkdir -p "$APP/app/src/main/java/com/example/strokabuild" "$APP/app/src/main/python" "$APP/app/src/main/assets"
+  cp -R "$PYROOT"/. "$APP/app/src/main/python/"
   cp "$PYFILE" "$APP/app/src/main/python/main.py"
+  cp -R "$PYROOT"/. "$APP/app/src/main/assets/"
+  cp "$PYFILE" "$APP/app/src/main/assets/main.py"
+  if [ -f "$PYROOT/requirements.txt" ]; then cp "$PYROOT/requirements.txt" "$APP/requirements.txt"; else : > "$APP/requirements.txt"; fi
   [ -f "$DOWNLOADS/stroka_runner.py" ] || fail "Не найден stroka_runner.py. Обновите приложение «Строка»."
   [ -f "$DOWNLOADS/stroka_tkinter.py" ] || fail "Не найден stroka_tkinter.py. Обновите приложение «Строка»."
   cp "$DOWNLOADS/stroka_runner.py" "$APP/app/src/main/python/"
@@ -74,7 +80,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 }
-chaquopy { defaultConfig { version = "3.12" } }
+chaquopy { defaultConfig { version = "3.12"; pip { install("-r", "requirements.txt") } } }
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-ktx:1.9.3")
