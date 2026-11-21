@@ -74,4 +74,9 @@ class PonyatnySupportTest {
         val condition = VoiceMapper.map("создай условие", Lang.PONYATNY, "main.pon", "constructs").single() as VoiceAction.InsertBlock
         assertTrue(condition.code.contains("если истина то"))
     }
+
+    @Test fun voiceCanImportPonyatnyStandardModules() {
+        val action = VoiceMapper.map("подключи математика", Lang.PONYATNY, "main.pon", "constructs").single() as VoiceAction.InsertBlock
+        assertTrue(action.code.contains("подключи \"стд/математика.pon\" как мат"))
+    }
 }
