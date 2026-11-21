@@ -91,6 +91,26 @@ function explainCode(){
 }
 
 code.onchange=()=>{try{let d=new DOMParser().parseFromString(code.value,'text/html');snap();stage.innerHTML=d.body.querySelector('.page')?.innerHTML||d.body.innerHTML;selected=null;update()}catch(e){}};
+function applyStyleHints(raw){
+ const n=raw.toLowerCase().replace(/ё/g,'е');
+ if(/темн|тёмн|dark mode|dark theme/.test(n))setTheme('dark');
+ else if(/светл|light mode|light theme/.test(n))setTheme('light');
+ else if(/премиаль|дорогой стиль|luxury|black and gold|золот/.test(n))setTheme('luxury');
+ else if(/material\s*3|материал\s*3|material design|материал дизайн/.test(n))setTheme('material');
+ else if(/fluent\s*2|fluent design|флюент|как windows 11/.test(n))setTheme('fluent');
+ else if(/shadcn|шадсн|шадсин/.test(n))setTheme('shadcn');
+ else if(/океан|морск|ocean|blue theme/.test(n))setTheme('ocean');
+ else if(/аврора|aurora|purple theme/.test(n))setTheme('aurora');
+ else if(/минимал|минималист|minimal/.test(n))setTheme('minimal');
+ const grids=selected?[selected.querySelector('.content-grid,.landing-grid,.biz-grid')].filter(Boolean):Array.from(stage.querySelectorAll('.content-grid,.landing-grid,.biz-grid'));
+ const columns=n.match(/(?:в|на)?\s*(две|2|три|3|четыре|4)\s+колонк|\b(2|3|4)\s+columns?/);
+ if(columns){const word=columns[1]||columns[2];const count=({две:2,три:3,четыре:4})[word]||Number(word);grids.forEach(g=>g.style.gridTemplateColumns='repeat('+count+',minmax(0,1fr))')}
+ if(/по центру|выровняй по центру|center align/.test(n)&&selected)selected.style.textAlign='center';
+ if(/скругл|закругл|rounded corners/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.content-card,.biz-tile,.price-card,.quote-card'))).forEach(x=>x.style.borderRadius='22px')}
+ if(/добавь тень|сделай тень|drop shadow/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.content-card,.biz-tile,.price-card'))).forEach(x=>x.style.boxShadow='0 18px 45px #17203320')}
+ if(/крупнее шрифт|увеличь текст|larger font/.test(n)&&selected)selected.style.fontSize='22px';
+ if(/больше воздуха|увеличь отступы|more spacing/.test(n)){(selected?[selected]:Array.from(stage.querySelectorAll('.item'))).forEach(x=>x.style.padding='24px')}
+}
 function voiceCommand(raw){
  const n=raw.toLowerCase().replace(/ё/g,'е').trim();
  if(!n)return;
@@ -102,12 +122,12 @@ function voiceCommand(raw){
   if(rest){snap();const el=block(typeOf(rest));const old=stage.children[index];if(old)old.replaceWith(el);else stage.append(el);select(el);update();return}
   select(stage.children[index]);return
  }
- if(/визитк|business\s*card|contact\s*card/.test(n)){const el=block('card');snap();stage.replaceChildren(el);select(el);update();return}
- if(/лендинг|landing\s*page|создай сайт|create (?:a )?website/.test(n)){const el=block('landing');snap();stage.replaceChildren(el);select(el);update();return}
+ if(/визитк|business\s*card|contact\s*card/.test(n)){const el=block('card');snap();stage.replaceChildren(el);select(el);applyStyleHints(n);update();return}
+ if(/лендинг|landing\s*page|создай сайт|create (?:a )?website/.test(n)){const el=block('landing');snap();stage.replaceChildren(el);select(el);applyStyleHints(n);update();return}
  if(/добавь|создай|вставь|нужен|нужна|хочу|add|create|insert|need|want|make/.test(n)){
   const el=block(typeOf(n));snap();
   const target=selected&&/(внутрь|в форму|в блок|inside|into selected)/.test(n)?selected:stage;
-  target.append(el);select(el);update();return
+  target.append(el);select(el);applyStyleHints(n);update();return
  }
  if(/темн|тёмн|dark mode|dark theme/.test(n)){setTheme('dark');return}
  if(/светл|light mode|light theme/.test(n)){setTheme('light');return}
