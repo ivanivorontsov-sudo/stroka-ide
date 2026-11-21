@@ -58,7 +58,8 @@ def install(callback):
         def set(self, value): self.value = value
         def _render(self):
             children = "".join(x._render() for x in self.children)
-            esc = html.escape(str(self.text))
+            label_text = self.variable.get() if isinstance(self, Label) and self.variable is not None else self.text
+            esc = html.escape(str(label_text))
             wid = str(self.widget_id)
             if isinstance(self, Label): return '<div class="label">' + esc + '</div>' + children
             if isinstance(self, Entry):
