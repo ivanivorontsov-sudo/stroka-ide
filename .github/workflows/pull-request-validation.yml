@@ -1,6 +1,8 @@
 name: Pull request validation
 
 on:
+  push:
+    branches: [feature/embedded-local-builder]
   pull_request:
     branches: [main]
   workflow_dispatch:
