@@ -21,4 +21,5 @@
     <item android:id="@+id/action_close" android:title="@string/close_current" app:showAsAction="never" />
     <item android:id="@+id/action_settings" android:title="@string/settings" app:showAsAction="never" />
     <item android:id="@+id/action_about" android:title="@string/about" app:showAsAction="never" />
+    <item android:id="@+id/action_copy_menu" android:title="Копировать пункты меню" app:showAsAction="never" />
 </menu>
