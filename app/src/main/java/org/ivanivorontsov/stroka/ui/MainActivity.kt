@@ -1151,7 +1151,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         }
         val explanation = TextView(this).apply {
             textSize = 13f
-            text = "Строка проверит проект и отправит сборку на отдельную машину GitHub Actions. Android SDK и Windows-компилятор не требуется запускать внутри телефона."
+            text = "Есть два способа: облачная сборка через GitHub Actions или локальная ARM64-сборка APK/AAB через Termux. Для первого запуска откройте Termux, выполните termux-setup-storage, включите allow-external-apps=true в ~/.termux/termux.properties и разрешите Строке дополнительное разрешение «Запуск команд в Termux». Затем нажмите «Подготовить локальную сборку»."
             setPadding(0, 0, 0, dp(12))
         }
         content.addView(explanation)
