@@ -266,6 +266,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             R.id.action_close -> if (current >= 0) closeDoc(current)
             R.id.action_settings -> startActivity(Intent(this, SettingsActivity::class.java))
             R.id.action_about -> showAbout()
+            R.id.action_copy_menu -> copyText(toolbar.menu.let { menu -> (0 until menu.size()).mapNotNull { i -> menu.getItem(i).title?.toString() }.filter { it.isNotBlank() && it != "Копировать пункты меню" }.joinToString("\n") }, "Пункты меню скопированы")
             else -> return false
         }
         return true
@@ -1153,6 +1154,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             textSize = 13f
             text = "Есть два способа: облачная сборка через GitHub Actions или локальная ARM64-сборка APK/AAB через Termux. Для первого запуска откройте Termux, выполните termux-setup-storage, включите allow-external-apps=true в ~/.termux/termux.properties и разрешите Строке дополнительное разрешение «Запуск команд в Termux». Затем нажмите «Подготовить локальную сборку»."
             setPadding(0, 0, 0, dp(12))
+            setTextIsSelectable(true)
         }
         content.addView(explanation)
         val targetLabel = TextView(this).apply {
@@ -1189,6 +1191,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val status = TextView(this).apply {
             textSize = 13f
             setLineSpacing(dp(3).toFloat(), 1f)
+            setTextIsSelectable(true)
             text = buildString {
                 append("ТЕКУЩИЙ ПРОЕКТ\n")
                 append("Файл: ").append(doc?.name ?: "не выбран").append("\n")
@@ -1362,6 +1365,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             items.add("Создать репозиторий в «${projectRoot.name}»…" to { askInit(projectRoot) })
         }
         items.add("Клонировать репозиторий…" to { askClone(projectsDir) })
+        items.add("Копировать пункты этого меню" to { copyText(items.joinToString("\n") { it.first }, "Пункты меню Git скопированы") })
         MaterialAlertDialogBuilder(this).setTitle(if (repo != null) "Git: ${repo.name}" else "Git")
             .setItems(items.map { it.first }.toTypedArray()) { _, i -> items[i].second() }
             .setNegativeButton("Закрыть", null).show()
@@ -1590,9 +1594,22 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     private fun showAbout() {
-        MaterialAlertDialogBuilder(this).setTitle("Строка ${BuildConfig.VERSION_NAME}")
-            .setMessage("Редактор кода для телефона.\n\nЗапуск: Python 3.12 (Chaquopy), JavaScript (WebView), просмотр HTML и Markdown.\nГолос: Google SpeechRecognizer и офлайн Vosk.\nGit: JGit, токен хранится в Android Keystore.\n\nПроекты лежат в памяти приложения. Чтобы работать с папкой на телефоне, нажмите «Папка…» в панели файлов.")
+        val description = "Редактор кода для телефона.\n\nЗапуск: Python 3.12 (Chaquopy), JavaScript (WebView), просмотр HTML и Markdown.\nГолос: Google SpeechRecognizer и офлайн Vosk.\nGit: JGit, токен хранится в Android Keystore.\n\nПроекты лежат в памяти приложения. Чтобы работать с папкой на телефоне, нажмите «Папка…» в панели файлов."
+        val textView = TextView(this).apply {
+            text = description
+            setTextIsSelectable(true)
+            setPadding(dp(22), dp(12), dp(22), dp(12))
+        }
+        MaterialAlertDialogBuilder(this).setTitle("Строка \${BuildConfig.VERSION_NAME}")
+            .setView(textView)
+            .setNeutralButton("Копировать") { _, _ -> copyText(description, "Описание скопировано") }
             .setPositiveButton("ОК", null).show()
+    }
+
+    private fun copyText(value: String, message: String = "Текст скопирован") {
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Текст из Строки", value))
+        toast(message)
     }
 
     private fun hideKeyboard() {
