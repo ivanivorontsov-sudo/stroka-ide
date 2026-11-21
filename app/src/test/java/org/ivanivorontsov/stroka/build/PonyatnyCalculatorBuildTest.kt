@@ -96,8 +96,9 @@ class PonyatnyCalculatorBuildTest {
         }
 
         fun copyEvidence(root: File, src: File, name: String) {
-            val ev = File("/home/box/work/stroka-evidence")
-            ev.mkdirs()
+            val ev = File(System.getenv("STROKA_EVIDENCE") ?: "/home/box/work/stroka-evidence")
+            if (!ev.isDirectory && !ev.mkdirs()) return
+            if (!ev.canWrite()) return
             src.copyTo(File(ev, name), overwrite = true)
         }
     }
