@@ -75,6 +75,8 @@ assert.ok(html.includes('const premiumStyles='), 'exported page must include the
 assert.ok(html.includes('site-feature-grid') && html.includes('site-final'), 'default site must contain designed content sections');
 assert.ok(html.includes('собери красивый сайт'), 'Russian voice command must map to the full website template');
 assert.ok(html.includes('class="item site-section" draggable="true"'), 'website sections must be independently selectable and draggable');
+assert.ok(html.includes('class="item biz-section" draggable="true"'), 'business card sections must be independently selectable and draggable');
+assert.ok(html.includes('class="item business-card" draggable="true"'), 'business card hero must be independently editable');
 assert.ok(localBuild.includes('fun buildStaticWebsite') && localBuild.includes('MediaStore.Downloads'), 'static site build must create a real ZIP in Downloads');
 assert.ok(localBuild.includes('fun buildPonyatnyWebsite') && localBuild.includes('ponyatny/yadro.js'), 'offline Ponyatny compiler must be embedded in website export');
 assert.ok(projectTemplates.includes('адаптивный премиум-шаблон') && projectTemplates.includes('YOURSTUDIO'), 'new web projects must start from the premium template');
