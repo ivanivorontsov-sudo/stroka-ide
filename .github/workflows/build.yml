@@ -194,7 +194,10 @@ jobs:
           assert "PONYATNY" in lang and '"pon"' in lang
           assert "Lang.PONYATNY -> LangSpec" in spec
           assert "PonyatnyVoiceMapper.map" in voice
+          assert "preferredLanguage == Lang.PONYATNY" in voice
           assert "NumberWords.parse" in pony_voice
+          assert "voiceRecognitionLanguage()" in main
+          assert "VoiceMapper.bestCandidate(candidates, language)" in main
           assert "PonyatnyYadro.run" in js_runner and "ponyatny/yadro.js" in js_runner
           assert "PonyatnyStdModules" in js_runner and "resolve: resolveModule" in js_runner
           assert "ponyatny/std.json" in js_runner
