@@ -46,7 +46,7 @@ class JsRunner(private val ctx: Context) {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun ensure(): WebView {
+    private fun ensure(withPonyatny: Boolean = false): WebView {
         web?.let { return it }
         val w = WebView(ctx)
         w.settings.javaScriptEnabled = true
@@ -68,7 +68,11 @@ class JsRunner(private val ctx: Context) {
                 if (js != null) view?.evaluateJavascript(js, null)
             }
         }
-        w.loadDataWithBaseURL("https://stroka.local/", HARNESS, "text/html", "utf-8", null)
+        val harness = if (withPonyatny) {
+            val compiler = ctx.assets.open("ponyatny/yadro.js").bufferedReader().use { it.readText() }
+            HARNESS.replace("/*PONYATNY_COMPILER*/", compiler)
+        } else HARNESS.replace("/*PONYATNY_COMPILER*/", "")
+        w.loadDataWithBaseURL("https://stroka.local/", harness, "text/html", "utf-8", null)
         web = w
         return w
     }
@@ -81,8 +85,9 @@ class JsRunner(private val ctx: Context) {
         release()
         val payload = JSONObject.quote(code)
         val name = JSONObject.quote(fileName)
-        pending = "window.__strokaRun($payload, $name);"
-        ensure()
+        val ponyatny = fileName.substringAfterLast('.', "").equals("pon", ignoreCase = true)
+        pending = if (ponyatny) "window.__ponyatnyRun($payload, $name);" else "window.__strokaRun($payload, $name);"
+        ensure(withPonyatny = ponyatny)
     }
 
     fun stop() {
@@ -101,6 +106,7 @@ class JsRunner(private val ctx: Context) {
     companion object {
         private val TIMEOUT_TOKEN = Any()
         private const val HARNESS = """<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>
+/*PONYATNY_COMPILER*/
 (function(){
   function fmt(v){
     if (typeof v === 'string') return v;
@@ -124,6 +130,23 @@ class JsRunner(private val ctx: Context) {
       setTimeout(function(){ StrokaHost.done(true); }, 0);
     } catch (e) {
       StrokaHost.log('error', (e && e.name ? e.name + ': ' : '') + (e && e.message ? e.message : String(e)));
+      StrokaHost.done(false);
+    }
+  };
+  window.__ponyatnyRun = function(code, name){
+    try {
+      if (!window.PonyatnyYadro) throw new Error("Компилятор «Понятный» не загружен");
+      window.PonyatnyYadro.run(code, {
+        file: name,
+        write: function(value){ StrokaHost.log("log", String(value)); },
+        writeErr: function(value){ StrokaHost.log("error", String(value)); },
+        ask: function(question){ return window.prompt(String(question || ""), ""); },
+        maxSteps: 1000000,
+        guard: true
+      });
+      StrokaHost.done(true);
+    } catch (e) {
+      StrokaHost.log("error", (e && e.message) ? e.message : String(e));
       StrokaHost.done(false);
     }
   };
