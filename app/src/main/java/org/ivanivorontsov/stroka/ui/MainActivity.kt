@@ -1203,6 +1203,20 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             }
         }
         content.addView(status)
+        val localSetupButton = Button(this).apply {
+            text = "Подготовить локальную сборку (Termux)"
+            isAllCaps = false
+        }
+        content.addView(localSetupButton, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(8) })
+        val localBuildButton = Button(this).apply {
+            text = "Собрать APK / AAB прямо на телефоне"
+            isAllCaps = false
+        }
+        content.addView(localBuildButton, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
         val repoButton = Button(this).apply {
             text = "Подключить / выбрать репозиторий"
             isAllCaps = false
@@ -1225,6 +1239,40 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             .setNegativeButton("Отмена", null)
             .create()
         dialog.setOnShowListener {
+            localSetupButton.setOnClickListener {
+                try {
+                    LocalTermuxBuild.prepare(this)
+                    Toast.makeText(this, "Установка среды запущена в Termux. Дождитесь сообщения «ГОТОВО».", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    MaterialAlertDialogBuilder(this).setTitle("Не удалось подготовить Termux")
+                        .setMessage(e.message ?: "Проверьте установку Termux и разрешения.")
+                        .setPositiveButton("Понятно", null).show()
+                }
+            }
+            localBuildButton.setOnClickListener {
+                val index = radioGroup.checkedRadioButtonId.let { id ->
+                    (0 until radioGroup.childCount).firstOrNull { radioGroup.getChildAt(it).id == id } ?: 0
+                }
+                val target = targets[index]
+                if (target != "android-apk" && target != "android-aab") {
+                    Toast.makeText(this, "Локально на ARM64 сейчас поддерживаются APK и AAB. Для остальных целей используйте облачную сборку.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                val projectRoot = repo ?: source?.parentFile
+                if (projectRoot == null) {
+                    Toast.makeText(this, "Не удалось определить папку проекта. Откройте файл из папки проекта.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                try {
+                    saveAllDirty()
+                    LocalTermuxBuild.start(this, projectRoot, target)
+                    dialog.dismiss()
+                } catch (e: Exception) {
+                    MaterialAlertDialogBuilder(this).setTitle("Локальная сборка не запущена")
+                        .setMessage(e.message ?: "Проверьте Termux и разрешения.")
+                        .setPositiveButton("Понятно", null).show()
+                }
+            }
             repoButton.setOnClickListener {
                 dialog.dismiss()
                 showGitMenu()
