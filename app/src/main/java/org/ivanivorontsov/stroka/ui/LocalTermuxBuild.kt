@@ -98,6 +98,12 @@ object LocalTermuxBuild {
         publishDownload(context, "build-local.sh", "text/x-shellscript") { out ->
             context.assets.open("build-local.sh").use { it.copyTo(out) }
         }
+        publishDownload(context, "stroka_runner.py", "text/x-python") { out ->
+            context.assets.open("stroka_runner.py").use { it.copyTo(out) }
+        }
+        publishDownload(context, "stroka_tkinter.py", "text/x-python") { out ->
+            context.assets.open("stroka_tkinter.py").use { it.copyTo(out) }
+        }
         publishDownload(context, "setup-termux.sh", "text/x-shellscript") { out ->
             context.assets.open("setup-termux.sh").use { it.copyTo(out) }
         }
