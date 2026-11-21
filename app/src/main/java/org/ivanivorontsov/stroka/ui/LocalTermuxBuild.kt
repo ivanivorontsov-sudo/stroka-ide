@@ -22,6 +22,7 @@ object LocalTermuxBuild {
     private const val RUN_COMMAND_ARGUMENTS = "com.termux.RUN_COMMAND_ARGUMENTS"
     private const val RUN_COMMAND_WORKDIR = "com.termux.RUN_COMMAND_WORKDIR"
     private const val RUN_COMMAND_BACKGROUND = "com.termux.RUN_COMMAND_BACKGROUND"
+    private const val RUN_COMMAND_SESSION_ACTION = "com.termux.RUN_COMMAND_SESSION_ACTION"
 
     data class Staged(val zipPath: String, val runnerPath: String)
 
@@ -35,7 +36,8 @@ object LocalTermuxBuild {
             putExtra(RUN_COMMAND_PATH, "/data/data/com.termux/files/usr/bin/bash")
             putExtra(RUN_COMMAND_ARGUMENTS, arrayOf("/sdcard/Download/StrokaBuild/setup-termux.sh"))
             putExtra(RUN_COMMAND_WORKDIR, "/data/data/com.termux/files/home")
-            putExtra(RUN_COMMAND_BACKGROUND, true)
+            putExtra(RUN_COMMAND_BACKGROUND, false)
+            putExtra(RUN_COMMAND_SESSION_ACTION, "0")
         }
         try {
             context.startService(intent)
@@ -57,12 +59,13 @@ object LocalTermuxBuild {
             putExtra(RUN_COMMAND_PATH, "/data/data/com.termux/files/usr/bin/bash")
             putExtra(RUN_COMMAND_ARGUMENTS, arrayOf(staged.runnerPath, staged.zipPath, target))
             putExtra(RUN_COMMAND_WORKDIR, "/data/data/com.termux/files/home")
-            putExtra(RUN_COMMAND_BACKGROUND, false)
-            putExtra(RUN_COMMAND_SESSION_ACTION, "0")
+            // Background execution avoids Android's restriction on launching a
+            // terminal Activity from another app's background service.
+            putExtra(RUN_COMMAND_BACKGROUND, true)
         }
         try {
             context.startService(intent)
-            Toast.makeText(context, "Команда передана Termux в фоновом режиме. Журнал: Загрузки/StrokaBuild/output/build.log. APK появится там после завершения.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Команда передана Termux. Журнал: Загрузки/StrokaBuild/output/build.log. APK появится там после завершения.", Toast.LENGTH_LONG).show()
         } catch (e: SecurityException) {
             throw IllegalStateException(
                 "Android заблокировал запуск Termux. Разрешите для «Строки» дополнительное разрешение «Запуск команд в Termux», а в Termux включите allow-external-apps=true.",
