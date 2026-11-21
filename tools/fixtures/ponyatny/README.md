@@ -1,0 +1,3 @@
+# Pонятный build fixture
+
+Minimal program used to smoke-test compilation, standard-library imports, standalone Node output, web packaging, Android WebView packaging, and Bun native cross-target builds.
