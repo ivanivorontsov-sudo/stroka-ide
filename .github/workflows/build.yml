@@ -73,8 +73,46 @@ jobs:
           path: python-calculator-smoke.apk
           retention-days: 7
 
+  ponyatny-compiler-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check bundled compiler syntax
+        run: node --check app/src/main/assets/ponyatny/yadro.js
+      - name: Compile and run a Cyrillic Pонятный program
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const pony = require("./app/src/main/assets/ponyatny/yadro.js");
+          const output = [];
+          const errors = [];
+          const source = [
+            'пусть имя = "Иван"',
+            'пиши "Привет, " + имя',
+            'повтори 3 раза',
+            '    пиши "Понятный работает"',
+            'конец'
+          ].join("\n");
+          pony.run(source, {
+            file: "smoke.pon",
+            write: value => output.push(String(value)),
+            writeErr: value => errors.push(String(value)),
+            ask: () => "Тест",
+            maxSteps: 10000,
+            guard: true
+          });
+          assert.equal(errors.length, 0, errors.join("\n"));
+          assert.match(output.join(""), /Привет, Иван/);
+          assert.equal((output.join("").match(/Понятный работает/g) || []).length, 3);
+          console.log("Pонятный 2.5 compile + execute smoke test: passed");
+          NODE
+
   build:
-    needs: python-apk-smoke
+    needs: [python-apk-smoke, ponyatny-compiler-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
