@@ -32,11 +32,18 @@ object LocalBuildEngine {
 
     fun classify(project: File): ProjectKind {
         if (!project.isDirectory) return ProjectKind.UNKNOWN
-        if (File(project, "settings.gradle").isFile ||
-            File(project, "settings.gradle.kts").isFile ||
-            File(project, "build.gradle").isFile ||
-            File(project, "build.gradle.kts").isFile
-        ) return ProjectKind.ANDROID_GRADLE
+        // A Gradle Android project may keep its only build file in an app/
+        // module (common for single-module projects and imported source trees).
+        // Inspect the root and immediate module directories before considering
+        // index.html, otherwise an Android project containing web assets is
+        // incorrectly sent to the static-site packager.
+        val hasGradleBuild = project.walkTopDown().maxDepth(2).any { file ->
+            file.isFile && (file.name == "settings.gradle" ||
+                file.name == "settings.gradle.kts" ||
+                file.name == "build.gradle" ||
+                file.name == "build.gradle.kts")
+        }
+        if (hasGradleBuild) return ProjectKind.ANDROID_GRADLE
         if (File(project, "index.html").isFile || File(project, "index.htm").isFile) {
             return ProjectKind.STATIC_WEBSITE
         }
