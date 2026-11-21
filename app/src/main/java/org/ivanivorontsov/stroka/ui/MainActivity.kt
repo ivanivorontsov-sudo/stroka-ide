@@ -1213,8 +1213,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val scroll = ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
-            addView(content, ScrollView.LayoutParams(
-                ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT
+            addView(content, ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ))
         }
         val dialog = MaterialAlertDialogBuilder(this)
