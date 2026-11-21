@@ -55,7 +55,7 @@ object LocalBuildEngine {
             "Для локальной сборки сайта нужен index.html или index.htm в корне проекта."
         }
 
-        val ignored = setOf(".git", ".gradle", ".idea", ".kotlin", "node_modules")
+        val ignored = setOf(".git", ".gradle", ".idea", ".kotlin", "node_modules", "build", "out", ".cache", ".next", "coverage", ".venv", "venv")
         val output = File(context.cacheDir, "stroka-static-site.zip")
         var count = 0
         var total = 0L
@@ -63,10 +63,13 @@ object LocalBuildEngine {
             root.walkTopDown()
                 .onEnter { directory ->
                     directory == root || (directory.name !in ignored &&
-                        !directory.name.startsWith(".") &&
+                        (!directory.name.startsWith(".") || directory.name == ".well-known") &&
                         directory.canonicalPath.startsWith(root.path + File.separator))
                 }
-                .filter { it.isFile }
+                .filter { it.isFile && !it.name.equals(".env", true) && !it.name.startsWith(".env.") &&
+                    !it.name.endsWith(".jks", true) && !it.name.endsWith(".keystore", true) &&
+                    !it.name.endsWith(".p12", true) && !it.name.endsWith(".pem", true) &&
+                    it.name != "id_rsa" && it.name != "id_ed25519" }
                 .forEach { file ->
                     val canonical = file.canonicalFile
                     require(canonical.path.startsWith(root.path + File.separator)) {
