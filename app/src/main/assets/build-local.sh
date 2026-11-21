@@ -38,7 +38,7 @@ if [ -z "$ROOT" ]; then
   cp "$PYFILE" "$APP/app/src/main/python/main.py"
   cp -R "$PYROOT"/. "$APP/app/src/main/assets/"
   cp "$PYFILE" "$APP/app/src/main/assets/main.py"
-  if [ -f "$PYROOT/requirements.txt" ]; then cp "$PYROOT/requirements.txt" "$APP/requirements.txt"; else : > "$APP/requirements.txt"; fi
+  if [ -f "$PYROOT/requirements.txt" ]; then cp "$PYROOT/requirements.txt" "$APP/app/requirements.txt"; else : > "$APP/app/requirements.txt"; fi
   [ -f "$DOWNLOADS/stroka_runner.py" ] || fail "Не найден stroka_runner.py. Обновите приложение «Строка»."
   [ -f "$DOWNLOADS/stroka_tkinter.py" ] || fail "Не найден stroka_tkinter.py. Обновите приложение «Строка»."
   cp "$DOWNLOADS/stroka_runner.py" "$APP/app/src/main/python/"
