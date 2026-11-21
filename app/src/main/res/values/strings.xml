@@ -44,4 +44,11 @@
     <string name="close_current">Закрыть вкладку</string>
     <string name="about">О программе</string>
     <string name="mic_permission">Для голосового ввода нужен доступ к микрофону</string>
+    <string name="build_apk">Собрать APK</string>
+    <string name="build_exe">Собрать EXE для Windows</string>
+    <string name="build_folder">Папка для готовых файлов</string>
+    <string name="ai_chat">Чат с ИИ</string>
+    <string name="ponyatny_help">Синтаксис языка «Понятный»</string>
+    <string name="self_tutor">Тренажёр программирования</string>
 </resources>
+

@@ -31,6 +31,13 @@ class Prefs(ctx: Context) {
     var voiceLang: String
         get() = sp.getString("voice_lang", "ru") ?: "ru"
         set(v) = sp.edit().putString("voice_lang", v).apply()
+    var aiBase: String
+        get() = sp.getString("ai_base", "") ?: ""
+        set(v) = sp.edit().putString("ai_base", v).apply()
+    var aiModel: String
+        get() = sp.getString("ai_model", "deepseek-chat") ?: "deepseek-chat"
+        set(v) = sp.edit().putString("ai_model", v).apply()
+    val aiAutofix: Boolean get() = sp.getBoolean("ai_autofix", true)
     val gitUser: String get() = sp.getString("git_user", "") ?: ""
     val gitName: String get() = sp.getString("git_name", "") ?: ""
     val gitEmail: String get() = sp.getString("git_email", "") ?: ""
@@ -49,6 +56,10 @@ class Prefs(ctx: Context) {
     var activeDoc: Int
         get() = sp.getInt("active_doc", 0)
         set(v) = sp.edit().putInt("active_doc", v).apply()
+
+    var buildOutput: String
+        get() = sp.getString("build_output_uri", "") ?: ""
+        set(v) = sp.edit().putString("build_output_uri", v).apply()
 
     var expanded: Set<String>
         get() = sp.getStringSet("tree_expanded", emptySet()) ?: emptySet()

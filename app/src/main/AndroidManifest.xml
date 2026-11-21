@@ -4,10 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
 
     <queries>
-        <package android:name="com.termux" />
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
@@ -43,19 +41,21 @@
         </activity>
 
         <activity
-            android:name=".ui.SelfTutorActivity"
-            android:exported="false"
-            android:label="Самоучитель программирования" />
-
-        <activity
-            android:name=".ui.VisualBuilderActivity"
-            android:exported="false"
-            android:label="Визуальный конструктор" />
-
-        <activity
             android:name=".ui.SettingsActivity"
             android:exported="false"
             android:label="@string/settings"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.AiChatActivity"
+            android:exported="false"
+            android:label="@string/ai_chat"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.SelfTutorActivity"
+            android:exported="false"
+            android:label="@string/self_tutor"
             android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

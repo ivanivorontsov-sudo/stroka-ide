@@ -170,6 +170,22 @@
     const isLetter = (c) => c === "_" || LETTER.test(c);
     const isDigit = (c) => c >= "0" && c <= "9";
     const push = (t, v, k, extra) => tokens.push(Object.assign({ t, v, line, col: colOf(k), file }, extra || {}));
+    const QUOTES = {
+      "\"": { close: ["\""], nest: false },
+      "'": { close: ["'"], nest: false },
+      "`": { close: ["`"], nest: false },
+      "«": { close: ["»"], nest: true },
+      "‹": { close: ["›"], nest: true },
+      "„": { close: ["“", "”"], nest: false },
+      "‚": { close: ["‘", "’"], nest: false },
+      "“": { close: ["”"], nest: false },
+      "‘": { close: ["’"], nest: false },
+      "”": { close: ["”"], nest: false },
+      "’": { close: ["’"], nest: false }
+    };
+    const QUOTE_ESCAPES = { n: "\n", t: "\t", r: "\r", "\\": "\\", "{": "{", "}": "}" };
+    Object.keys(QUOTES).forEach((q) => { QUOTE_ESCAPES[q] = q; });
+    "»›".split("").forEach((q) => { QUOTE_ESCAPES[q] = q; });
     while (i < src.length) {
       const c = src[i];
       const start = i;
@@ -178,17 +194,19 @@
       if (c === "\n") { push("nl", undefined, i); line++; i++; lineStart = i; continue; }
       if (c === " " || c === "\t" || c === "\r" || c === "\uFEFF") { i++; continue; }
       if (c === "#" || (c === "/" && src[i + 1] === "/")) { while (i < src.length && src[i] !== "\n") i++; continue; }
-      if (c === '"' || c === "«") {
-        const close = c === '"' ? '"' : "»";
+      const quote = QUOTES[c];
+      if (quote) {
+        const closers = quote.close;
+        const nest = quote.nest;
         const parts = [];
         let s = "";
         let depthQ = 0;
+        const isCloser = (ch) => closers.indexOf(ch) !== -1;
+        const needClose = "строка не закрыта кавычкой: открыта кавычкой «" + c + "», закрыть её нужно кавычкой «" + closers.join("» или «") + "»";
         i++;
-        while (i < src.length && !(src[i] === close && depthQ === 0)) {
+        while (i < src.length && !(isCloser(src[i]) && depthQ === 0)) {
           const ch = src[i];
-          if (ch === "\n") err("строка не закрыта кавычкой", start);
-          if (c === "«" && ch === "«") depthQ++;
-          if (c === "«" && ch === "»") depthQ--;
+          if (ch === "\n") err(needClose, start);
           if (BIDI.test(ch) || INVISIBLE.test(ch)) err("внутри строки невидимый символ " + hex4(ch) + (BIDI.test(ch) ? " (направление текста, атака Trojan Source, CVE-2021-42574)" : "") + ". Если он действительно нужен, напишите \\u{" + ch.codePointAt(0).toString(16).toUpperCase() + "}", i);
           if (ch === "\\" && src[i + 1] === "u") {
             const m = /^\\u\{([0-9A-Fa-f]{1,6})\}/.exec(src.slice(i, i + 10));
@@ -200,12 +218,13 @@
           }
           if (ch === "\\") {
             const e = src[i + 1];
-            const map = { n: "\n", t: "\t", r: "\r", '"': '"', "\\": "\\", "{": "{", "}": "}", "«": "«", "»": "»" };
-            if (!Object.prototype.hasOwnProperty.call(map, e)) err("непонятная последовательность «\\" + (e || "") + "» в строке", i);
-            s += map[e];
+            if (!Object.prototype.hasOwnProperty.call(QUOTE_ESCAPES, e)) err("непонятная последовательность «\\" + (e || "") + "» в строке", i);
+            s += QUOTE_ESCAPES[e];
             i += 2;
             continue;
           }
+          if (nest && ch === c) depthQ++;
+          if (nest && isCloser(ch)) depthQ--;
           if (ch === "{") {
             let depth = 1, j = i + 1, inner = "";
             while (j < src.length && src[j] !== "\n") {
@@ -224,7 +243,7 @@
           s += ch;
           i++;
         }
-        if (i >= src.length) err("строка не закрыта кавычкой", start);
+        if (i >= src.length) err(needClose, start);
         i++;
         if (parts.length === 0) push("str", s, start);
         else { if (s) parts.push(s); push("tmpl", undefined, start, { parts }); }
@@ -267,7 +286,7 @@
       const uni = { "≠": "!=", "≤": "<=", "≥": ">=", "×": "*", "÷": "/" };
       if (uni[c]) { push("op", uni[c], i); i++; continue; }
       const cp = src.codePointAt(i);
-      err("непонятный символ «" + String.fromCodePoint(cp) + "» (" + hex4(String.fromCodePoint(cp)) + ")" + (c === "'" ? ". Строки пишутся в двойных кавычках \"…\" или «ёлочках»" : c === ";" ? ". Точка с запятой не нужна: каждая команда пишется с новой строки" : ""));
+      err("непонятный символ «" + String.fromCodePoint(cp) + "» (" + hex4(String.fromCodePoint(cp)) + ")" + (c === "»" || c === "›" ? ". Это закрывающая кавычка, ею строку не открывают. Откройте парной кавычкой «…» или ‹…›, либо напишите \"…\", „…“ или “…”" : c === ";" ? ". Точка с запятой не нужна: каждая команда пишется с новой строки" : ""));
     }
     push("nl", undefined, i);
     push("eof", undefined, i);

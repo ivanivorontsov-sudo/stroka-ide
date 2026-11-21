@@ -1,0 +1,32 @@
+package org.ivanivorontsov.stroka.build
+
+import org.eclipse.jdt.internal.compiler.batch.Main
+import java.io.File
+import java.io.PrintWriter
+import java.io.StringWriter
+
+object JavaCompile {
+    fun compile(sources: List<File>, bootclasspath: File, outDir: File) {
+        if (sources.isEmpty()) throw BuildException("Нет Java-исходников для компиляции.")
+        outDir.mkdirs()
+        val out = StringWriter()
+        val err = StringWriter()
+        val main = Main(PrintWriter(out, true), PrintWriter(err, true), false, null, null)
+        val args = ArrayList<String>()
+        args.addAll(listOf(
+            "-source", "1.8",
+            "-target", "1.8",
+            "-encoding", "UTF-8",
+            "-bootclasspath", bootclasspath.absolutePath,
+            "-d", outDir.absolutePath,
+            "-nowarn",
+            "-g:none"
+        ))
+        sources.forEach { args.add(it.absolutePath) }
+        val ok = main.compile(args.toTypedArray())
+        if (!ok) {
+            val msg = (err.toString() + out.toString()).trim().ifBlank { "компилятор Java вернул ошибку без текста" }
+            throw BuildException("Компилятор Java не смог собрать программу.\n$msg")
+        }
+    }
+}

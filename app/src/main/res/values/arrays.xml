@@ -21,10 +21,10 @@
         <item>tab</item>
     </string-array>
     <string-array name="engine_names">
-        <item>Авто: Google онлайн, офлайн — Android / Vosk</item>
-        <item>Системный сервис Google / Android</item>
-        <item>Android на устройстве (офлайн, Android 12+)</item>
-        <item>Vosk (офлайн)</item>
+        <item>Авто: сеть — Google, иначе офлайн</item>
+        <item>Системное распознавание (SpeechRecognizer, ru-RU)</item>
+        <item>Офлайн Android (Android 12+, если есть модель)</item>
+        <item>Только Vosk (офлайн)</item>
     </string-array>
     <string-array name="engine_values">
         <item>auto</item>
@@ -40,4 +40,14 @@
         <item>ru</item>
         <item>en</item>
     </string-array>
-    <string-array name="voice_mode_names"><item>Блоки кода</item><item>Блоки и полные конструкции</item><item>Выключено — обычная диктовка</item></string-array>\n    <string-array name="voice_mode_values"><item>blocks</item><item>constructs</item><item>off</item></string-array>\n</resources>
+    <string-array name="voice_mode_names">
+        <item>Блоки кода</item>
+        <item>Блоки и полные конструкции</item>
+        <item>Выключено — обычная диктовка</item>
+    </string-array>
+    <string-array name="voice_mode_values">
+        <item>blocks</item>
+        <item>constructs</item>
+        <item>off</item>
+    </string-array>
+</resources>

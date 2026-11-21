@@ -3,8 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/action_undo" android:icon="@drawable/ic_undo" android:title="@string/undo" app:showAsAction="always" />
     <item android:id="@+id/action_redo" android:icon="@drawable/ic_redo" android:title="@string/redo" app:showAsAction="always" />
-    <item android:id="@+id/action_build" android:icon="@drawable/ic_build" android:title="Собрать APK / EXE" app:showAsAction="always" />
     <item android:id="@+id/action_run" android:icon="@drawable/ic_play" android:title="@string/run" app:showAsAction="always" />
+    <item android:id="@+id/action_build_apk" android:title="@string/build_apk" app:showAsAction="never" />
+    <item android:id="@+id/action_build_exe" android:title="@string/build_exe" app:showAsAction="never" />
+    <item android:id="@+id/action_build_folder" android:title="@string/build_folder" app:showAsAction="never" />
+    <item android:id="@+id/action_ai" android:title="@string/ai_chat" app:showAsAction="never" />
+    <item android:id="@+id/action_ponyatny_help" android:title="@string/ponyatny_help" app:showAsAction="never" />
     <item android:id="@+id/action_save" android:icon="@drawable/ic_save" android:title="@string/save" app:showAsAction="never" />
     <item android:id="@+id/action_find" android:title="@string/find_replace" app:showAsAction="never" />
     <item android:id="@+id/action_goto" android:title="@string/goto_line" app:showAsAction="never" />
@@ -16,11 +20,9 @@
     <item android:id="@+id/action_comment" android:title="@string/toggle_comment" app:showAsAction="never" />
     <item android:id="@+id/action_wrap" android:checkable="true" android:title="@string/word_wrap" app:showAsAction="never" />
     <item android:id="@+id/action_theme" android:checkable="true" android:title="@string/toggle_theme" app:showAsAction="never" />
-    <item android:id="@+id/action_self_tutor" android:title="Самоучитель" app:showAsAction="never" />
-    <item android:id="@+id/action_ponyatny_help" android:title="Синтаксис языка «Понятный»" app:showAsAction="never" />
     <item android:id="@+id/action_voice_help" android:title="@string/voice_commands" app:showAsAction="never" />
     <item android:id="@+id/action_close" android:title="@string/close_current" app:showAsAction="never" />
     <item android:id="@+id/action_settings" android:title="@string/settings" app:showAsAction="never" />
+    <item android:id="@+id/action_tutor" android:title="@string/self_tutor" app:showAsAction="never" />
     <item android:id="@+id/action_about" android:title="@string/about" app:showAsAction="never" />
-    <item android:id="@+id/action_copy_menu" android:title="Копировать пункты меню" app:showAsAction="never" />
 </menu>

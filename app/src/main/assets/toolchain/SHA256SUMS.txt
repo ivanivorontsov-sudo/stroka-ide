@@ -1,0 +1,5 @@
+db737b3bbee99dd8a9e56108cc05d032597874d3f8ac557a69f3c5de5efaf57f  app/src/main/jniLibs/arm64-v8a/libaapt2.so
+3fd87420929ca4c590748106f5a9b7cb81324341c1e90d4fea3c09c941c72618  app/src/main/jniLibs/arm64-v8a/libzipalign.so
+16810d95aa6d4ebf5cd57775a74a2811bd0f848c6816ed89e3b3ee0845f857c3  app/src/main/jniLibs/x86_64/libaapt2.so
+fe0771069227b1b4912eedf40b93baa8d55b123fd34265a0a742d30598e91adb  app/src/main/jniLibs/x86_64/libzipalign.so
+4566663c3876e022b4fa4ced8c8697c4ab1688267f090114fd92d027b32e619b  app/src/main/assets/toolchain/android.jar

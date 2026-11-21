@@ -40,12 +40,26 @@ object Highlighter {
         return k
     }
 
+    private fun closeQuote(q: Char): String = when (q) {
+        '«' -> "»"
+        '»' -> "»"
+        '„' -> "“”"
+        '“' -> "”"
+        '”' -> "”"
+        '‹' -> "›"
+        '›' -> "›"
+        '‘' -> "’"
+        '’' -> "’"
+        else -> q.toString()
+    }
+
     private fun skipString(t: CharSequence, i: Int, end: Int, q: Char, multiline: Boolean): Int {
         var k = i + 1
+        val closers = closeQuote(q)
         while (k < end) {
             val c = t[k]
             if (c == '\\') { k += 2; continue }
-            if (c == q) return k + 1
+            if (c in closers) return k + 1
             if (c == '\n' && !multiline) return k
             k++
         }

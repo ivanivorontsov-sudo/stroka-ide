@@ -11,10 +11,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.appcompat.widget.AppCompatTextView
 
-/**
- * Offline programming tutor built around worked examples, retrieval prompts,
- * learner self-explanation, faded scaffolding and explanatory feedback.
- */
 class SelfTutorActivity : AppCompatActivity() {
     private data class Lesson(val title: String, val goal: String, val example: String, val question: String, val expected: List<String>, val hint: String, val why: String)
     private val lessons = listOf(

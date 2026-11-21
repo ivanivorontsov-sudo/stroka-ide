@@ -70,11 +70,6 @@ def run(code, filename, cwd, cb):
             os.chdir(cwd)
             sys.path.insert(0, cwd)
         sys.argv = [filename]
-        try:
-            from stroka_tkinter import install as _install_tk_preview
-            _install_tk_preview(cb)
-        except Exception:
-            pass
         g = {"__name__": "__main__", "__file__": filename, "__builtins__": builtins}
         exec(compile(code, filename, "exec"), g)
     except SystemExit as e:

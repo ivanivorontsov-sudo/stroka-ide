@@ -1,0 +1,3 @@
+aapt2 и zipalign — статическая сборка инструментов Android Open Source (Apache License 2.0),
+релиз 35.0.2 проекта https://github.com/lzhiyong/android-sdk-tools (Apache 2.0).
+android.jar — платформа Android API 35 из Android SDK (Android Open Source, Apache 2.0).

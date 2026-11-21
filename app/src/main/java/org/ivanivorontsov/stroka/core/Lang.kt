@@ -9,7 +9,6 @@ enum class Lang(
 ) {
     PLAIN("Текст", listOf("txt", "log", "cfg", "ini", "toml", "yml", "yaml", "gitignore"), null, null, null),
     PYTHON("Python", listOf("py", "pyw"), "#", null, null),
-    PONYATNY("Понятный", listOf("pon"), "#", null, null),
     JAVASCRIPT("JavaScript", listOf("js", "mjs", "cjs", "jsx"), "//", "/*", "*/"),
     TYPESCRIPT("TypeScript", listOf("ts", "tsx", "mts"), "//", "/*", "*/"),
     HTML("HTML", listOf("html", "htm", "xml", "svg", "xhtml"), null, "<!--", "-->"),
@@ -21,7 +20,8 @@ enum class Lang(
     JSON("JSON", listOf("json", "jsonc"), null, null, null),
     MARKDOWN("Markdown", listOf("md", "markdown"), null, null, null),
     GDSCRIPT("GDScript", listOf("gd"), "#", null, null),
-    ASM6502("6502 asm", listOf("asm", "s", "a65", "inc", "dasm"), ";", null, null);
+    ASM6502("6502 asm", listOf("asm", "s", "a65", "inc", "dasm"), ";", null, null),
+    PONYATNY("Понятный", listOf("pon", "понятный"), "#", null, null);
 
     val runnable: Boolean get() = this == PYTHON || this == JAVASCRIPT || this == HTML || this == PONYATNY
 

@@ -44,10 +44,15 @@
                 android:text="@string/preview" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
-        <Space
+        <TextView
+            android:id="@+id/panelStatus"
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:paddingStart="8dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
 
         <ImageButton
             android:id="@+id/panelStop"
@@ -73,20 +78,6 @@
             android:contentDescription="@string/close"
             android:src="@drawable/ic_close" />
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/panelStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="34dp"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
-        android:ellipsize="end"
-        android:maxLines="2"
-        android:textSize="11sp"
-        android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
 
     <FrameLayout
         android:layout_width="match_parent"

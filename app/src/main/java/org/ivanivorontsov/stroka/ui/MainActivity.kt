@@ -26,7 +26,6 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.webkit.ConsoleMessage
-import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -77,6 +76,11 @@ import org.ivanivorontsov.stroka.git.GitOps
 import org.ivanivorontsov.stroka.run.JsRunner
 import org.ivanivorontsov.stroka.run.PythonRunner
 import org.ivanivorontsov.stroka.voice.VoiceInput
+import org.ivanivorontsov.stroka.build.BuildCoordinator
+import org.ivanivorontsov.stroka.build.BuildException
+import org.ivanivorontsov.stroka.build.OneFileBuild
+import org.ivanivorontsov.stroka.build.Toolchain
+import org.ivanivorontsov.stroka.build.UserKey
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -114,7 +118,6 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private lateinit var voiceLast: TextView
     private lateinit var voiceLangBtn: Button
     private lateinit var voiceModeBtn: Button
-    private lateinit var voiceBuilderBtn: Button
     private var voiceLiteralMode: String? = null
 
     private val docs = ArrayList<Doc>()
@@ -139,17 +142,16 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private val findTask = Runnable { updateFindMatches() }
 
     private val openTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) addSafRoot(uri) }
-    private val visualBuilderResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val html = result.data?.getStringExtra("html") ?: return@registerForActivityResult
-            if (docs.getOrNull(current)?.lang == Lang.HTML) { editor.selectAll(); editor.insertText(html) }
-            else {
-                val file = File(projectsDir, "website.html")
-                file.writeText(html)
-                openRef(DocRef.Local(file.absolutePath))
-            }
-            toast("Код из конструктора вставлен в редактор")
-        }
+    private var pendingBuild: String? = null
+    private val openBuildFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            prefs.buildOutput = uri.toString()
+            toast("Папка для сборки сохранена")
+            val kind = pendingBuild
+            pendingBuild = null
+            if (kind != null) startBuild(kind)
+        } else pendingBuild = null
     }
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) startVoice() else toast(getString(R.string.mic_permission))
@@ -210,7 +212,6 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         voiceLast = findViewById(R.id.voiceLast)
         voiceLangBtn = findViewById(R.id.voiceLang)
         voiceModeBtn = findViewById(R.id.voiceMode)
-        voiceBuilderBtn = findViewById(R.id.voiceBuilder)
         editor.listener = this
         extraKeys.listener = this
     }
@@ -249,7 +250,6 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             R.id.action_undo -> editor.undo()
             R.id.action_redo -> editor.redo()
             R.id.action_run -> runCurrent()
-            R.id.action_build -> showBuildCenter()
             R.id.action_save -> saveCurrent(silent = false)
             R.id.action_find -> showFind(null)
             R.id.action_goto -> askGoToLine()
@@ -262,12 +262,15 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             R.id.action_wrap -> { prefs.wrap = !prefs.wrap; editor.setWrap(prefs.wrap); updateMenuChecks() }
             R.id.action_theme -> toggleTheme()
             R.id.action_voice_help -> showVoiceHelp()
-            R.id.action_ponyatny_help -> showPonyatnyHelp()
-            R.id.action_self_tutor -> startActivity(Intent(this, SelfTutorActivity::class.java))
             R.id.action_close -> if (current >= 0) closeDoc(current)
             R.id.action_settings -> startActivity(Intent(this, SettingsActivity::class.java))
             R.id.action_about -> showAbout()
-            R.id.action_copy_menu -> copyText(toolbar.menu.let { menu -> (0 until menu.size()).mapNotNull { i -> menu.getItem(i).title?.toString() }.filter { it.isNotBlank() && it != "Копировать пункты меню" }.joinToString("\n") }, "Пункты меню скопированы")
+            R.id.action_tutor -> startActivity(Intent(this, SelfTutorActivity::class.java))
+            R.id.action_build_apk -> requestBuild("apk")
+            R.id.action_build_exe -> requestBuild("exe")
+            R.id.action_build_folder -> pickBuildFolder()
+            R.id.action_ai -> openAiChat()
+            R.id.action_ponyatny_help -> showPonyatnyHelp()
             else -> return false
         }
         return true
@@ -301,6 +304,15 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     override fun onResume() {
+        val pending = AiBridge.pendingCode
+        if (pending != null && current in docs.indices) {
+            AiBridge.pendingCode = null
+            docs[current].text = pending
+            docs[current].dirty = true
+            editor.setText(pending)
+            toast("Код из чата ИИ вставлен в файл")
+        }
+
         super.onResume()
         applyPrefs()
     }
@@ -984,11 +996,11 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         when (d.lang) {
             Lang.PYTHON -> runPython(code, d.name, cwd)
             Lang.JAVASCRIPT -> runJs(code, d.name)
-            Lang.PONYATNY -> runJs(code, d.name, collectPonyatnyModules(cwd, d.name))
+            Lang.PONYATNY -> runPonyatny(code, d.name)
             Lang.HTML, Lang.CSS, Lang.MARKDOWN -> openPreview()
             else -> {
                 showPanel(false)
-                appendConsole("Запуск ${d.lang.title} прямо на телефоне не поддерживается. Запускаются Python, JavaScript, HTML и Markdown (просмотр).\n", Kind.INFO)
+                appendConsole("Запуск ${d.lang.title} прямо на телефоне не поддерживается. Запускаются Python, JavaScript, «Понятный», HTML и Markdown (просмотр).\n", Kind.INFO)
             }
         }
     }
@@ -1002,17 +1014,6 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         inputRow.visibility = View.VISIBLE
         python.run(code, name, cwd, object : PythonRunner.Sink {
             override fun onOutput(text: String, error: Boolean) = appendConsole(text, if (error) Kind.ERR else Kind.OUT)
-            override fun onPreview(html: String) {
-                panel.visibility = View.VISIBLE
-                panelTabs.check(R.id.tabPreview)
-                consoleBox.visibility = View.GONE
-                previewBox.visibility = View.VISIBLE
-                panelStatus.text = "Окно Python · Android preview"
-                ensurePreview().apply {
-                    addJavascriptInterface(PythonPreviewBridge(), "Stroka")
-                    loadDataWithBaseURL("https://stroka.local/", html, "text/html", "utf-8", null)
-                }
-            }
             override fun onInputRequested(prompt: String) {
                 panelStatus.text = "Ждёт ввода…"
                 consoleInput.requestFocus()
@@ -1026,11 +1027,11 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         })
     }
 
-    private fun runJs(code: String, name: String, modules: Map<String, String> = emptyMap()) {
+    private fun runJs(code: String, name: String) {
         if (python.isRunning || js.isRunning) { toast("Программа уже выполняется"); return }
         showPanel(false)
-        appendConsole(if (name.endsWith(".pon", ignoreCase = true)) "▶ Понятный $name\n" else "▶ js $name\n", Kind.INFO)
-        panelStatus.text = if (name.endsWith(".pon", ignoreCase = true)) "Компилятор «Понятный» выполняется…" else "JavaScript выполняется…"
+        appendConsole("▶ js $name\n", Kind.INFO)
+        panelStatus.text = "JavaScript выполняется…"
         js.run(code, name, object : JsRunner.Sink {
             override fun onOutput(text: String, error: Boolean) = appendConsole(text, if (error) Kind.ERR else Kind.OUT)
             override fun onPrompt(message: String, default: String, result: (String?) -> Unit) {
@@ -1046,28 +1047,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 panelStatus.text = "Завершено: код $code, $millis мс"
                 appendConsole("■ код выхода $code ($millis мс)\n", if (code == 0) Kind.INFO else Kind.ERR)
             }
-        }, modules)
-    }
-
-    private fun collectPonyatnyModules(rootPath: String, currentName: String): Map<String, String> {
-        val root = File(rootPath)
-        if (!root.isDirectory) return emptyMap()
-        val result = linkedMapOf<String, String>()
-        var totalBytes = 0L
-        root.walkTopDown().maxDepth(6)
-            .onEnter { dir -> dir == root || (!dir.name.startsWith(".") && dir.name !in setOf("build", "node_modules", ".gradle", "target", "dist")) }
-            .filter { it.isFile && it.extension.equals("pon", ignoreCase = true) && it.name != currentName }
-            .take(100)
-            .forEach { file ->
-                val size = file.length()
-                if (size in 1..262144 && totalBytes + size <= 1_500_000L) {
-                    try {
-                        result[file.relativeTo(root).invariantSeparatorsPath] = file.readText()
-                        totalBytes += size
-                    } catch (_: Exception) { }
-                }
-            }
-        return result
+        })
     }
 
     private fun stopRun() {
@@ -1076,13 +1056,6 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private inner class PythonPreviewBridge {
-        @JavascriptInterface
-        fun onUiEvent(event: String) {
-            python.provideUiEvent(event)
-        }
-    }
-
     private fun ensurePreview(): WebView {
         preview?.let { return it }
         val w = WebView(this)
@@ -1152,234 +1125,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     private fun loadPreview(target: Doc) {
         val w = ensurePreview()
-        w.removeJavascriptInterface("Stroka")
         val base = (target.ref as? DocRef.Local)?.let { "file://" + File(it.path).parent + "/" }
         val html = if (target.lang == Lang.MARKDOWN) MarkdownHtml.render(target.text, isNight()) else target.text
         panelStatus.text = "Просмотр: ${target.name}"
         w.loadDataWithBaseURL(base, html, "text/html", "utf-8", null)
-    }
-
-    private fun showBuildCenter() {
-        val doc = docs.getOrNull(current)
-        val source = (doc?.ref as? DocRef.Local)?.let { File(it.path) }
-        val repo = git.findRepoRoot(source?.parentFile)
-        val token = SecureStore(this).get("github_token")
-        val options = listOf(
-            "Автоопределение проекта", "Android APK", "Android App Bundle (AAB)",
-            "Windows EXE", "Linux ELF (.NET)", "Сайт (HTML / Node.js)", "Python EXE (Windows)"
-        )
-        val targets = listOf("auto", "android-apk", "android-aab", "windows-exe", "linux-exe", "website", "python-exe")
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(8), dp(18), dp(12))
-        }
-        val explanation = TextView(this).apply {
-            textSize = 13f
-            text = "Есть два способа: облачная сборка через GitHub Actions или локальная ARM64-сборка APK/AAB через Termux. Для одного файла Python или «Понятный» выберите Android APK: Строка сама создаст проект, добавит runtime, компилятор и недостающие файлы, а также установит сборочное окружение при первом запуске. Для первого запуска откройте Termux, выполните termux-setup-storage и разрешите Строке дополнительное разрешение «Запуск команд в Termux». Затем нажмите «Подготовить локальную сборку»."
-            setPadding(0, 0, 0, dp(12))
-            setTextIsSelectable(true)
-        }
-        content.addView(explanation)
-        val targetLabel = TextView(this).apply {
-            text = "ЦЕЛЬ СБОРКИ"
-            textSize = 12f
-            setTypeface(typeface, Typeface.BOLD)
-            setPadding(0, 0, 0, dp(4))
-        }
-        content.addView(targetLabel)
-        val radioGroup = android.widget.RadioGroup(this).apply {
-            orientation = android.widget.RadioGroup.VERTICAL
-        }
-        options.forEachIndexed { index, label ->
-            val radio = android.widget.RadioButton(this).apply {
-                id = View.generateViewId()
-                text = label
-                textSize = 14f
-                setPadding(dp(2), dp(5), 0, dp(5))
-                isChecked = index == (if (doc?.lang == Lang.PYTHON || doc?.lang == Lang.PONYATNY) 1 else 0)
-            }
-            radioGroup.addView(radio, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ))
-        }
-        content.addView(radioGroup)
-        val divider = View(this).apply {
-            setBackgroundColor(0x33888888)
-        }
-        content.addView(divider, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
-            topMargin = dp(8); bottomMargin = dp(10)
-        })
-        val remote = repo?.let { org.eclipse.jgit.api.Git.open(it).use { g -> g.repository.config.getString("remote", "origin", "url") } }
-        val branch = repo?.let { runCatching { org.eclipse.jgit.api.Git.open(it).use { g -> g.repository.branch } }.getOrNull() }
-        val status = TextView(this).apply {
-            textSize = 13f
-            setLineSpacing(dp(3).toFloat(), 1f)
-            setTextIsSelectable(true)
-            text = buildString {
-                append("ТЕКУЩИЙ ПРОЕКТ\n")
-                append("Файл: ").append(doc?.name ?: "не выбран").append("\n")
-                append("Папка сборки: определяется по структуре проекта\n")
-                append("Git-репозиторий: ").append(repo?.name ?: "не найден").append("\n")
-                if (repo != null) {
-                    append("Адрес origin: ").append(remote ?: "не задан").append("\n")
-                    append("Ветка: ").append(branch ?: "не определена").append("\n")
-                }
-                append("GitHub-токен: ").append(if (token.isNullOrBlank()) "не настроен" else "сохранён на устройстве").append("\n\n")
-                append("Перед запуском нужен GitHub-репозиторий с origin, настроенный токен и отправленный в origin последний коммит. Незакоммиченные изменения не попадут в облачную сборку.")
-            }
-        }
-        content.addView(status)
-        val copyInstructions = Button(this).apply {
-            text = "Копировать описание и инструкцию"
-            isAllCaps = false
-            setOnClickListener {
-                copyText(explanation.text.toString() + "\n\n" + status.text.toString(), "Инструкция скопирована")
-            }
-        }
-        content.addView(copyInstructions, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(8) })
-        val localSetupButton = Button(this).apply {
-            text = "Подготовить локальную сборку (Termux)"
-            isAllCaps = false
-        }
-        content.addView(localSetupButton, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(8) })
-        val localBuildButton = Button(this).apply {
-            text = "Собрать APK / AAB прямо на телефоне"
-            isAllCaps = false
-        }
-        content.addView(localBuildButton, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
-        val repoButton = Button(this).apply {
-            text = "Подключить / выбрать репозиторий"
-            isAllCaps = false
-        }
-        content.addView(repoButton, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(8) })
-        val scroll = ScrollView(this).apply {
-            isFillViewport = false
-            clipToPadding = false
-            addView(content, ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ))
-        }
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Собрать проект")
-            .setView(scroll, dp(20), dp(4), dp(20), dp(4))
-            .setPositiveButton("Проверить и собрать", null)
-            .setNeutralButton("Настроить GitHub", null)
-            .setNegativeButton("Отмена", null)
-            .create()
-        dialog.setOnShowListener {
-            localSetupButton.setOnClickListener {
-                try {
-                    LocalTermuxBuild.prepare(this)
-                    Toast.makeText(this, "Установка среды запущена в Termux. Дождитесь сообщения «ГОТОВО».", Toast.LENGTH_LONG).show()
-                } catch (e: Exception) {
-                    MaterialAlertDialogBuilder(this).setTitle("Не удалось подготовить Termux")
-                        .setMessage(e.message ?: "Проверьте установку Termux и разрешения.")
-                        .setPositiveButton("Понятно", null).show()
-                }
-            }
-            localBuildButton.setOnClickListener {
-                val index = radioGroup.checkedRadioButtonId.let { id ->
-                    (0 until radioGroup.childCount).firstOrNull { radioGroup.getChildAt(it).id == id } ?: 0
-                }
-                val target = targets[index]
-                if (target != "android-apk" && target != "android-aab") {
-                    Toast.makeText(this, "Локально на ARM64 сейчас поддерживаются APK и AAB. Для остальных целей используйте облачную сборку.", Toast.LENGTH_LONG).show()
-                    return@setOnClickListener
-                }
-                val projectRoot = repo ?: source?.parentFile
-                if (projectRoot == null) {
-                    Toast.makeText(this, "Не удалось определить папку проекта. Откройте файл из папки проекта.", Toast.LENGTH_LONG).show()
-                    return@setOnClickListener
-                }
-                try {
-                    saveAllDirty()
-                    LocalTermuxBuild.start(this, projectRoot, target)
-                    dialog.dismiss()
-                } catch (e: Exception) {
-                    MaterialAlertDialogBuilder(this).setTitle("Локальная сборка не запущена")
-                        .setMessage(e.message ?: "Проверьте Termux и разрешения.")
-                        .setPositiveButton("Понятно", null).show()
-                }
-            }
-            repoButton.setOnClickListener {
-                dialog.dismiss()
-                showGitMenu()
-            }
-            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                dialog.dismiss()
-                startActivity(Intent(this, SettingsActivity::class.java))
-            }
-            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val selectedIndex = radioGroup.checkedRadioButtonId.let { id ->
-                    (0 until radioGroup.childCount).firstOrNull { radioGroup.getChildAt(it).id == id } ?: 0
-                }
-                if (repo == null) {
-                    dialog.dismiss()
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle("Git-репозиторий не подключён")
-                        .setMessage("Сначала откройте меню Git и выберите «Создать репозиторий» или «Клонировать репозиторий». Для облачной сборки нужен GitHub-адрес origin.")
-                        .setPositiveButton("Открыть Git") { _, _ -> showGitMenu() }
-                        .setNegativeButton("Отмена", null)
-                        .show()
-                    return@setOnClickListener
-                }
-                if (remote.isNullOrBlank()) {
-                    dialog.dismiss()
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle("Не задан адрес GitHub")
-                        .setMessage("В локальном репозитории нет origin. Подключите GitHub через меню Git → Коммит и отправить (push) или создайте/клонируйте репозиторий с GitHub-адресом.")
-                        .setPositiveButton("Открыть Git") { _, _ -> showGitMenu() }
-                        .setNegativeButton("Отмена", null)
-                        .show()
-                    return@setOnClickListener
-                }
-                if (token.isNullOrBlank()) {
-                    dialog.dismiss()
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle("Нужен GitHub-токен")
-                        .setMessage("Добавьте токен через «Настроить GitHub». Для облачной сборки нужны права Contents: read/write и Actions: read/write. Токен хранится в зашифрованном виде на устройстве.")
-                        .setPositiveButton("Настроить токен") { _, _ -> startActivity(Intent(this, SettingsActivity::class.java)) }
-                        .setNegativeButton("Отмена", null)
-                        .show()
-                    return@setOnClickListener
-                }
-                dialog.dismiss()
-                val target = targets[selectedIndex]
-                saveAllDirty()
-                showPanel(false)
-                appendConsole("▶ Проверка проекта перед сборкой…\\n", Kind.INFO)
-                panelStatus.text = "Подготовка облачной сборки…"
-                gitIo.execute {
-                    try {
-                        val result = CloudBuild.dispatch(this, repo, source, target, token)
-                        main.post {
-                            appendConsole("✓ Сборка отправлена: ${result.repo} / ${result.branch}\\n", Kind.INFO)
-                            appendConsole("Откройте страницу Actions, чтобы наблюдать сборку и скачать артефакт.\\n", Kind.INFO)
-                            panelStatus.text = "Сборка запущена на GitHub Actions"
-                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(result.actionsUrl)))
-                        }
-                    } catch (e: Throwable) {
-                        val message = (e.message ?: e.toString()).replace(token, "***")
-                        main.post {
-                            appendConsole("✕ Сборка не запущена: $message\\n", Kind.ERR)
-                            panelStatus.text = "Сборка не запущена"
-                            MaterialAlertDialogBuilder(this).setTitle("Не удалось запустить сборку")
-                                .setMessage(message + "\\n\\nПроверьте права токена, чистоту Git и наличие последнего коммита в origin.")
-                                .setPositiveButton("Понятно", null).show()
-                        }
-                    }
-                }
-            }
-        }
-        dialog.show()
     }
 
     private fun showGitMenu() {
@@ -1398,7 +1147,6 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             items.add("Создать репозиторий в «${projectRoot.name}»…" to { askInit(projectRoot) })
         }
         items.add("Клонировать репозиторий…" to { askClone(projectsDir) })
-        items.add("Копировать пункты этого меню" to { copyText(items.joinToString("\n") { it.first }, "Пункты меню Git скопированы") })
         MaterialAlertDialogBuilder(this).setTitle(if (repo != null) "Git: ${repo.name}" else "Git")
             .setItems(items.map { it.first }.toTypedArray()) { _, i -> items[i].second() }
             .setNegativeButton("Закрыть", null).show()
@@ -1463,43 +1211,38 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private fun setupVoicePanel() {
         findViewById<ImageButton>(R.id.voiceClose).setOnClickListener { stopVoice() }
         findViewById<ImageButton>(R.id.voiceHelp).setOnClickListener { showVoiceHelp() }
-        updateVoiceModeButton()
-        voiceModeBtn.setOnClickListener { chooseVoiceMode() }
-        voiceBuilderBtn.setOnClickListener { openVisualBuilder() }
-        voiceLangBtn.text = voiceRecognitionLanguage().uppercase()
+        voiceLangBtn.text = prefs.voiceLang.uppercase()
         voiceLangBtn.setOnClickListener {
-            if (docs.getOrNull(current)?.lang == Lang.PONYATNY) {
-                voiceLangBtn.text = "RU"
-                if (voice.isActive) voice.start("ru", prefs.voiceEngine)
-                toast("Для языка «Понятный» распознавание речи работает на русском")
-            } else {
-                prefs.voiceLang = if (prefs.voiceLang == "ru") "en" else "ru"
-                voiceLangBtn.text = prefs.voiceLang.uppercase()
-                if (voice.isActive) voice.start(prefs.voiceLang, prefs.voiceEngine)
-            }
+            prefs.voiceLang = if (prefs.voiceLang == "ru") "en" else "ru"
+            voiceLangBtn.text = prefs.voiceLang.uppercase()
+            if (voice.isActive) voice.start(prefs.voiceLang, prefs.voiceEngine)
         }
+        refreshVoiceMode()
+        voiceModeBtn.setOnClickListener { chooseVoiceMode() }
     }
 
-    private fun updateVoiceModeButton() {
+    private fun refreshVoiceMode() {
         voiceModeBtn.text = when (prefs.voiceMode) { "constructs" -> "ВСЁ"; "off" -> "ТЕКСТ"; else -> "БЛОКИ" }
         voiceModeBtn.contentDescription = when (prefs.voiceMode) {
-            "constructs" -> "Распознавать блоки и полные конструкции"
-            "off" -> "Обычная диктовка, без команд"
-            else -> "Распознавать блоки кода"
+            "constructs" -> "Голосовые шаблоны: блоки и полные конструкции"
+            "off" -> "Голосовые шаблоны выключены, обычная диктовка"
+            else -> "Голосовые шаблоны: блоки кода"
         }
     }
 
     private fun chooseVoiceMode() {
-        val labels = arrayOf("Блоки кода", "Блоки и полные конструкции", "Выключено — обычная диктовка")
-        val values = arrayOf("blocks", "constructs", "off")
-        MaterialAlertDialogBuilder(this).setTitle("Режим голосового программирования")
+        val values = listOf("blocks", "constructs", "off")
+        val labels = arrayOf("Блоки кода", "Блоки и полные конструкции", "Обычная диктовка")
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Голосовые шаблоны")
             .setSingleChoiceItems(labels, values.indexOf(prefs.voiceMode).coerceAtLeast(0)) { dialog, which ->
                 prefs.voiceMode = values[which]
                 voiceLiteralMode = null
-                updateVoiceModeButton()
+                refreshVoiceMode()
                 dialog.dismiss()
-                voiceStatus.text = labels[which]
-            }.setNegativeButton("Отмена", null).show()
+            }
+            .setNegativeButton("Закрыть", null)
+            .show()
     }
 
     private fun toggleVoice() {
@@ -1511,16 +1254,13 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         startVoice()
     }
 
-    private fun voiceRecognitionLanguage(): String =
-        if (docs.getOrNull(current)?.lang == Lang.PONYATNY) "ru" else prefs.voiceLang
-
     private fun startVoice() {
         voicePanel.visibility = View.VISIBLE
         voiceStatus.text = "Запуск микрофона…"
         voicePartial.text = ""
-        voiceLangBtn.text = voiceRecognitionLanguage().uppercase()
+        voiceLangBtn.text = prefs.voiceLang.uppercase()
         extraKeys.setMicActive(true)
-        voice.start(voiceRecognitionLanguage(), prefs.voiceEngine)
+        voice.start(prefs.voiceLang, prefs.voiceEngine)
     }
 
     private fun stopVoice() {
@@ -1539,8 +1279,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     override fun onFinal(text: String) {
         voicePartial.text = ""
-        val activeLanguage = docs.getOrNull(current)?.lang ?: Lang.PLAIN
-        val actions = VoiceMapper.map(text, activeLanguage, docs.getOrNull(current)?.name, prefs.voiceMode, voiceLiteralMode)
+        val d = docs.getOrNull(current)
+        val actions = VoiceMapper.map(text, d?.lang ?: Lang.PLAIN, d?.name, prefs.voiceMode, voiceLiteralMode)
         voiceLast.text = "«$text» → " + actions.joinToString(" ") { describe(it) }
         for (a in actions) applyVoice(a)
     }
@@ -1572,7 +1312,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         is VoiceAction.Find -> "[найти ${a.query}]"
         is VoiceAction.GoToLine -> "[строка ${a.line}]"
         is VoiceAction.SetLiteralMode -> if (a.kind == null) "[конец буквального режима]" else "[буквальный режим: ${a.kind}]"
-        VoiceAction.OpenVisualBuilder -> "[визуальный конструктор]"
+        VoiceAction.OpenVisualBuilder -> "[сайт в редакторе]"
         else -> "[" + a.javaClass.simpleName + "]"
     }
 
@@ -1612,33 +1352,39 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             VoiceAction.LineEnd -> editor.moveEnd()
             VoiceAction.Comment -> editor.toggleComment()
             VoiceAction.StopListening, VoiceAction.Close -> stopVoice()
-            is VoiceAction.SetLiteralMode -> { voiceLiteralMode = a.kind; voiceStatus.text = if (a.kind == null) "Слушаю · команды" else if (a.kind == "comment") "Диктую комментарий" else "Буквальный ввод" }
-            VoiceAction.OpenVisualBuilder -> openVisualBuilder()
+            is VoiceAction.SetLiteralMode -> {
+                voiceLiteralMode = a.kind
+                voiceStatus.text = if (a.kind == null) "Слушаю · команды" else if (a.kind == "comment") "Диктую комментарий" else "Буквальный ввод"
+            }
+            VoiceAction.OpenVisualBuilder -> insertWebsiteFromVoice()
             is VoiceAction.Find -> showFind(a.query.ifBlank { null })
+
             is VoiceAction.GoToLine -> editor.goToLine(a.line)
         }
     }
 
-    private fun openVisualBuilder() {
-        if (::voice.isInitialized && voice.isActive) stopVoice()
-        val seed = docs.getOrNull(current)?.let { if (it.lang == Lang.HTML) editor.text?.toString().orEmpty() else "" }.orEmpty()
-        visualBuilderResult.launch(Intent(this, VisualBuilderActivity::class.java).putExtra("source", seed).putExtra("language", prefs.voiceLang))
-    }
 
-    private fun showPonyatnyHelp() {
-        val reference = assets.open("ponyatny/СИНТАКСИС.md").bufferedReader().use { it.readText() }
-        val body = android.widget.TextView(this).apply {
-            text = reference
-            textSize = 13f
-            setTextIsSelectable(true)
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+    private fun insertWebsiteFromVoice() {
+        val block = org.ivanivorontsov.stroka.core.VoiceCodeTemplates.generate("сделай сайт", Lang.HTML, "index.html", true)
+        val html = block?.code ?: "<!DOCTYPE html>\n<html lang=\"ru\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Сайт</title></head><body><h1>Новый сайт</h1><p>Страница создана голосом в «Строке».</p></body></html>\n"
+        val existing = docs.getOrNull(current)
+        if (existing != null && existing.lang == Lang.HTML) {
+            if (current in docs.indices) captureEditor(docs[current])
+            docs[current].text = html
+            docs[current].dirty = true
+            editor.setText(html)
+            toast("Сайт вставлен в текущий HTML-файл")
+            return
         }
-        val scroll = android.widget.ScrollView(this).apply { addView(body) }
-        MaterialAlertDialogBuilder(this).setTitle("Синтаксис языка «Понятный» 2.5")
-            .setView(scroll)
-            .setNeutralButton("Копировать справочник") { _, _ -> copyText(reference, "Справочник скопирован") }
-            .setPositiveButton("Закрыть", null)
-            .show()
+        val dir = File(projectsDir, "сайт")
+        dir.mkdirs()
+        var f = File(dir, "index.html")
+        var n = 2
+        while (f.exists()) { f = File(dir, "index$n.html"); n++ }
+        f.writeText(html)
+        openRef(org.ivanivorontsov.stroka.files.DocRef.Local(f.absolutePath))
+        treeAdapter.refresh()
+        toast("Создан файл «${f.name}»")
     }
 
     private fun showVoiceHelp() {
@@ -1649,28 +1395,163 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
         val sv = ScrollView(this)
         sv.addView(tv)
-        MaterialAlertDialogBuilder(this).setTitle("Голосовой ввод").setView(sv)
-            .setNeutralButton("Копировать инструкцию") { _, _ -> copyText(VOICE_HELP, "Инструкция скопирована") }
-            .setPositiveButton("Понятно", null).show()
+        MaterialAlertDialogBuilder(this).setTitle("Голосовой ввод").setView(sv).setPositiveButton("Понятно", null).show()
     }
 
     private fun showAbout() {
-        val description = "Редактор кода для телефона.\n\nЗапуск: Python 3.12 (Chaquopy), JavaScript (WebView), просмотр HTML и Markdown.\nГолос: Google SpeechRecognizer и офлайн Vosk.\nGit: JGit, токен хранится в Android Keystore.\n\nПроекты лежат в памяти приложения. Чтобы работать с папкой на телефоне, нажмите «Папка…» в панели файлов."
-        val textView = TextView(this).apply {
-            text = description
-            setTextIsSelectable(true)
-            setPadding(dp(22), dp(12), dp(22), dp(12))
-        }
         MaterialAlertDialogBuilder(this).setTitle("Строка ${BuildConfig.VERSION_NAME}")
-            .setView(textView)
-            .setNeutralButton("Копировать") { _, _ -> copyText(description, "Описание скопировано") }
+            .setMessage("Редактор кода для телефона, версия " + BuildConfig.VERSION_NAME + ".\n\nЗапуск: Python 3.12, JavaScript, язык «Понятный».\nСборка APK и Windows EXE прямо на телефоне: полный конвейер aapt2, компилятор Java, d8 и подпись; EXE — через компилятор и движок QuickJS.\nГолос: Google SpeechRecognizer и офлайн Vosk.\nGit: JGit, токен хранится в Android Keystore.\n\nВесь новый код этой версии написан с помощью ИИ.\niPhone не поддерживается: по правилам Apple на нём нельзя собрать и установить APK.\n\nПроекты лежат в памяти приложения. Чтобы работать с папкой на телефоне, нажмите «Папка…» в панели файлов.")
             .setPositiveButton("ОК", null).show()
     }
 
-    private fun copyText(value: String, message: String = "Текст скопирован") {
-        val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Текст из Строки", value))
-        toast(message)
+
+    private fun runPonyatny(code: String, name: String) {
+        if (python.isRunning || js.isRunning) { toast("Программа уже выполняется"); return }
+        val yadro = try { BuildCoordinator.yadroJs(this) } catch (e: Exception) {
+            showPanel(false)
+            appendConsole("Не удалось загрузить компилятор «Понятный»: ${e.message}\n", Kind.ERR)
+            return
+        }
+        showPanel(false)
+        appendConsole("▶ понятный $name\n", Kind.INFO)
+        panelStatus.text = "«Понятный» выполняется…"
+        val script = BuildCoordinator.runScript(code, yadro)
+        js.run(script, name, object : JsRunner.Sink {
+            override fun onOutput(text: String, error: Boolean) = appendConsole(text, if (error) Kind.ERR else Kind.OUT)
+            override fun onPrompt(message: String, default: String, result: (String?) -> Unit) {
+                val input = EditText(this@MainActivity).apply { setText(default); setSingleLine(true) }
+                val box = FrameLayout(this@MainActivity).apply { setPadding(dp(20), dp(8), dp(20), 0); addView(input) }
+                var answered = false
+                MaterialAlertDialogBuilder(this@MainActivity).setTitle(message.ifBlank { "Ввод" }).setView(box)
+                    .setPositiveButton("ОК") { _, _ -> answered = true; result(input.text.toString()) }
+                    .setNegativeButton("Отмена") { _, _ -> answered = true; result(null) }
+                    .setOnDismissListener { if (!answered) result(null) }.show()
+            }
+            override fun onFinished(code: Int, millis: Long) {
+                panelStatus.text = "Завершено: код $code, $millis мс"
+                appendConsole("■ код выхода $code ($millis мс)\n", if (code == 0) Kind.INFO else Kind.ERR)
+            }
+        })
+    }
+
+    private fun pickBuildFolder() {
+        openBuildFolder.launch(null)
+    }
+
+    private fun requestBuild(kind: String) {
+        if (prefs.buildOutput.isBlank()) {
+            pendingBuild = kind
+            toast("Сначала выберите папку для готовых файлов")
+            pickBuildFolder()
+            return
+        }
+        startBuild(kind)
+    }
+
+    private fun startBuild(kind: String) {
+        val d = docs.getOrNull(current) ?: run { toast("Откройте файл программы"); return }
+        captureEditor(d)
+        if (prefs.autosave) saveAllDirty()
+        val allowed = d.lang == Lang.PONYATNY || d.lang == Lang.JAVASCRIPT || d.lang == Lang.HTML || d.lang == Lang.JAVA || d.lang == Lang.KOTLIN
+        if (!allowed) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Сборка")
+                .setMessage("На телефоне собираются программы на «Понятном», Java, JavaScript и HTML. Откройте файл .pon, .java или шаблон «Понятный: калькулятор» / «Java: калькулятор».")
+                .setPositiveButton("ОК", null).show()
+            return
+        }
+        if (kind == "exe" && d.lang != Lang.PONYATNY && d.lang != Lang.JAVASCRIPT) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Сборка EXE")
+                .setMessage("Windows EXE на телефоне собирается из программы на «Понятном» или JavaScript (встроенный QuickJS). Для Java соберите APK.")
+                .setPositiveButton("ОК", null).show()
+            return
+        }
+        val tree = try { Uri.parse(prefs.buildOutput) } catch (e: Exception) { null }
+        if (tree == null) { pendingBuild = kind; pickBuildFolder(); return }
+        showPanel(false)
+        appendConsole("Сборка ${kind.uppercase()} «${d.name}»…\n", Kind.INFO)
+        panelStatus.text = "Сборка…"
+        val source = d.text
+        val fileName = d.name
+        val label = d.name.substringBeforeLast('.').ifBlank { "Программа" }
+        val t0 = System.nanoTime()
+        io.execute {
+            try {
+                val assets = BuildCoordinator.prepare(this@MainActivity)
+                val work = File(cacheDir, "build-one")
+                work.deleteRecursively()
+                work.mkdirs()
+                if (kind == "apk") {
+                    val tmp = File(work, "$label.apk")
+                    val apk = OneFileBuild.buildApk(source, fileName, label, work, assets, tmp) { msg ->
+                        main.post { appendConsole(msg + "\n", Kind.INFO) }
+                    }
+                    val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, apk.name, apk.readBytes())
+                    val ms = (System.nanoTime() - t0) / 1_000_000L
+                    main.post {
+                        appendConsole("Готово за $ms мс: ${apk.name} (${apk.length()} байт) записан в выбранную папку.\n", Kind.INFO)
+                        panelStatus.text = "Сборка готова"
+                        toast("APK готов")
+                        try { BuildCoordinator.mimeOpen(this@MainActivity, uri) } catch (_: Exception) {}
+                    }
+                } else {
+                    val tmp = File(work, "$label.exe")
+                    val exe = OneFileBuild.buildExe(source, fileName, label, work, assets, tmp) { msg ->
+                        main.post { appendConsole(msg + "\n", Kind.INFO) }
+                    }
+                    val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, exe.name, exe.readBytes())
+                    val ms = (System.nanoTime() - t0) / 1_000_000L
+                    main.post {
+                        appendConsole("Готово за $ms мс: ${exe.name} (${exe.length()} байт) записан в выбранную папку.\n", Kind.INFO)
+                        panelStatus.text = "Сборка готова"
+                        toast("EXE готов")
+                        try { BuildCoordinator.mimeOpen(this@MainActivity, uri) } catch (_: Exception) {}
+                    }
+                }
+            } catch (e: Throwable) {
+                val msg = e.message ?: e.toString()
+                val ms = (System.nanoTime() - t0) / 1_000_000L
+                main.post {
+                    appendConsole("Сборка не удалась (${ms} мс).\n$msg\n", Kind.ERR)
+                    panelStatus.text = "Ошибка сборки"
+                    MaterialAlertDialogBuilder(this@MainActivity).setTitle("Сборка не удалась").setMessage(msg).setPositiveButton("ОК", null).show()
+                }
+            }
+        }
+    }
+
+    private fun showPonyatnyHelp() {
+        val text = try { BuildCoordinator.assetText(this, "ponyatny/СИНТАКСИС.md") } catch (e: Exception) { "Не удалось открыть справку: ${e.message}" }
+        val view = ScrollView(this).apply {
+            addView(TextView(this@MainActivity).apply {
+                this.text = text
+                setTextIsSelectable(true)
+                textSize = 14f
+                setPadding(dp(20), dp(12), dp(20), dp(12))
+            })
+        }
+        MaterialAlertDialogBuilder(this).setTitle("Язык «Понятный»").setView(view).setPositiveButton("Закрыть", null).show()
+    }
+
+    private fun openAiChat() {
+        val d = docs.getOrNull(current)
+        if (d != null) captureEditor(d)
+        val i = Intent(this, AiChatActivity::class.java)
+        if (d != null) {
+            i.putExtra(AiChatActivity.EXTRA_CODE, d.text)
+            i.putExtra(AiChatActivity.EXTRA_NAME, d.name)
+            i.putExtra(AiChatActivity.EXTRA_LANG, d.lang.name)
+        }
+        startActivity(i)
+    }
+
+    private fun showAiComing() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Чат с ИИ")
+            .setMessage("ИИ в Строке задуман как в «ИванКоде»: один непрерывный чат, правка кода в проекте и повторная сборка при ошибках (до 5 попыток). В настройках уже есть поля для адреса API, модели и ключа. Полноценное окно чата будет в следующем обновлении; ключ храните только в настройках, в чат и в репозиторий он не попадает.")
+            .setPositiveButton("Настройки") { _, _ -> startActivity(Intent(this, SettingsActivity::class.java)) }
+            .setNegativeButton("Закрыть", null).show()
     }
 
     private fun hideKeyboard() {
@@ -1685,78 +1566,36 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         private const val WELCOME = "print(\"Привет! Это «Строка» — редактор кода для телефона.\")\n\n\ndef square(n):\n    return n * n\n\n\nfor i in range(1, 6):\n    print(i, \"→\", square(i))\n\nname = input(\"Как тебя зовут? \")\nprint(f\"Рад знакомству, {name}!\")\n"
 
         private val VOICE_HELP = """
-Нажмите 🎤 на панели над клавиатурой. Кнопка RU/EN переключает основной язык распознавания. Для английского произношения команд выбирайте EN; для русской речи с английскими именами кода — RU.
+Нажмите 🎤 на панели над клавиатурой. Кнопка RU/EN переключает язык.
 
-СОЗДАНИЕ САЙТОВ И ИНТЕРФЕЙСОВ:
-«создай сайт», «сделай веб-сайт», «собери лендинг», «создай красивую визитку», «сделай портфолио», «build a website», «create a business card», «make a landing page», «website builder», «открой конструктор сайта» — открыть визуальный конструктор, а не вставлять эту фразу как текст.
-В конструкторе: «добавь заголовок», «добавь текст», «добавь картинку», «добавь кнопку», «добавь форму», «добавь калькулятор» — выберите блоки на панели; можно менять порядок, свойства и HTML-код, просматривать результат.
-«покажи пример», «пример кода», «вот пример», «for example», «sample code» — это содержимое/пример, а не просьба создать новый проект.
+Символы (говорите словами):
+скобка / скобка закрыть → ( )
+фигурная скобка / фигурная закрыть → { }
+квадратная скобка / квадратная закрыть → [ ]
+кавычка → " (вторая закрывает), одинарная кавычка → '
+точка с запятой ; · двоеточие : · запятая , · точка .
+равно = · двойное равно == · не равно != · плюс, минус, звёздочка, слэш
+больше > · меньше < · стрелка -> · жирная стрелка =>
+подчёркивание _ · решётка # · пробел
+новая строка — перенос с автоотступом
+отступ / убрать отступ
 
-ЕСТЕСТВЕННЫЕ ФОРМУЛИРОВКИ:
-«мне нужен / нужна / нужно», «хочу», «сделай мне», «сделай, пожалуйста», «создай», «сгенерируй», «напиши», «добавь», «вставь», «построй», «собери», «покажи», «открой», «make me», «I need», «I want», «please create», «generate», «build», «show me».
-«калькулятор», «калкулятор», «калькуляторчик», «арифметический калькулятор», «calculator» — шаблон калькулятора.
-«форма», «форма регистрации», «обратная связь», «веб-форма», «contact form», «registration form» — шаблон формы.
-«окно», «окошко», «диалог», «модальное окно», «попап», «window», «dialog», «modal», «popup» — шаблон окна.
-«стили», «оформление», «дизайн», «CSS», «stylesheet» — CSS-шаблон.
-«страница», «веб-страница», «сайт», «website», «web page», «HTML page» — каркас страницы или визуальный конструктор в зависимости от формулировки.
+English: open paren, close paren, open brace, close brace, open bracket, quote, semicolon, colon, comma, dot, equals, double equals, not equal, new line, tab, indent, underscore.
 
-РАЗЛИЧАЙТЕ КОД И КОМАНДУ:
-«это ввод», «это текст», «буквальный ввод», «literal input» — всё дальше вставляется буквально, команды не исполняются.
-«это комментарий», «комментарий», «this is a comment» — вставлять как комментарий.
-«конец ввода», «конец текста», «конец комментария», «end input», «end text», «end comment» — выйти из буквального режима.
-«буквально точка», «буквально скобка», «literally dot» — вставить произнесённое слово, не символ.
-Примеры: «пример кода: создай сайт» и «for example, make a form» должны остаться текстом примера, а не открыть конструктор.
+Имена: «кэмел user name» → userName, «снейк max speed» → max_speed, «капс max speed» → MAX_SPEED, «паскаль my class» → MyClass, «с большой буквы» — следующее слово с заглавной, «буквально точка» — вставить слово как есть.
+Числа словами становятся цифрами: «двадцать пять» → 25. «икс», «игрек» → x, y.
 
-СОЗДАНИЕ БЛОКОВ КОДА:
-«создай функцию», «нужен цикл», «добавь условие», «выведи текст», «получи ввод», «подключи библиотеку requests», «импортируй пакет axios», «создай программу», «сделай веб-форму», «создай HTML-страницу», «сделай CSS-оформление».
-Установка сторонней библиотеки пока показывается как команда/подсказка в коде; голосовая команда не устанавливает пакет сама. Сборка произвольных APK/EXE ещё не поддерживается этой версией IDE — не путайте запуск кода с компиляцией установочного приложения.
+Команды (отдельной фразой):
+сохранить · запустить · отменить · повторить
+найти <текст> · перейти к строке <номер>
+выделить всё · копировать · вставить · вырезать
+стереть · удалить слово · удалить строку
+в начало строки · в конец строки · закомментировать
+стоп — выключить микрофон
+English: save, run, undo, redo, find <text>, go to line <n>, select all, copy, paste, delete line, stop.
+Если фраза похожа на обычный текст, начните с «команда …».
 
-Голосовые блоки кода (шаблон вставляется целиком в позицию курсора):
-«нужна программа / часть кода / кусок кода, чтобы получить имя» — блок ввода имени
-«создай веб-форму» / «сделай форму обратной связи» — HTML-форма
-«нужен блок кода для модального окна» — окно / диалог
-«создай HTML-страницу» — каркас страницы
-«сделай CSS-оформление» — стили
-«создай функцию» — каркас функции
-«подключи библиотеку requests» / «импортируй пакет axios» — импорт и подсказка по установке
-
-Шаблон выбирается по расширению открытого файла (Python, JavaScript, TypeScript, HTML, CSS, Kotlin, Java) или по языку, названному в команде. Макросы работают по известным шаблонам, а не придумывают произвольную программу. Внешние библиотеки автоматически не устанавливаются: команда установки показывается комментарием.
-
-Языки программирования:
-function, def, class, return, if, else, elif, for, while, try, catch, finally, throw, import, from, const, let, var, async, await, public, private, static, int, float, double, string, boolean, true, false, null, self, this.
-Русские варианты: «функция», «если», «иначе», «пока», «класс», «импорт», «возврат», «истина», «ложь».
-
-Символы:
-open paren / close paren → ( )
-open brace / close brace → { }
-open bracket / close bracket → [ ]
-quote / single quote / backtick → кавычки
-semicolon ; · colon : · comma , · dot .
-equals = · double equals == · triple equals === · not equal !=
-plus + · minus - · asterisk * · slash / · power ** · arrow -> · fat arrow =>
-new line — новая строка · tab / indent — отступ · outdent — убрать отступ
-
-Имена:
-«camel case user profile name» → userProfileName
-«pascal case user profile name» → UserProfileName
-«snake case user profile name» → user_profile_name
-«kebab case user profile name» → user-profile-name
-«flat case user profile name» → userprofilename
-«letter ex» → x · «letter why» → y.
-«literally dot» / «буквально точка» — вставить слово как текст.
-
-Числа:
-«twenty five» → 25 · «one hundred twenty three» → 123
-«two thousand twenty four» → 2024 · «forty-two» → 42
-
-Команды:
-save · run · undo · redo · find <text> · go to line <number>
-select all · copy · paste · cut · delete word · delete line · comment · stop
-сохранить · запустить · отменить · повторить · найти <текст> · перейти к строке <номер>
-выделить всё · копировать · вставить · вырезать · удалить слово · удалить строку
-закомментировать · стоп
-
-Офлайн: скачайте нужную модель Vosk в Настройки → Голосовой ввод.
+Без интернета работает офлайн-модель Vosk: скачайте её в Настройки → Голосовой ввод.
 """.trim()
     }
 }

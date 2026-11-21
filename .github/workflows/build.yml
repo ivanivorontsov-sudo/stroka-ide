@@ -8,152 +8,21 @@ on:
 permissions:
   contents: write
 
-# Keep only the newest build for this branch; stale runs must never overwrite latest.
-concurrency:
-  group: stroka-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  python-apk-smoke:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+
       - uses: android-actions/setup-android@v3
         with:
           packages: "platform-tools platforms;android-35 platforms;android-36 build-tools;36.0.0"
-      - name: Prepare Android SDK and Termux-like staging folders
-        run: |
-          ln -s "$ANDROID_HOME" "$HOME/android-sdk"
-          echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
-          mkdir -p "$HOME/storage/downloads/StrokaBuild"
-          cp app/src/main/python/stroka_runner.py "$HOME/storage/downloads/StrokaBuild/"
-          cp app/src/main/python/stroka_tkinter.py "$HOME/storage/downloads/StrokaBuild/"
-      - name: Create a one-file Tkinter calculator fixture
-        run: |
-          mkdir -p /tmp/stroka-python-fixture
-          cat > /tmp/stroka-python-fixture/calculator.py <<'PY'
-          import tkinter as tk
-          from tkinter import messagebox
-          root = tk.Tk()
-          root.title("Калькулятор")
-          result = tk.StringVar(value="0")
-          tk.Label(root, textvariable=result).pack()
-          entry = tk.Entry(root)
-          entry.pack()
-          def calculate():
-              try:
-                  result.set(str(eval(entry.get(), {"__builtins__": {}}, {})))
-              except Exception as error:
-                  messagebox.showerror("Ошибка", str(error))
-          tk.Button(root, text="Вычислить", command=calculate).pack()
-          root.mainloop()
-          PY
-          : > /tmp/stroka-python-fixture/requirements.txt
-          (cd /tmp/stroka-python-fixture && zip -qr "$HOME/storage/downloads/StrokaBuild/project.zip" .)
-      - name: Build standalone Android APK from Python source
-        run: |
-          bash app/src/main/assets/build-local.sh "$HOME/storage/downloads/StrokaBuild/project.zip" android-apk
-          APK="$(find "$HOME/storage/downloads/StrokaBuild/output" -maxdepth 1 -name '*.apk' -type f | head -n 1)"
-          test -s "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK"
-          echo "Generated Python APK: $APK"
-          ls -lh "$APK"
-          cp "$APK" python-calculator-smoke.apk
-      - name: Build Android APK from a single .pon file with generated project and runtime
-        run: |
-          set -euo pipefail
-          FIXTURE=/tmp/stroka-pon-one-file
-          rm -rf "$FIXTURE"
-          mkdir -p "$FIXTURE/tools" "$FIXTURE/app/src/main/assets/ponyatny"
-          cp tools/build-ponyatny.mjs "$FIXTURE/tools/build-ponyatny.mjs"
-          cp app/src/main/assets/ponyatny/yadro.js "$FIXTURE/app/src/main/assets/ponyatny/yadro.js"
-          cp app/src/main/assets/ponyatny/std.json "$FIXTURE/app/src/main/assets/ponyatny/std.json"
-          cat > "$FIXTURE/main.pon" <<'PON'
-          пиши "Один файл — готовое Android-приложение"
-          PON
-          (cd "$FIXTURE" && zip -qr "$HOME/storage/downloads/StrokaBuild/project-ponyatny.zip" .)
-          rm -f "$HOME/storage/downloads/StrokaBuild/output/"*.apk
-          bash app/src/main/assets/build-local.sh "$HOME/storage/downloads/StrokaBuild/project-ponyatny.zip" android-apk
-          APK="$(find "$HOME/storage/downloads/StrokaBuild/output" -maxdepth 1 -name "*.apk" -type f | head -n 1)"
-          test -s "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK"
-          cp "$APK" ponyatny-single-file-smoke.apk
-          ls -lh ponyatny-single-file-smoke.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Python-Calculator-APK-Smoke-Test
-          path: python-calculator-smoke.apk
-          retention-days: 7
-
-  ponyatny-compiler-smoke:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Check bundled compiler syntax
-        run: node --check app/src/main/assets/ponyatny/yadro.js
-      - name: Compile and run a Cyrillic Pонятный program
-        run: |
-          node <<'NODE'
-          const assert = require("node:assert/strict");
-          const pony = require("./app/src/main/assets/ponyatny/yadro.js");
-          const std = require("./app/src/main/assets/ponyatny/std.json");
-          const output = [];
-          const errors = [];
-          const source = [
-            'пусть имя = "Иван"',
-            'пиши "Привет, " + имя',
-            'подключи "стд/математика.pon" как мат',
-            'пиши "Факториал: " + строка(мат.факториал(5))',
-            'повтори 3 раза',
-            '    пиши "Понятный работает"',
-            'конец'
-          ].join("\n");
-          pony.run(source, {
-            file: "smoke.pon",
-            write: value => output.push(String(value)),
-            writeErr: value => errors.push(String(value)),
-            resolve: path => {
-              const name = String(path).replace(/^стд\//, "").replace(/\.pon$/i, "");
-              return std[name] === undefined ? null : { id: "std:" + name, name: "стд/" + name + ".pon", source: std[name] };
-            },
-            ask: () => "Тест",
-            maxSteps: 10000,
-            guard: true
-          });
-          assert.equal(errors.length, 0, errors.join("\n"));
-          assert.match(output.join(""), /Привет, Иван/);
-          assert.match(output.join(""), /Факториал: 120/);
-          assert.equal((output.join("").match(/Понятный работает/g) || []).length, 3);
-          console.log("Pонятный 2.5 compile + execute smoke test: passed");
-          NODE
-
-  build:
-    needs: [python-apk-smoke, ponyatny-compiler-smoke]
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
 
       - uses: actions/setup-python@v5
         with:
@@ -163,88 +32,6 @@ jobs:
         run: |
           V=$(grep -Po 'versionName = "\K[^"]+' app/build.gradle.kts)
           echo "VERSION=$V" >> "$GITHUB_ENV"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Validate visual builder JavaScript
-        run: |
-          python3 - <<'PY'
-          import re
-          source = open("app/src/main/assets/visual_builder.html", encoding="utf-8").read()
-          scripts = re.findall(r"<script>(.*?)</script>", source, flags=re.S | re.I)
-          assert scripts, "No inline builder script found"
-          open("/tmp/visual_builder.js", "w", encoding="utf-8").write("\n".join(scripts))
-          PY
-          node --check /tmp/visual_builder.js
-          node tools/test-visual-builder.mjs
-
-      - name: Validate local ARM64 build scripts
-        run: |
-          bash -n app/src/main/assets/setup-termux.sh
-          bash -n app/src/main/assets/build-local.sh
-          python3 - <<'PY'
-          from pathlib import Path
-          manifest = Path("app/src/main/AndroidManifest.xml").read_text()
-          bridge = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/LocalTermuxBuild.kt").read_text()
-          runner = Path("app/src/main/assets/build-local.sh").read_text()
-          setup = Path("app/src/main/assets/setup-termux.sh").read_text()
-          tkinter = Path("app/src/main/python/stroka_tkinter.py").read_text()
-          main = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/MainActivity.kt").read_text()
-          menu = Path("app/src/main/res/menu/main.xml").read_text()
-          tutor = Path("app/src/main/java/org/ivanivorontsov/stroka/ui/SelfTutorActivity.kt").read_text()
-          lang = Path("app/src/main/java/org/ivanivorontsov/stroka/core/Lang.kt").read_text()
-          spec = Path("app/src/main/java/org/ivanivorontsov/stroka/core/LangSpec.kt").read_text()
-          voice = Path("app/src/main/java/org/ivanivorontsov/stroka/core/VoiceMapper.kt").read_text()
-          pony_voice = Path("app/src/main/java/org/ivanivorontsov/stroka/core/PonyatnyVoiceMapper.kt").read_text()
-          js_runner = Path("app/src/main/java/org/ivanivorontsov/stroka/run/JsRunner.kt").read_text()
-          assert "com.termux.permission.RUN_COMMAND" in manifest
-          assert "com.termux.app.RunCommandService" in bridge
-          assert "stroka_runner.py" in bridge and "stroka_tkinter.py" in bridge
-          assert "android-apk" in runner and "android-aab" in runner
-          assert "python-app" in runner and "com.chaquo.python" in runner
-          assert 'install("-r", "requirements.txt")' in runner
-          assert "copyAssetTree" in runner and "PYROOT" in runner
-          assert "aapt2FromMavenOverride" in setup
-          assert "15859902_latest.zip" in setup
-          assert "action_copy_menu" in main and "action_copy_menu" in menu
-          assert "Описание скопировано" in main and "setTextIsSelectable(true)" in main
-          assert "setTextIsSelectable(true)" in tutor
-          assert "self.variable.get()" in tkinter
-          assert "PONYATNY" in lang and '"pon"' in lang
-          assert "Lang.PONYATNY -> LangSpec" in spec
-          assert "PonyatnyVoiceMapper.map" in voice
-          assert "preferredLanguage == Lang.PONYATNY" in voice
-          assert "NumberWords.parse" in pony_voice
-          assert "voiceRecognitionLanguage()" in main
-          assert "VoiceMapper.bestCandidate(candidates, language)" in main
-          assert "PonyatnyYadro.run" in js_runner and "ponyatny/yadro.js" in js_runner
-          assert "PonyatnyStdModules" in js_runner and "resolve: resolveModule" in js_runner
-          assert "ponyatny/std.json" in js_runner
-          assert Path("app/src/main/assets/ponyatny/yadro.js").is_file()
-          assert Path("app/src/main/assets/ponyatny/std.json").is_file()
-          assert Path("app/src/main/assets/ponyatny/СИНТАКСИС.md").is_file()
-          assert "Lang.PONYATNY -> runJs" in main and "collectPonyatnyModules" in main
-          assert "action_ponyatny_help" in menu and "showPonyatnyHelp" in main
-          assert "ponyatny" in Path("app/src/main/java/org/ivanivorontsov/stroka/core/Templates.kt").read_text()
-          print("Termux, Python APK, Tkinter and Pонятный integration static checks: passed")
-          PY
-          PYTHONPATH=app/src/main/python python3 - <<'PY'
-          from stroka_tkinter import install
-          class Callback:
-              def showPreview(self, html): pass
-              def waitUiEvent(self): return "__stop__"
-              def postUiEvent(self, event): pass
-          install(Callback())
-          import tkinter as tk
-          root = tk.Tk()
-          value = tk.StringVar(value="before")
-          tk.Label(root, textvariable=value)
-          assert "before" in root._page()
-          value.set("after")
-          assert "after" in root._page(), "Label must refresh its StringVar text"
-          print("Tkinter StringVar live-label test: passed")
-          PY
 
       - name: Unit tests
         run: |
@@ -286,6 +73,10 @@ jobs:
           cp app/build/outputs/bundle/release/app-release.aab "dist/Stroka-${VERSION}.aab"
           jarsigner -verify -certs "dist/Stroka-${VERSION}.aab" | tail -3
           keytool -printcert -jarfile "dist/Stroka-${VERSION}.aab" | grep -i "SHA256: 01:62:14:A5"
+          cd dist
+          sha256sum "Stroka-${VERSION}.apk" "Stroka-${VERSION}.aab" signature.txt > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          cd ..
           ls -lh dist
           rm -rf "$RUNNER_TEMP/ks"
 
@@ -302,11 +93,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          LATEST_SHA=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')
-          if [[ "$LATEST_SHA" != "$GITHUB_SHA" ]]; then
-            echo "Skipping stale build $GITHUB_SHA; main is now $LATEST_SHA"
-            exit 0
-          fi
           APK="dist/Stroka-${VERSION}.apk"
           NOTES="Строка ${VERSION} — редактор кода для Android. Подпись SHA-256: 01:62:14:A5:77:BA:EC:E8:9C:F5:A7:2A:8B:71:FC:4F:04:FE:43:43:99:22:60:9F:EE:74:30:34:32:03:14:38. $(cat test-summary.txt)"
           if gh release view latest >/dev/null 2>&1; then

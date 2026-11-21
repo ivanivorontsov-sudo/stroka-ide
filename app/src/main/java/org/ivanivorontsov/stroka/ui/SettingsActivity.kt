@@ -60,34 +60,12 @@ class SettingsActivity : AppCompatActivity() {
             for (lang in listOf("ru", "en")) {
                 findPreference<Preference>("vosk_$lang")?.setOnPreferenceClickListener { onModelClick(lang); true }
             }
-            findPreference<Preference>("voice_legal")?.setOnPreferenceClickListener {
-                showVoiceLegalInfo()
-                true
-            }
             val tokenPref = findPreference<Preference>("git_token")
             updateTokenSummary(tokenPref)
             tokenPref?.setOnPreferenceClickListener { askToken(it); true }
-        }
-
-        private fun showVoiceLegalInfo() {
-            val ctx = requireContext()
-            val content = try {
-                ctx.assets.open("THIRD_PARTY_NOTICES.txt").bufferedReader().use { it.readText() }
-            } catch (e: Exception) {
-                "Не удалось открыть сведения о лицензиях: ${e.message}"
-            }
-            val text = android.widget.TextView(ctx).apply {
-                this.text = content
-                setTextIsSelectable(true)
-                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
-                setPadding(48, 24, 48, 24)
-            }
-            val scroll = android.widget.ScrollView(ctx).apply { addView(text) }
-            MaterialAlertDialogBuilder(ctx)
-                .setTitle("Голосовой ввод: данные и лицензии")
-                .setView(scroll)
-                .setPositiveButton("Понятно", null)
-                .show()
+            val aiPref = findPreference<Preference>("ai_key")
+            updateAiSummary(aiPref)
+            aiPref?.setOnPreferenceClickListener { askAiKey(it); true }
         }
 
         private fun updateTokenSummary(p: Preference?) {
@@ -108,7 +86,7 @@ class SettingsActivity : AppCompatActivity() {
             }
             MaterialAlertDialogBuilder(ctx)
                 .setTitle("Токен GitHub")
-                .setMessage("Создайте fine-grained токен на github.com → Settings → Developer settings. Нужны права Contents: Read and write и Actions: Read and write для выбранного репозитория. Токен хранится только на этом телефоне в зашифрованном виде.")
+                .setMessage("Создайте fine-grained токен на github.com → Settings → Developer settings с правом Contents: Read and write. Токен хранится только на этом телефоне в зашифрованном виде.")
                 .setView(box)
                 .setPositiveButton("Сохранить") { _, _ ->
                     val v = input.text.toString().trim()
@@ -161,6 +139,31 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 .setNegativeButton("Отмена", null).show()
         }
+
+
+            private fun updateAiSummary(p: Preference?) {
+                val has = SecureStore(requireContext()).has("ai_key")
+                p?.summary = if (has) "Ключ сохранён в защищённом хранилище" else "Не задан"
+            }
+
+            private fun askAiKey(p: Preference) {
+                val ctx = requireContext()
+                val input = EditText(ctx).apply { setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD }
+                MaterialAlertDialogBuilder(ctx)
+                    .setTitle("Ключ API ИИ")
+                    .setView(input)
+                    .setPositiveButton("Сохранить") { _, _ ->
+                        val v = input.text.toString().trim().ifBlank { null }
+                        SecureStore(ctx).put("ai_key", v)
+                        updateAiSummary(p)
+                    }
+                    .setNeutralButton("Удалить") { _, _ ->
+                        SecureStore(ctx).put("ai_key", null)
+                        updateAiSummary(p)
+                    }
+                    .setNegativeButton("Отмена", null)
+                    .show()
+            }
 
         override fun onDestroy() {
             super.onDestroy()

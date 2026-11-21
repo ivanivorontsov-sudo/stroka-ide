@@ -9,18 +9,15 @@ val ksPath: String? = System.getenv("STROKA_KEYSTORE")
 
 android {
     namespace = "org.ivanivorontsov.stroka"
-    compileSdk = 36
-
-    // Python files are also copied into the APK assets: LocalTermuxBuild
-    // stages the same runner modules into Termux before invoking build-local.sh.
-    sourceSets.getByName("main").assets.srcDir("src/main/python")
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "org.ivanivorontsov.stroka"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 9
-        versionName = "1.7"
+        targetSdk = 35
+        versionCode = 10
+        versionName = "1.8.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters.clear()
             abiFilters += abiList
@@ -92,5 +89,11 @@ dependencies {
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("com.alphacephei:vosk-android:0.3.75")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.13.5.202508271544-r")
+    implementation("com.android.tools.build:apksig:8.7.3")
+    implementation("org.eclipse.jdt:ecj:3.21.0")
+    implementation("com.android.tools:r8:8.7.18")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
 }

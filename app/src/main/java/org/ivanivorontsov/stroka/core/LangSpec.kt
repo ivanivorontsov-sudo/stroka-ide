@@ -47,34 +47,6 @@ class LangSpec(
 
         fun of(lang: Lang): LangSpec = when (lang) {
             Lang.PYTHON -> LangSpec(keywords = pyKeywords - w("True False None"), constants = w("True False None"), builtins = pyBuiltins, lineComments = listOf("#"), tripleQuotes = true, decorators = true)
-            Lang.PONYATNY -> LangSpec(
-                keywords = w("""
-                    пусть константа навсегда напиши если то иначе пока повторить для каждого из от до шаг раз
-                    функция верни конец и или не истина ложь ничего стоп дальше попробуй брось выбор вариант когда
-                    класс структура это себя родитель новый подключи в затем ошибка как наконец наследует
-                    пиши повтори пробуй конст переменная пускай создай постоянная конста напечатай печатай печать
-                    напечатать выведи выводи вывести вывод написать покажи скажи повторяй вернуть возврати возврат
-                    возвращай бросить выбрось кинь паника караул аларм капец ежели коли покуда процедура подпрограмма
-                    функц прервать прервись хватит харэ баста продолжай далее следующий проехали пропусти выбери
-                    подключить используй импорт попробовать спасите авось рискнем рискну предупреди кричи крикни ори
-                    жалуйся ворчи отладка шепни шепчи шепотом отладь делай выполняй крути перечисление перечень
-                    интерфейс договор ленивая ленивый ленивое лениво глобальная глобальный глобальное убедись
-                    утверждаю клянусь аминь всё все кончено метка ярлык иди перейди перейти прыгни goto поток нить
-                    параллельно асинхронная асинхронный асинхронно с используя взяв из
-                """),
-                types = w("число строка логическое список словарь функция ничего любое целое множество ошибка"),
-                builtins = w("""
-                    спроси число строка длина добавь убери случайное округли корень модуль большими маленькими
-                    соедини от тип сумма макс мин целое степень время дата_сейчас пауза формат_числа синус косинус
-                    логарифм вниз вверх прочитай_файл запиши_файл допиши_файл файл_есть логическое ПИ выход проверь
-                    множество нацело экземпляр символ код бит_и бит_или бит_искл бит_не сдвиг_влево сдвиг_вправо
-                    сдвиг_вправо_без_знака в_json из_json нумеруй попарно список_файлов удали_файл создай_папку
-                    тангенс арктангенс экспонента бесконечность аргументы argv размер sizeof формат printf открой пи
-                """),
-                constants = w("истина ложь ничего пи бесконечность"),
-                lineComments = listOf("#", "//"),
-                caseInsensitive = true
-            )
             Lang.JAVASCRIPT -> LangSpec(keywords = jsKeywords, builtins = jsBuiltins, constants = jsConstants, lineComments = listOf("//"), blockComment = "/*" to "*/", quotes = "\"'`", extraIdentChars = "_$")
             Lang.TYPESCRIPT -> LangSpec(keywords = jsKeywords + tsExtra, types = tsTypes, builtins = jsBuiltins, constants = jsConstants, lineComments = listOf("//"), blockComment = "/*" to "*/", quotes = "\"'`", decorators = true, extraIdentChars = "_$")
             Lang.KOTLIN -> LangSpec(keywords = ktKeywords - setOf("null"), types = ktTypes, builtins = ktBuiltins, constants = w("true false null"), lineComments = listOf("//"), blockComment = "/*" to "*/", tripleQuotes = true, quotes = "\"'", decorators = true)
@@ -85,6 +57,16 @@ class LangSpec(
             Lang.ASM6502 -> LangSpec(keywords = asmOps, builtins = asmRegs, types = asmDirectives, lineComments = listOf(";"), caseInsensitive = true, extraIdentChars = "_.")
             Lang.CSS -> LangSpec(keywords = cssKeywords, blockComment = "/*" to "*/", extraIdentChars = "_-")
             Lang.JSON -> LangSpec(constants = w("true false null"), quotes = "\"")
+
+            Lang.PONYATNY -> LangSpec(
+                keywords = w("пусть константа навсегда напиши пиши если то иначе пока повторить повтори для функция верни конец и или не стоп дальше попробуй пробуй брось выбор вариант когда класс структура это себя родитель новый подключи в затем каждого из от до шаг раз ошибка как наконец наследует конст модуль ждать поток метка переход интерфейс перечисление множество убедись делай"),
+                types = w("число строка логическое список словарь функция ничего любое целое множество"),
+                builtins = w("спроси число строка длина добавь убери случайное округли корень модуль большими маленькими соедини тип сумма макс мин целое степень время дата_сейчас пауза формат_числа синус косинус логарифм вниз вверх прочитай_файл"),
+                constants = w("истина ложь ничего"),
+                lineComments = listOf("#", "//"),
+                quotes = "\"\'`«»„“”‘’‹›",
+                extraIdentChars = "_$"
+            )
             Lang.HTML -> LangSpec(keywords = w("html head body div span p a img script style link meta title ul ol li table tr td th form input button label select option textarea canvas section header footer nav main article h1 h2 h3 h4 h5 h6 br hr"))
             else -> LangSpec()
         }

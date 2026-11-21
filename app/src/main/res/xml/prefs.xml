@@ -17,16 +17,23 @@
         <SwitchPreferenceCompat app:key="haptics" app:title="Отклик вибрацией" app:defaultValue="true" app:iconSpaceReserved="false" />
     </PreferenceCategory>
     <PreferenceCategory app:title="Голосовой ввод" app:iconSpaceReserved="false">
-        <ListPreference app:key="voice_mode" app:title="Режим понимания речи" app:defaultValue="blocks" app:entries="@array/voice_mode_names" app:entryValues="@array/voice_mode_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />\n        <ListPreference app:key="voice_engine" app:title="Распознавание" app:defaultValue="auto" app:entries="@array/engine_names" app:entryValues="@array/engine_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <ListPreference app:key="voice_engine" app:title="Распознавание" app:defaultValue="auto" app:entries="@array/engine_names" app:entryValues="@array/engine_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <ListPreference app:key="voice_mode" app:title="Голосовые шаблоны" app:defaultValue="blocks" app:entries="@array/voice_mode_names" app:entryValues="@array/voice_mode_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <ListPreference app:key="voice_lang" app:title="Язык по умолчанию" app:defaultValue="ru" app:entries="@array/lang_names" app:entryValues="@array/lang_values" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <Preference app:key="vosk_ru" app:title="Офлайн-модель Vosk: русский" app:iconSpaceReserved="false" />
         <Preference app:key="vosk_en" app:title="Офлайн-модель Vosk: английский" app:iconSpaceReserved="false" />
-        <Preference app:key="voice_legal" app:title="Конфиденциальность и лицензии" app:summary="Как обрабатывается голос и какие лицензии используются" app:iconSpaceReserved="false" />
     </PreferenceCategory>
     <PreferenceCategory app:title="Git и GitHub" app:iconSpaceReserved="false">
         <EditTextPreference app:key="git_user" app:title="Логин GitHub" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <Preference app:key="git_token" app:title="Токен доступа (PAT)" app:iconSpaceReserved="false" />
         <EditTextPreference app:key="git_name" app:title="Имя автора коммитов" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <EditTextPreference app:key="git_email" app:title="E-mail автора" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+    <PreferenceCategory app:title="Сборка на телефоне" app:iconSpaceReserved="false">
+        <Preference app:key="build_output" app:title="Папка для готовых APK и EXE" app:summary="Сюда сохраняются собранные программы" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="ai_autofix" app:title="ИИ: исправлять ошибки сборки" app:summary="После неудачной сборки отправить ошибку в тот же чат, до 5 попыток" app:defaultValue="true" app:iconSpaceReserved="false" />
+        <EditTextPreference app:key="ai_base" app:title="Адрес API ИИ" app:summary="Совместимый с OpenAI, например https://api.deepseek.com" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <EditTextPreference app:key="ai_model" app:title="Модель ИИ" app:defaultValue="deepseek-chat" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
+        <Preference app:key="ai_key" app:title="Ключ API ИИ" app:iconSpaceReserved="false" />
     </PreferenceCategory>
 </PreferenceScreen>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Программа</title>
+<style>
+:root { --bg:#0f1419; --card:#1a222c; --ink:#e8eef5; --muted:#8b9aab; --acc:#3d8bfd; --err:#ff8a8a; --key:#243040; --op:#2a4a3a; }
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+h1{font-size:1.15rem;font-weight:650;margin:0}
+header{padding:16px 16px 8px}
+#calc,#outwrap{padding:0 16px 16px}
+.screen{background:var(--card);border-radius:16px;padding:16px;min-height:72px;font-size:1.8rem;text-align:right;word-break:break-all;margin-bottom:12px}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+button{appearance:none;border:0;border-radius:14px;padding:16px 0;font-size:1.25rem;background:var(--key);color:var(--ink)}
+button.op{background:var(--op)}
+button.eq{background:var(--acc);color:#fff;font-weight:700}
+button:active{filter:brightness(1.2)}
+#log{background:var(--card);border-radius:16px;padding:14px;min-height:120px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.95rem}
+.err{color:var(--err)}
+#promptrow{display:none;gap:8px;margin-top:10px}
+#promptrow input{flex:1;border-radius:12px;border:0;padding:12px;font-size:1rem}
+</style>
+</head>
+<body>
+<header><h1 id="title">Программа</h1></header>
+<section id="calc" hidden>
+  <div class="screen" id="screen">0</div>
+  <div class="keys">
+    <button data-k="C">C</button><button data-k="±">±</button><button data-k="%">%</button><button class="op" data-k="/">÷</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="op" data-k="*">×</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="op" data-k="-">−</button>
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="op" data-k="+">+</button>
+    <button data-k="0">0</button><button data-k=".">.</button><button data-k="⌫">⌫</button><button class="eq" data-k="=">=</button>
+  </div>
+</section>
+<section id="outwrap">
+  <div id="log"></div>
+  <div id="promptrow"><input id="promptin" placeholder="Ввод"><button id="promptok">ОК</button></div>
+</section>
+<script src="yadro.js"></script>
+<script src="runtime.js"></script>
+<script src="program.js"></script>
+<script src="shell.js"></script>
+</body>
+</html>
