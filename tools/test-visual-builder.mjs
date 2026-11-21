@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const html = fs.readFileSync('app/src/main/assets/visual_builder.html', 'utf8');
+const activity = fs.readFileSync('app/src/main/java/org/ivanivorontsov/stroka/ui/VisualBuilderActivity.kt', 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
 assert.ok(scripts.length, 'visual builder must contain its inline script');
 for (const source of scripts) new vm.Script(source, { filename: 'visual_builder.html' });
@@ -55,4 +56,9 @@ for (const theme of ['light','dark','luxury','ocean','aurora','minimal','materia
 for (const required of ['function explainCode()', 'Объяснятор кода', 'data-template="card"', 'data-template="landing"', 'data-template="portfolio"', 'data-template="shop"']) {
   assert.ok(html.includes(required), 'builder feature missing: ' + required);
 }
+assert.ok(activity.includes('VoiceInput.Listener'), 'visual builder must reuse resilient voice input');
+assert.ok(activity.includes('voice?.start(language, "auto")'), 'visual builder must enable automatic online/offline fallback');
+assert.ok(activity.includes('window.onVoiceStatus'), 'voice status must use a non-command callback');
+assert.ok(!activity.includes('SpeechRecognizer.createSpeechRecognizer'), 'legacy single-engine recognizer must not return');
+assert.ok(html.includes('window.onVoiceStatus='), 'builder must display listening status separately');
 console.log('Visual builder: syntax OK; bilingual voice/theme/grid regression cases passed; 9 themes and explainer/templates present.');
