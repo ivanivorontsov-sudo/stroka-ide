@@ -1207,10 +1207,6 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val repoButton = Button(this).apply {
             text = "Подключить / выбрать репозиторий"
             isAllCaps = false
-            setOnClickListener {
-                dialog.dismiss()
-                showGitMenu()
-            }
         }
         content.addView(repoButton, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1230,6 +1226,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             .setNegativeButton("Отмена", null)
             .create()
         dialog.setOnShowListener {
+            repoButton.setOnClickListener {
+                dialog.dismiss()
+                showGitMenu()
+            }
             dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 dialog.dismiss()
                 startActivity(Intent(this, SettingsActivity::class.java))
