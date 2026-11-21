@@ -26,6 +26,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.webkit.ConsoleMessage
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -985,7 +986,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 consoleBox.visibility = View.GONE
                 previewBox.visibility = View.VISIBLE
                 panelStatus.text = "Окно Python · Android preview"
-                ensurePreview().loadDataWithBaseURL("https://stroka.local/", html, "text/html", "utf-8", null)
+                ensurePreview().apply {
+                    addJavascriptInterface(PythonPreviewBridge(), "Stroka")
+                    loadDataWithBaseURL("https://stroka.local/", html, "text/html", "utf-8", null)
+                }
             }
             override fun onInputRequested(prompt: String) {
                 panelStatus.text = "Ждёт ввода…"
@@ -1029,6 +1033,13 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     @SuppressLint("SetJavaScriptEnabled")
+    private inner class PythonPreviewBridge {
+        @JavascriptInterface
+        fun onUiEvent(event: String) {
+            python.provideUiEvent(event)
+        }
+    }
+
     private fun ensurePreview(): WebView {
         preview?.let { return it }
         val w = WebView(this)
@@ -1098,6 +1109,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     private fun loadPreview(target: Doc) {
         val w = ensurePreview()
+        w.removeJavascriptInterface("Stroka")
         val base = (target.ref as? DocRef.Local)?.let { "file://" + File(it.path).parent + "/" }
         val html = if (target.lang == Lang.MARKDOWN) MarkdownHtml.render(target.text, isNight()) else target.text
         panelStatus.text = "Просмотр: ${target.name}"
