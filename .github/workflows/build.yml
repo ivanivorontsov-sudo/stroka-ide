@@ -71,14 +71,32 @@ jobs:
           assert "com.termux.app.RunCommandService" in bridge
           assert "stroka_runner.py" in bridge and "stroka_tkinter.py" in bridge
           assert "android-apk" in runner and "android-aab" in runner
-          assert "Python-project" not in runner
-          assert "stroka-android" in runner and "com.chaquo.python" in runner
+          assert "python-app" in runner and "com.chaquo.python" in runner
+          assert 'install("-r", "requirements.txt")' in runner
+          assert "copyAssetTree" in runner and "PYROOT" in runner
           assert "aapt2FromMavenOverride" in setup
           assert "15859902_latest.zip" in setup
           assert "action_copy_menu" in main and "action_copy_menu" in menu
           assert "Описание скопировано" in main and "setTextIsSelectable(true)" in main
           assert "setTextIsSelectable(true)" in tutor
           assert "self.variable.get()" in tkinter
+          PYTHONPATH=app/src/main/python python3 - <<'PY'
+          import sys
+          from stroka_tkinter import install
+          class Callback:
+              def showPreview(self, html): pass
+              def waitUiEvent(self): return "__stop__"
+              def postUiEvent(self, event): pass
+          install(Callback())
+          import tkinter as tk
+          root = tk.Tk()
+          value = tk.StringVar(value="before")
+          tk.Label(root, textvariable=value)
+          assert "before" in root._page()
+          value.set("after")
+          assert "after" in root._page(), "Label must refresh its StringVar text"
+          print("Tkinter StringVar live-label test: passed")
+          PY
           print("Termux bridge, Python APK scaffold, Tkinter preview and copy actions: static checks passed")
           PY
 
