@@ -26,4 +26,12 @@ class VoiceCodeTemplatesTest {
         assertNotNull(block)
         assertTrue(block!!.code.contains("import tkinter"))
     }
+    @Test fun calculatorIsGeneratedFromConversationalPhrases() {
+        listOf("сделай мне калькулятор", "хочу калькулятор", "build a calculator", "калкулятор").forEach { phrase ->
+            val block = VoiceCodeTemplates.generate(phrase, Lang.HTML)
+            assertNotNull(phrase, block)
+            assertTrue(block!!.code.contains("Калькулятор"))
+            assertTrue(block.code.contains("data-v"))
+        }
+    }
 }
