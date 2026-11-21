@@ -88,8 +88,14 @@ class VisualBuilderActivity : AppCompatActivity(), VoiceInput.Listener {
     private inner class Bridge {
         @JavascriptInterface fun startVoice() {
             runOnUiThread {
-                if (ContextCompat.checkSelfPermission(this@VisualBuilderActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecognition()
-                else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                if (voice?.isActive == true) {
+                    voice?.stop()
+                    sendVoiceStatus("Голосовой ввод остановлен")
+                } else if (ContextCompat.checkSelfPermission(this@VisualBuilderActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    startRecognition()
+                } else {
+                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                }
             }
         }
         @JavascriptInterface fun save(html: String) {
@@ -101,7 +107,7 @@ class VisualBuilderActivity : AppCompatActivity(), VoiceInput.Listener {
     }
 
     override fun onDestroy() {
-        voice?.stop(silent = true)
+        voice?.release()
         voice = null
         web.destroy()
         super.onDestroy()
