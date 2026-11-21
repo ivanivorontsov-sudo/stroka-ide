@@ -24,8 +24,29 @@ object VoiceCodeTemplates {
         "библиотека", "библиотеку", "пакет",
         "need", "i need", "i want", "create", "make", "generate", "write", "add", "insert", "build",
         "program for", "piece of code", "code snippet", "block of code", "component",
-        "library", "import package", "install package"
+        "library", "import package", "install package",
+        "сделай мне", "мне надо", "мне нужно", "хочу чтобы", "сделай окошко", "покажи окно",
+        "выведи окно", "открой окно", "покажи форму", "нарисуй интерфейс", "сделай интерфейс",
+        "собери экран", "сделай экран", "покажи мне", "нужна форма", "нужно окно",
+        "make me", "i need", "i want", "show window", "open window", "display window",
+        "show form", "make a form", "create a window", "build interface", "show interface"
     )
+
+    private fun repairCommonSpeechTypos(text: String): String {
+        val replacements = listOf(
+            "окно програмы" to "окно программы", "окна програмы" to "окна программы",
+            "покажи окошко" to "покажи окно", "покажи окошки" to "покажи окна",
+            "создай веб форму" to "создай веб-форму", "сделай веб форму" to "сделай веб-форму",
+            "модалное окно" to "модальное окно", "модальное оконо" to "модальное окно",
+            "интерфейс програмы" to "интерфейс программы", "покажи интерфейс" to "сделай интерфейс",
+            "добавь окошко" to "добавь окно", "выведи окошко" to "выведи окно",
+            "дисплей окно" to "display window", "шоу виндов" to "show window",
+            "криэйт виндов" to "create window", "мейк э форм" to "make a form"
+        )
+        var result = text
+        replacements.forEach { (from, to) -> result = result.replace(from, to) }
+        return result
+    }
 
     private fun hasRequest(text: String): Boolean = requestWords.any { text.contains(it) }
 
@@ -88,9 +109,14 @@ object VoiceCodeTemplates {
 
     fun generate(utterance: String, preferredLanguage: Lang = Lang.PLAIN): VoiceCodeBlock? {
         val text = normalize(utterance)
-        if (!hasRequest(text)) return null
-        val language = languageFrom(text, preferredLanguage)
-        val intent = detectIntent(text, language) ?: return null
+            .replace("окошка", "окна").replace("окошко", "окно")
+            .replace("формочку", "форму").replace("формочка", "форма")
+            .replace("веб форм", "веб-форм").replace("хтмл", "html").replace("цсс", "css")
+            .replace("питон", "python").replace("джаваскрипт", "javascript")
+        val repaired = repairCommonSpeechTypos(text)
+        if (!hasRequest(repaired)) return null
+        val language = languageFrom(repaired, preferredLanguage)
+        val intent = detectIntent(repaired, language) ?: return null
         val code = when (intent) {
             Intent.NAME_INPUT -> nameInput(language)
             Intent.WEB_FORM -> webForm(language)
