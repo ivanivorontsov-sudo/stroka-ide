@@ -20,7 +20,7 @@ import java.util.zip.ZipOutputStream
  * routed to the existing Termux/GitHub backends until that toolchain is present.
  */
 object LocalBuildEngine {
-    enum class ProjectKind { ANDROID_GRADLE, STATIC_WEBSITE, PONYATNY, UNKNOWN }
+    enum class ProjectKind { ANDROID_GRADLE, STATIC_WEBSITE, PONYATNY, PYTHON, UNKNOWN }
 
     data class BuildResult(
         val uri: Uri?,
@@ -42,6 +42,9 @@ object LocalBuildEngine {
         if (project.walkTopDown().maxDepth(3).any {
                 it.isFile && it.extension.equals("pon", ignoreCase = true)
             }) return ProjectKind.PONYATNY
+        if (project.walkTopDown().maxDepth(3).any {
+                it.isFile && it.extension.equals("py", ignoreCase = true)
+            }) return ProjectKind.PYTHON
         return ProjectKind.UNKNOWN
     }
 
