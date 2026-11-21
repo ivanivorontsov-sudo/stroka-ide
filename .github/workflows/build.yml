@@ -93,6 +93,8 @@ jobs:
           const source = [
             'пусть имя = "Иван"',
             'пиши "Привет, " + имя',
+            'подключи "стд/математика.pon" как мат',
+            'пиши "Факториал: " + строка(мат.факториал(5))',
             'повтори 3 раза',
             '    пиши "Понятный работает"',
             'конец'
@@ -107,6 +109,7 @@ jobs:
           });
           assert.equal(errors.length, 0, errors.join("\n"));
           assert.match(output.join(""), /Привет, Иван/);
+          assert.match(output.join(""), /Факториал: 120/);
           assert.equal((output.join("").match(/Понятный работает/g) || []).length, 3);
           console.log("Pонятный 2.5 compile + execute smoke test: passed");
           NODE
