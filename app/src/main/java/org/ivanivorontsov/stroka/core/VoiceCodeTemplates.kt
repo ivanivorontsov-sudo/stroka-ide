@@ -216,11 +216,11 @@ object VoiceCodeTemplates {
     private fun webForm(lang: Lang, php: Boolean = false): String = when {
         php -> """
             <?php
-            $name = trim($_POST['name'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $message = trim($_POST['message'] ?? '');
-            $valid = $name !== '' && $message !== '' && filter_var($email, FILTER_VALIDATE_EMAIL);
-            function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+            ${'$'}name = trim(${'$'}_POST['name'] ?? '');
+            ${'$'}email = trim(${'$'}_POST['email'] ?? '');
+            ${'$'}message = trim(${'$'}_POST['message'] ?? '');
+            ${'$'}valid = ${'$'}name !== '' && ${'$'}message !== '' && filter_var(${'$'}email, FILTER_VALIDATE_EMAIL);
+            function h(string ${'$'}value): string { return htmlspecialchars(${'$'}value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
             ?>
             <!doctype html>
             <html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -233,12 +233,12 @@ object VoiceCodeTemplates {
             </style></head><body>
             <form method="post">
               <h1>Форма обратной связи</h1>
-              <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
-                <p><?= $valid ? 'Спасибо! Форма проверена.' : 'Заполните поля и укажите корректный email.' ?></p>
+              <?php if (${'$'}_SERVER['REQUEST_METHOD'] === 'POST'): ?>
+                <p><?= ${'$'}valid ? 'Спасибо! Форма проверена.' : 'Заполните поля и укажите корректный email.' ?></p>
               <?php endif; ?>
-              <label>Имя<input name="name" value="<?= h($name) ?>" required></label>
-              <label>Email<input type="email" name="email" value="<?= h($email) ?>" required></label>
-              <label>Сообщение<textarea name="message" rows="5" required><?= h($message) ?></textarea></label>
+              <label>Имя<input name="name" value="<?= h(${'$'}name) ?>" required></label>
+              <label>Email<input type="email" name="email" value="<?= h(${'$'}email) ?>" required></label>
+              <label>Сообщение<textarea name="message" rows="5" required><?= h(${'$'}message) ?></textarea></label>
               <button type="submit">Отправить</button>
             </form></body></html>
         """
@@ -248,7 +248,7 @@ object VoiceCodeTemplates {
             form.className = "contact-form";
             form.innerHTML = '<label>Name <input name="name" required></label>' +
                 '<label>Email <input name="email" type="email" required></label>' +
-                '<label>Message <textarea name="message" required></label>' +
+                '<label>Message <textarea name="message" required></textarea></label>' +
                 '<button type="submit">Send</button>';
             form.addEventListener("submit", (event) => {
                 event.preventDefault();
