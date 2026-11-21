@@ -354,11 +354,11 @@ object VoiceMapper {
         VoiceCodeTemplates.generate(trimmed, preferredLanguage, fileName, fullConstructs = voiceMode == "constructs")?.let {
             return listOf(VoiceAction.InsertBlock(it.title, it.code))
         }
-        parseCommand(trimmed)?.let { return listOf(it) }
         val ponyatnyFile = fileName?.substringAfterLast('.', "")?.equals("pon", ignoreCase = true) == true
         if (preferredLanguage == Lang.PONYATNY || ponyatnyFile) {
             PonyatnyVoiceMapper.map(trimmed)?.let { return listOf(VoiceAction.Insert(it)) }
         }
+        parseCommand(trimmed)?.let { return listOf(it) }
         val fixed = fixCapitalization(trimmed).let { if (it.length > 1 && it.endsWith(".") && !it.endsWith("..") && it[it.length - 2].isLetter()) it.dropLast(1) else it }
         return dictate(fixed)
     }
