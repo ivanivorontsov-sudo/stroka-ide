@@ -39,6 +39,16 @@ class PonyatnySupportTest {
         assertTrue(Completer.suggest("пу", 2, Lang.PONYATNY).contains("пусть"))
     }
 
+    @Test fun editorAutoIndentsPonyatnyBlocksAndDedentsOnEnd() {
+        val opening = "если истина то\n"
+        val indent = EditorLogic.afterNewline(opening, opening.lastIndex, Lang.PONYATNY, "    ")
+        assertEquals("    ", indent?.text)
+
+        val closing = "если истина то\n    пиши 1\n    конец\n    "
+        val dedent = EditorLogic.afterNewline(closing, closing.lastIndexOf('\n'), Lang.PONYATNY, "    ")
+        assertEquals("", dedent?.text)
+    }
+
     @Test fun starterTemplateCreatesRunnablePonProject() {
         val template = Templates.all.first { it.id == "ponyatny" }
         assertEquals("main.pon", template.main)
