@@ -191,9 +191,12 @@ jobs:
           assert "PonyatnyVoiceMapper.map" in voice
           assert "NumberWords.parse" in pony_voice
           assert "PonyatnyYadro.run" in js_runner and "ponyatny/yadro.js" in js_runner
+          assert "PonyatnyStdModules" in js_runner and "resolve: resolveModule" in js_runner
+          assert "ponyatny/std.json" in js_runner
           assert Path("app/src/main/assets/ponyatny/yadro.js").is_file()
+          assert Path("app/src/main/assets/ponyatny/std.json").is_file()
           assert Path("app/src/main/assets/ponyatny/СИНТАКСИС.md").is_file()
-          assert "Lang.JAVASCRIPT, Lang.PONYATNY -> runJs" in main
+          assert "Lang.PONYATNY -> runJs" in main and "collectPonyatnyModules" in main
           print("Termux, Python APK, Tkinter and Pонятный integration static checks: passed")
           PY
           PYTHONPATH=app/src/main/python python3 - <<'PY'
