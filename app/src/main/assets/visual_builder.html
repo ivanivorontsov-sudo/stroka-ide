@@ -26,10 +26,10 @@ function voiceCommand(raw){
  const n=raw.toLowerCase().replace(/ё/g,'е').trim();
  if(!n)return;
  const typeOf=(v)=>/калькулятор|calculator/.test(v)?'calculator':/форм|form/.test(v)?'form':/изображ|картин|image|picture/.test(v)?'image':/кноп|button/.test(v)?'button':/заголов|header|heading|title/.test(v)?'hero':/раздел|divider/.test(v)?'spacer':'text';
- const ordinal=n.match(/^(?:сделай|make)?\\s*(?:блок|block)\\s+(один|первый|раз|два|второй|три|третий|четыре|четвертый|пять|пятый|one|first|two|second|three|third|four|fourth|five|fifth|1|2|3|4|5)(?:\\s+(.+))?$/);
+ const ordinal=n.match(/^(?:сделай|make)?\s*(?:блок|block)\s+(один|первый|раз|два|второй|три|третий|четыре|четвертый|пять|пятый|one|first|two|second|three|third|four|fourth|five|fifth|1|2|3|4|5)(?:\s+(.+))?$/);
  if(ordinal){
   const ids={'один':0,'первый':0,'раз':0,'one':0,'first':0,'1':0,'два':1,'второй':1,'two':1,'second':1,'2':1,'три':2,'третий':2,'three':2,'third':2,'3':2,'четыре':3,'четвертый':3,'four':3,'fourth':3,'4':3,'пять':4,'пятый':4,'five':4,'fifth':4,'5':4};
-  const index=ids[ordinal[1]],rest=(ordinal[2]||'').replace(/^(сделай|добавь|создай|пусть будет)\s+/,'');
+  const index=ids[ordinal[1]],rest=(ordinal[2]||'').replace(/^(сделай|добавь|создай|пусть будет|make|add|create)\s+/,'');
   if(rest){snap();const el=block(typeOf(rest));const old=stage.children[index];if(old)old.replaceWith(el);else stage.append(el);select(el);update();return}
   select(stage.children[index]);return
  }
@@ -41,8 +41,8 @@ function voiceCommand(raw){
  if(/удали|удалить|delete|remove/.test(n)){document.querySelector('#del').click();return}
  if(/выше|подними|up|move up|above/.test(n)){document.querySelector('#up').click();return}
  if(/ниже|опусти|down|move down|below/.test(n)){document.querySelector('#down').click();return}
- const width=n.match(/ширин[аыу]?\s+(\d+)\s*(пиксел|px)?/);if(width&&selected){selected.style.width=width[1]+'px';update();return}
- const text=n.match(/(назови|текст|надпись)\s+(.+)/);if(text&&selected){let el=selected.querySelector('h1,h2,p,button,output');if(el)el.textContent=text[2];else selected.textContent=text[2];select(selected);update();return}
+ const width=n.match(/(?:ширин[аыу]?|width)\s+(\d+)\s*(пиксел|px|pixels)?/);if(width&&selected){selected.style.width=width[1]+'px';update();return}
+ const text=n.match(/(назови|текст|надпись|text|label|title)\s+(.+)/);if(text&&selected){let el=selected.querySelector('h1,h2,p,button,output');if(el)el.textContent=text[2];else selected.textContent=text[2];select(selected);update();return}
  document.querySelector('#voice').textContent='🎙 Не поняла';
 }
 window.onVoiceResult=voiceCommand;
