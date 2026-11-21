@@ -9,7 +9,7 @@ case "$(uname -m)" in
 esac
 
 pkg update -y
-pkg install -y openjdk-17 gradle aapt2 aapt apksigner unzip zip curl coreutils
+pkg install -y openjdk-17 gradle aapt2 aapt apksigner unzip zip curl coreutils nodejs-lts
 
 SDK="$HOME/android-sdk"
 mkdir -p "$SDK/cmdline-tools"
