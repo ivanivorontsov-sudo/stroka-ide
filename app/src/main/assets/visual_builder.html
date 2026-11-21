@@ -40,8 +40,8 @@ function voiceCommand(raw){
   if(rest){snap();const el=block(typeOf(rest));const old=stage.children[index];if(old)old.replaceWith(el);else stage.append(el);select(el);update();return}
   select(stage.children[index]);return
  }
- if(/визитк|business\\s*card|contact\\s*card/.test(n)){const el=block('card');snap();stage.replaceChildren(el);select(el);update();return}
- if(/лендинг|landing\\s*page|создай сайт|create (?:a )?website/.test(n)){const el=block('landing');snap();stage.replaceChildren(el);select(el);update();return}
+ if(/визитк|business\s*card|contact\s*card/.test(n)){const el=block('card');snap();stage.replaceChildren(el);select(el);update();return}
+ if(/лендинг|landing\s*page|создай сайт|create (?:a )?website/.test(n)){const el=block('landing');snap();stage.replaceChildren(el);select(el);update();return}
  if(/добавь|создай|вставь|нужен|нужна|хочу|add|create|insert|need|want|make/.test(n)){
   const el=block(typeOf(n));snap();
   const target=selected&&/(внутрь|в форму|в блок|inside|into selected)/.test(n)?selected:stage;
