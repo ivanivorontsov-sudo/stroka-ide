@@ -14,6 +14,11 @@ object PonyatnyVoiceMapper {
         "постоянная" to "константа",
         "напечатай" to "пиши",
         "напечатать" to "пиши",
+        "печатай" to "пиши",
+        "печать" to "пиши",
+        "выводи" to "пиши",
+        "вывод" to "пиши",
+        "написать" to "пиши",
         "напиши" to "пиши",
         "выведи" to "пиши",
         "вывести" to "пиши",
@@ -50,6 +55,16 @@ object PonyatnyVoiceMapper {
         "делить на" to "/",
         "делить" to "/",
         "остаток от деления" to "%",
+        "кричи на систему" to "предупреди",
+        "ори на систему" to "предупреди",
+        "шепни системе" to "отладка",
+        "зуб даю" to "убедись",
+        "мамой клянусь" to "убедись",
+        "в любом случае" to "наконец",
+        "на случай беды" to "попробуй",
+        "считай до трех" to "пауза(3000)",
+        "барабанная дробь" to "пауза(1000)",
+        "в фоне" to "поток",
         "истина" to "истина",
         "ложь" to "ложь",
         "ничего" to "ничего",
@@ -60,6 +75,10 @@ object PonyatnyVoiceMapper {
     private val wordAliases = mapOf(
         "напиши" to "пиши",
         "напечатай" to "пиши",
+        "печатай" to "пиши",
+        "печать" to "пиши",
+        "выводи" to "пиши",
+        "вывод" to "пиши",
         "выведи" to "пиши",
         "вывести" to "пиши",
         "ежели" to "если",
@@ -75,6 +94,7 @@ object PonyatnyVoiceMapper {
     fun map(utterance: String): String? {
         val original = utterance.trim()
         if (original.isEmpty()) return null
+        if (VoiceMapper.normalize(original) == "стоп") return "стоп"
         var source = original.replace('ё', 'е')
         val output = Regex("^(?:пиши|напиши|напечатай|выведи|вывести|скажи)(?: на экран| текст| строку)?\\s+(.+)$", RegexOption.IGNORE_CASE)
             .find(original)
