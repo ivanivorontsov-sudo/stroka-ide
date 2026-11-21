@@ -1180,13 +1180,13 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         }
         content.addView(radioGroup)
         val divider = View(this).apply {
-            setBackgroundColor(com.google.android.material.color.MaterialColors.getColor(this, com.google.android.material.R.attr.colorOutlineVariant))
+            setBackgroundColor(0x33888888)
         }
         content.addView(divider, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
             topMargin = dp(8); bottomMargin = dp(10)
         })
-        val remote = repo?.let { Git.open(it).use { g -> g.repository.config.getString("remote", "origin", "url") } }
-        val branch = repo?.let { runCatching { Git.open(it).use { g -> g.repository.branch } }.getOrNull() }
+        val remote = repo?.let { org.eclipse.jgit.api.Git.open(it).use { g -> g.repository.config.getString("remote", "origin", "url") } }
+        val branch = repo?.let { runCatching { org.eclipse.jgit.api.Git.open(it).use { g -> g.repository.branch } }.getOrNull() }
         val status = TextView(this).apply {
             textSize = 13f
             setLineSpacing(dp(3).toFloat(), 1f)
