@@ -168,7 +168,8 @@ else
     TMP_GRADLE="$HOME/.cache/stroka/gradle-8.9.zip"
     curl -fL --retry 3 "https://services.gradle.org/distributions/gradle-8.9-bin.zip" -o "$TMP_GRADLE" || fail "Не удалось скачать Gradle 8.9."
     curl -fL --retry 3 "https://services.gradle.org/distributions/gradle-8.9-bin.zip.sha256" -o "$TMP_GRADLE.sha256" || fail "Не удалось получить контрольную сумму Gradle."
-    (cd "$(dirname "$TMP_GRADLE")" && sha256sum -c "$(basename "$TMP_GRADLE").sha256") || fail "Контрольная сумма Gradle 8.9 не совпала."
+    EXPECTED_SHA="$(tr -d '[:space:]' < "$TMP_GRADLE.sha256")"
+    echo "$EXPECTED_SHA  $TMP_GRADLE" | sha256sum -c - || fail "Контрольная сумма Gradle 8.9 не совпала."
     unzip -q "$TMP_GRADLE" -d "$HOME/.cache/stroka"
     rm -f "$TMP_GRADLE" "$TMP_GRADLE.sha256"
   fi
