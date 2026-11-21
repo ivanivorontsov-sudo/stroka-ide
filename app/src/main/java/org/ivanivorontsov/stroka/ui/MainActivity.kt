@@ -1204,6 +1204,17 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             }
         }
         content.addView(status)
+        val repoButton = Button(this).apply {
+            text = "Подключить / выбрать репозиторий"
+            isAllCaps = false
+            setOnClickListener {
+                dialog.dismiss()
+                showGitMenu()
+            }
+        }
+        content.addView(repoButton, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(8) })
         val scroll = ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
