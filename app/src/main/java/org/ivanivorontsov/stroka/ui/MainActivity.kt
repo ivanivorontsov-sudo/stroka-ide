@@ -261,6 +261,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             R.id.action_wrap -> { prefs.wrap = !prefs.wrap; editor.setWrap(prefs.wrap); updateMenuChecks() }
             R.id.action_theme -> toggleTheme()
             R.id.action_voice_help -> showVoiceHelp()
+            R.id.action_self_tutor -> startActivity(Intent(this, SelfTutorActivity::class.java))
             R.id.action_close -> if (current >= 0) closeDoc(current)
             R.id.action_settings -> startActivity(Intent(this, SettingsActivity::class.java))
             R.id.action_about -> showAbout()
