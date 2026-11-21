@@ -44,6 +44,22 @@
                 android:minWidth="56dp"
                 android:text="RU" />
 
+            <Button
+                android:id="@+id/voiceMode"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:minWidth="64dp"
+                android:text="БЛОКИ" />
+
+            <Button
+                android:id="@+id/voiceBuilder"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:minWidth="72dp"
+                android:text="КОНСТР." />
+
             <ImageButton
                 android:id="@+id/voiceHelp"
                 android:layout_width="44dp"
