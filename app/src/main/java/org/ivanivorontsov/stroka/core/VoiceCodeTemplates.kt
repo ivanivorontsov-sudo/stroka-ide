@@ -81,7 +81,10 @@ object VoiceCodeTemplates {
 
         if (text.contains("окн") || text.contains("диалог") || text.contains("модаль") ||
             text.contains("window") || text.contains("dialog") || text.contains("modal") ||
-            text.contains("popup") || text.contains("попап")
+            text.contains("popup") || text.contains("попап") ||
+            text.contains("интерфейс") || text.contains("interface") ||
+            text.contains("экран") || text.contains("screen") ||
+            text.contains("окош") || text.contains("window")
         ) return Intent.WINDOW
 
         if (text.contains("имя") || text.contains("имени") || text.contains("name") ||
