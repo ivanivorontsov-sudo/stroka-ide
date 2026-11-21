@@ -1152,7 +1152,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         }
         val explanation = TextView(this).apply {
             textSize = 13f
-            text = "Есть два способа: облачная сборка через GitHub Actions или локальная ARM64-сборка APK/AAB через Termux. Для первого запуска откройте Termux, выполните termux-setup-storage, включите allow-external-apps=true в ~/.termux/termux.properties и разрешите Строке дополнительное разрешение «Запуск команд в Termux». Затем нажмите «Подготовить локальную сборку»."
+            text = "Есть два способа: облачная сборка через GitHub Actions или локальная ARM64-сборка APK/AAB через Termux. Для обычного Python-файла выберите Android APK: Строка сама создаст Android-проект и добавит совместимый runtime. Для первого запуска откройте Termux, выполните termux-setup-storage и разрешите Строке дополнительное разрешение «Запуск команд в Termux». Затем нажмите «Подготовить локальную сборку»."
             setPadding(0, 0, 0, dp(12))
             setTextIsSelectable(true)
         }
@@ -1173,7 +1173,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 text = label
                 textSize = 14f
                 setPadding(dp(2), dp(5), 0, dp(5))
-                isChecked = index == 0
+                isChecked = index == (if (doc?.lang == Lang.PYTHON) 1 else 0)
             }
             radioGroup.addView(radio, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
