@@ -139,9 +139,9 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(web)
         web.loadData("<meta name='viewport' content='width=device-width,initial-scale=1'><body style='font:16px sans-serif;padding:24px'>Запуск приложения…</body>", "text/html", "utf-8")
-        copyAssetTree("", filesDir)
         Thread({
             try {
+                copyAssetTree("", filesDir)
                 if (!Python.isStarted()) Python.start(AndroidPlatform(applicationContext))
                 val code = File(filesDir, "main.py").readText()
                 Python.getInstance().getModule("stroka_runner").callAttr("run", code, "main.py", filesDir.absolutePath, bridge)
