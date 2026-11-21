@@ -8,6 +8,7 @@ import java.net.URL
 
 object CloudBuild {
     data class Result(val repo: String, val branch: String, val actionsUrl: String)
+    private data class GitState(val remote: String, val branch: String, val clean: Boolean, val pushed: Boolean)
 
     fun dispatch(directory: File, target: String, token: String): Result {
         require(token.isNotBlank()) { "GitHub-токен не задан" }
@@ -15,7 +16,7 @@ object CloudBuild {
             val currentBranch = git.repository.branch
             val localHead = git.repository.resolve("HEAD")
             val remoteHead = git.repository.resolve("refs/remotes/origin/$currentBranch")
-            Triple(
+            GitState(
                 git.repository.config.getString("remote", "origin", "url").orEmpty(),
                 currentBranch,
                 git.status().call().isClean,
