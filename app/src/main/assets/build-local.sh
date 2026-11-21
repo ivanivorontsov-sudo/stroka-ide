@@ -22,7 +22,10 @@ if [ -z "$ROOT" ]; then
   while IFS= read -r -d '' f; do ROOT="$(dirname "$f")"; break; done < <(find "$WORK" -maxdepth 4 \( -name build.gradle -o -name build.gradle.kts \) -print0)
 fi
 if [ -z "$ROOT" ]; then
-  PYFILE="$(find "$WORK" -maxdepth 3 -type f -name '*.py' ! -name 'stroka_runner.py' ! -name 'stroka_tkinter.py' | head -n 1 || true)"
+  PYFILE="$(find "$WORK" -maxdepth 3 -type f -name 'main.py' | head -n 1 || true)"
+  if [ -z "$PYFILE" ]; then
+    PYFILE="$(find "$WORK" -maxdepth 3 -type f -name '*.py' ! -name 'stroka_runner.py' ! -name 'stroka_tkinter.py' | head -n 1 || true)"
+  fi
   [ -n "$PYFILE" ] || fail "Не найден Android Gradle-проект или Python-файл."
   echo "Обнаружен Python-проект без файлов сборки: $PYFILE"
   APP="$HOME/.cache/stroka-build/python-app"
