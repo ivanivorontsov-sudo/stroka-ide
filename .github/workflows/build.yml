@@ -51,6 +51,7 @@ jobs:
           open("/tmp/visual_builder.js", "w", encoding="utf-8").write("\n".join(scripts))
           PY
           node --check /tmp/visual_builder.js
+          node tools/test-visual-builder.mjs
 
       - name: Unit tests
         run: |
