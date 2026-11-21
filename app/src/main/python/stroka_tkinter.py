@@ -34,6 +34,7 @@ def install(callback):
             self.children = []
             self.text = kwargs.get("text", "")
             variable = kwargs.get("textvariable")
+            self.variable = variable
             self.value = variable.get() if variable else kwargs.get("value", "")
             self.command = kwargs.get("command")
             self.options = kwargs.get("values", [])
@@ -53,7 +54,7 @@ def install(callback):
         def focus_set(self): return self
         def insert(self, index, value): self.value = str(self.value) + str(value)
         def delete(self, *a): self.value = ""
-        def get(self): return str(self.value)
+        def get(self, *a): return str(self.value)
         def set(self, value): self.value = value
         def _render(self):
             children = "".join(x._render() for x in self.children)
@@ -103,6 +104,7 @@ def install(callback):
                 if widget is None: continue
                 if kind == "i":
                     widget.value = unquote(value) if sep else ""
+                    if widget.variable is not None: widget.variable.set(widget.value)
                 elif kind == "c" and callable(widget.command):
                     try: widget.command()
                     except Exception as error: print("Ошибка обработчика кнопки:", error)
