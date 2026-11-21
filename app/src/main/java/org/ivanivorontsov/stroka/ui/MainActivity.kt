@@ -1300,15 +1300,20 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 val localWebsiteRequested = target == "website" ||
                     (target == "auto" && kind == LocalBuildEngine.ProjectKind.STATIC_WEBSITE)
                 if (localWebsiteRequested) {
-                    if (kind != LocalBuildEngine.ProjectKind.STATIC_WEBSITE) {
-                        Toast.makeText(this, "Для локальной сборки сайта нужен index.html или index.htm в корне проекта.", Toast.LENGTH_LONG).show()
+                    if (kind != LocalBuildEngine.ProjectKind.STATIC_WEBSITE &&
+                        kind != LocalBuildEngine.ProjectKind.PONYATNY) {
+                        Toast.makeText(this, "Для сайта нужен index.html или проект на языке «Понятный» (.pon).", Toast.LENGTH_LONG).show()
                         return@setOnClickListener
                     }
                     try {
-                        val result = LocalBuildEngine.buildStaticWebsite(this, projectRoot)
+                        val result = if (kind == LocalBuildEngine.ProjectKind.PONYATNY) {
+                            LocalBuildEngine.buildPonyatnyWebsite(this, projectRoot)
+                        } else {
+                            LocalBuildEngine.buildStaticWebsite(this, projectRoot)
+                        }
                         val location = result.uri?.let { "Загрузки/StrokaBuild/stroka-website-build.zip" }
                             ?: result.localPath
-                        Toast.makeText(this, "Сайт собран внутри Строки: ${result.files} файлов. Архив: $location", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, "Сайт собран локально: ${result.files} файлов. Архив: $location", Toast.LENGTH_LONG).show()
                         dialog.dismiss()
                     } catch (e: Exception) {
                         MaterialAlertDialogBuilder(this).setTitle("Локальная сборка сайта не удалась")
