@@ -121,12 +121,18 @@ import java.util.concurrent.LinkedBlockingQueue
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private val events = LinkedBlockingQueue<String>()
-    private val bridge = object {
+    private val bridge = PythonBridge()
+
+    inner class PythonBridge {
         fun out(value: String, error: Boolean) { android.util.Log.d("PythonApp", value) }
         fun showPreview(html: String) { runOnUiThread { web.loadDataWithBaseURL("https://app.local/", html, "text/html", "utf-8", null) } }
         fun waitUiEvent(): String = events.take()
         fun postUiEvent(value: String) { events.offer(value) }
         fun readLine(prompt: String): String = ""
+    }
+
+    inner class WebBridge {
+        @JavascriptInterface fun onUiEvent(value: String) { events.offer(value) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,9 +142,7 @@ class MainActivity : AppCompatActivity() {
             settings.domStorageEnabled = true
             webChromeClient = WebChromeClient()
             webViewClient = WebViewClient()
-            addJavascriptInterface(object {
-                @JavascriptInterface fun onUiEvent(value: String) { events.offer(value) }
-            }, "Stroka")
+            addJavascriptInterface(WebBridge(), "Stroka")
         }
         setContentView(web)
         web.loadData("<meta name='viewport' content='width=device-width,initial-scale=1'><body style='font:16px sans-serif;padding:24px'>Запуск приложения…</body>", "text/html", "utf-8")
