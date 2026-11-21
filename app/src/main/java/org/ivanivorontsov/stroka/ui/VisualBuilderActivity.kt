@@ -40,7 +40,7 @@ class VisualBuilderActivity : AppCompatActivity() {
         setContentView(web)
         val source = URLEncoder.encode(intent.getStringExtra("source").orEmpty(), "UTF-8").replace("+", "%20")
         val page = assets.open("visual_builder.html").bufferedReader().use { it.readText() }
-            .replace("const seed=decodeURIComponent(location.hash.slice(1));", "const seed=decodeURIComponent(\"$source\");")
+            .replace("let seed=decodeURIComponent(location.hash.slice(1));", "const seed=decodeURIComponent(\"$source\");")
         web.loadDataWithBaseURL("https://stroka.local/", page, "text/html", "UTF-8", null)
     }
 
