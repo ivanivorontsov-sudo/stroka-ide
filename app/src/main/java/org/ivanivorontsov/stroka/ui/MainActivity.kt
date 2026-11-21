@@ -1218,7 +1218,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     override fun onFinal(text: String) {
         voicePartial.text = ""
-        val actions = VoiceMapper.map(text)
+        val activeLanguage = docs.getOrNull(current)?.lang ?: Lang.PLAIN
+        val actions = VoiceMapper.map(text, activeLanguage)
         voiceLast.text = "«$text» → " + actions.joinToString(" ") { describe(it) }
         for (a in actions) applyVoice(a)
     }
@@ -1238,6 +1239,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     private fun describe(a: VoiceAction): String = when (a) {
         is VoiceAction.Insert -> "«${a.text}»"
+        is VoiceAction.InsertBlock -> "[шаблон: ${a.title}]"
         VoiceAction.NewLine -> "⏎"
         VoiceAction.Indent -> "⇥"
         VoiceAction.Outdent -> "⇤"
@@ -1260,6 +1262,13 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 val first = a.text.firstOrNull() ?: return
                 val needSpace = (prev.isLetterOrDigit() || prev == ')' || prev == '"') && (first.isLetterOrDigit() || first == '"')
                 editor.insertText(if (needSpace) " " + a.text else a.text)
+            }
+            is VoiceAction.InsertBlock -> {
+                val t = editor.text ?: return
+                val c = minOf(editor.selectionStart, editor.selectionEnd).coerceAtLeast(0)
+                val prefix = if (c > 0 && t[c - 1] != '\\n') "\\n" else ""
+                val suffix = if (c < t.length && t[c] != '\\n') "\\n" else ""
+                editor.insertText(prefix + a.code.trim('\\n') + suffix)
             }
             VoiceAction.NewLine -> editor.insertText("\n")
             VoiceAction.Indent -> editor.insertIndent()

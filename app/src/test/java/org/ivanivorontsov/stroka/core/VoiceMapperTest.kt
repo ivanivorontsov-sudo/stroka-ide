@@ -7,6 +7,7 @@ class VoiceMapperTest {
     private fun text(s: String): String = VoiceMapper.map(s).joinToString("") {
         when (it) {
             is VoiceAction.Insert -> it.text
+            is VoiceAction.InsertBlock -> it.code
             VoiceAction.NewLine -> "⏎"
             VoiceAction.Indent -> "⇥"
             else -> "[$it]"
@@ -178,6 +179,67 @@ class VoiceMapperTest {
         assertEquals("class User", text("класс User"))
         assertEquals("import os", text("импорт os"))
         assertEquals("const total = 25;", text("константа total equals twenty five semicolon"))
+    }
+
+    @Test
+    fun spokenNameProgramCreatesLanguageAwareBlock() {
+        val action = VoiceMapper.map(
+            "нужна программа или кусок кода для того чтобы получить имя пользователя",
+            Lang.PYTHON
+        ).single() as VoiceAction.InsertBlock
+        assertEquals("Ввод имени", action.title)
+        assert(action.code.contains("input("))
+        assert(action.code.contains("print("))
+    }
+
+    @Test
+    fun webFormCreatesHtmlBlock() {
+        val action = VoiceMapper.map("создай веб форму с именем email и сообщением", Lang.HTML)
+            .single() as VoiceAction.InsertBlock
+        assertEquals("Веб-форма", action.title)
+        assert(action.code.contains("<form"))
+        assert(action.code.contains("type=\"email\""))
+        assert(action.code.contains("addEventListener"))
+    }
+
+    @Test
+    fun windowCreatesJavascriptDialog() {
+        val action = VoiceMapper.map("нужен кусок кода чтобы открыть модальное окно", Lang.JAVASCRIPT)
+            .single() as VoiceAction.InsertBlock
+        assertEquals("Окно / диалог", action.title)
+        assert(action.code.contains("document.createElement(\"dialog\")"))
+        assert(action.code.contains("showModal()"))
+    }
+
+    @Test
+    fun cssRequestCreatesStylesInsteadOfMarkup() {
+        val action = VoiceMapper.map("сделай часть кода для css оформления веб формы", Lang.CSS)
+            .single() as VoiceAction.InsertBlock
+        assertEquals("CSS-оформление", action.title)
+        assert(action.code.contains(".contact-form"))
+        assert(action.code.contains("box-sizing"))
+    }
+
+    @Test
+    fun libraryRequestCreatesImportAndInstallHint() {
+        val action = VoiceMapper.map("подключи библиотеку requests", Lang.PYTHON)
+            .single() as VoiceAction.InsertBlock
+        assertEquals("Подключение библиотеки", action.title)
+        assert(action.code.contains("pip install requests"))
+        assert(action.code.contains("import requests"))
+    }
+
+    @Test
+    fun ordinaryDictationIsNotMistakenForTemplateRequest() {
+        assertEquals(listOf(VoiceAction.Insert("function greet")), VoiceMapper.map("function greet"))
+    }
+
+    @Test
+    fun requestedHtmlPageUsesHtmlTemplate() {
+        val action = VoiceMapper.map("нужен блок кода для html веб страницы", Lang.PLAIN)
+            .single() as VoiceAction.InsertBlock
+        assertEquals(Lang.HTML, VoiceCodeTemplates.generate("нужен блок кода для html веб страницы")?.language)
+        assert(action.code.contains("<!DOCTYPE html>"))
     }
 
 }

@@ -2,6 +2,7 @@ package org.ivanivorontsov.stroka.core
 
 sealed class VoiceAction {
     data class Insert(val text: String) : VoiceAction()
+    data class InsertBlock(val title: String, val code: String) : VoiceAction()
     object NewLine : VoiceAction()
     object Indent : VoiceAction()
     object Outdent : VoiceAction()
@@ -304,9 +305,12 @@ object VoiceMapper {
         return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(220)
     }
 
-    fun map(utterance: String): List<VoiceAction> {
+    fun map(utterance: String, preferredLanguage: Lang = Lang.PLAIN): List<VoiceAction> {
         val trimmed = utterance.trim()
         if (trimmed.isEmpty()) return emptyList()
+        VoiceCodeTemplates.generate(trimmed, preferredLanguage)?.let {
+            return listOf(VoiceAction.InsertBlock(it.title, it.code))
+        }
         parseCommand(trimmed)?.let { return listOf(it) }
         val fixed = fixCapitalization(trimmed).let { if (it.length > 1 && it.endsWith(".") && !it.endsWith("..") && it[it.length - 2].isLetter()) it.dropLast(1) else it }
         return dictate(fixed)
