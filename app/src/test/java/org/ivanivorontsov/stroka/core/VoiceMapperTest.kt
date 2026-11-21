@@ -286,4 +286,24 @@ class VoiceMapperTest {
     @Test fun offModeIsPlainDictation() {
         assertEquals(listOf(VoiceAction.Insert("создай калькулятор")), VoiceMapper.map("создай калькулятор", Lang.HTML, voiceMode = "off"))
     }
+
+    @Test
+    fun websiteAndBusinessCardRequestsOpenVisualBuilder() {
+        listOf("создай сайт", "создай красивую визитку", "сделай мне лендинг", "build a website", "create a business card").forEach { phrase ->
+            assertEquals(phrase, listOf(VoiceAction.OpenVisualBuilder), VoiceMapper.map(phrase))
+        }
+    }
+
+    @Test
+    fun explicitCodeExamplesStayLiteralInsteadOfBecomingCommands() {
+        val examples = listOf(
+            "пример кода: создай сайт",
+            "вот пример калькулятора",
+            "example code: create a website",
+            "for example, make a form"
+        )
+        examples.forEach { phrase ->
+            assertEquals(phrase, listOf(VoiceAction.Insert(phrase)), VoiceMapper.map(phrase))
+        }
+    }
 }
