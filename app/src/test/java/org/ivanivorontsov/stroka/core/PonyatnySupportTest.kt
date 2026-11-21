@@ -66,4 +66,12 @@ class PonyatnySupportTest {
             VoiceMapper.bestCandidate(listOf("непонятная фраза", "переменная число равно пять"), Lang.PONYATNY)
         )
     }
+
+    @Test fun voiceConstructTemplatesAreRunnablePonyatny() {
+        val loop = VoiceMapper.map("создай цикл", Lang.PONYATNY, "main.pon", "constructs").single() as VoiceAction.InsertBlock
+        assertTrue(loop.code.contains("пиши \"Повтор\""))
+        assertTrue(!loop.code.contains("пиши счет"))
+        val condition = VoiceMapper.map("создай условие", Lang.PONYATNY, "main.pon", "constructs").single() as VoiceAction.InsertBlock
+        assertTrue(condition.code.contains("если истина то"))
+    }
 }
