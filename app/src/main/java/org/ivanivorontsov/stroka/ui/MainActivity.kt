@@ -1612,7 +1612,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             setTextIsSelectable(true)
             setPadding(dp(22), dp(12), dp(22), dp(12))
         }
-        MaterialAlertDialogBuilder(this).setTitle("Строка \${BuildConfig.VERSION_NAME}")
+        MaterialAlertDialogBuilder(this).setTitle("Строка ${BuildConfig.VERSION_NAME}")
             .setView(textView)
             .setNeutralButton("Копировать") { _, _ -> copyText(description, "Описание скопировано") }
             .setPositiveButton("ОК", null).show()
