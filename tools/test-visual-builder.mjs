@@ -79,14 +79,19 @@ assert.ok(localBuild.includes('fun buildStaticWebsite') && localBuild.includes('
 assert.ok(localBuild.includes('fun buildPonyatnyWebsite') && localBuild.includes('ponyatny/yadro.js'), 'offline Ponyatny compiler must be embedded in website export');
 assert.ok(projectTemplates.includes('адаптивный премиум-шаблон') && projectTemplates.includes('YOURSTUDIO'), 'new web projects must start from the premium template');
 
-const appRunnerMatch = localBuildSource.match(/val appJs = """([\\s\\S]*?)""".trimIndent\(\)/);
+const appRunnerMatch = localBuildSource.match(/val appJs = """([\s\S]*?)"""\.trimIndent\(\)/);
 assert.ok(appRunnerMatch, 'offline Ponyatny browser runner must be generated');
-const ponyProgram = 'запиши_файл("data.txt", "сохранено")\\nпиши прочитай_файл("data.txt")\\nподключи "стд/математика.pon" как мат\\nпиши "Факториал: " + строка(мат.факториал(5))';
+const ponyProgram = [
+  'запиши_файл("data.txt", "сохранено")',
+  'пиши прочитай_файл("data.txt")',
+  'подключи "стд/математика.pon" как мат',
+  'пиши "Факториал: " + строка(мат.факториал(5))'
+].join('\n');
 const appRunner = appRunnerMatch[1]
-  .replace(/\\$\\{JSONObject\\.quote\\(source\\)\\}/g, JSON.stringify(ponyProgram))
-  .replace(/\\$\\{JSONObject\\.quote\\(entryName\\)\\}/g, JSON.stringify('main.pon'))
-  .replace(/\\$\\{modules\\}/g, '{}')
-  .replace(/\\$standard/g, JSON.stringify(ponyStandardLibrary));
+  .replace('${JSONObject.quote(source)}', JSON.stringify(ponyProgram))
+  .replace('${JSONObject.quote(entryName)}', JSON.stringify('main.pon'))
+  .replace('${modules}', '{}')
+  .replace('$standard', JSON.stringify(ponyStandardLibrary));
 new vm.Script(appRunner, { filename: 'LocalBuildEngine.kt app.js' });
 const compilerSandbox = { module: { exports: {} } };
 vm.createContext(compilerSandbox);
@@ -106,6 +111,6 @@ const browserContext = {
 vm.createContext(browserContext);
 new vm.Script(appRunner, { filename: 'generated Ponyatny web app' }).runInContext(browserContext);
 elements.run.callback();
-assert.equal(elements.output.textContent, 'сохранено\\nФакториал: 120\\n', 'offline compiler must run standard modules and virtual file I/O');
+assert.equal(elements.output.textContent, 'сохранено\nФакториал: 120\n', 'offline compiler must run standard modules and virtual file I/O');
 assert.ok(stored.has('stroka-ponyatny-files-v1'), 'virtual file writes must persist in browser storage');
 console.log('Visual builder: syntax OK; bilingual voice/theme/grid regression cases passed; 9 themes and explainer/templates present.');
