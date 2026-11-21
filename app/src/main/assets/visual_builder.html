@@ -150,7 +150,7 @@ function voiceCommand(raw){
   select(stage.children[index]);return
  }
  if(/визитк|business\s*card|contact\s*card/.test(n)){const el=block('card');snap();stage.replaceChildren(el);select(el);applyStyleHints(n);update();return}
- if(/лендинг|landing\s*page|создай сайт|create (?:a )?website/.test(n)){const el=block('landing');snap();stage.replaceChildren(el);select(el);applyStyleHints(n);update();return}
+ if(/лендинг|landing\s*page|создай сайт|сделай сайт|create (?:a )?website|make (?:a )?website/.test(n)){const el=block('landing');snap();stage.replaceChildren(el);select(el);applyStyleHints(n);update();return}
  if(/добавь|создай|сделай|сделать|вставь|нужен|нужна|хочу|add|create|insert|need|want|make/.test(n)){
   const el=block(typeOf(n));snap();
   const target=selected&&/(внутрь|в форму|в блок|inside|into selected)/.test(n)?selected:stage;
