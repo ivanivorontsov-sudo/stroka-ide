@@ -92,10 +92,10 @@ object LocalTermuxBuild {
                 out.closeEntry()
             }
         }
-        val zipUri = publishDownload(context, "project.zip", "application/zip") { out ->
+        publishDownload(context, "project.zip", "application/zip") { out ->
             zip.inputStream().buffered().use { it.copyTo(out) }
         }
-        val scriptUri = publishDownload(context, "build-local.sh", "text/x-shellscript") { out ->
+        publishDownload(context, "build-local.sh", "text/x-shellscript") { out ->
             context.assets.open("build-local.sh").use { it.copyTo(out) }
         }
         publishDownload(context, "setup-termux.sh", "text/x-shellscript") { out ->
