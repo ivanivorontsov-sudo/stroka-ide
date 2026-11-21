@@ -142,7 +142,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private val visualBuilderResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             val html = result.data?.getStringExtra("html") ?: return@registerForActivityResult
-            if (current >= 0) { editor.selectAll(); editor.insertText(html) }
+            if (docs.getOrNull(current)?.lang == Lang.HTML) { editor.selectAll(); editor.insertText(html) }
             else {
                 val file = File(projectsDir, "website.html")
                 file.writeText(html)
