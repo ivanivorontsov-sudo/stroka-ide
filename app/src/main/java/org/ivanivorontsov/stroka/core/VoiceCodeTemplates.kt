@@ -132,9 +132,9 @@ object VoiceCodeTemplates {
         val isPhp = language == Lang.PLAIN && (phpRequested || phpFile)
         if (language == Lang.PLAIN && !isPhp) return null
         val intent = detectIntent(repaired, language) ?: return null
-        val code = when (intent) {
+        val code = if (isPhp) phpTemplate(intent) else when (intent) {
             Intent.NAME_INPUT -> nameInput(language)
-            Intent.WEB_FORM -> webForm(language, isPhp)
+            Intent.WEB_FORM -> webForm(language)
             Intent.WINDOW -> window(language)
             Intent.HTML_PAGE -> htmlPage()
             Intent.CSS_STYLES -> cssStyles(language)
@@ -143,6 +143,46 @@ object VoiceCodeTemplates {
             Intent.LIBRARY -> library(text, language)
         }
         return VoiceCodeBlock(title(intent), language, code.trimIndent().trim())
+    }
+
+    private fun phpTemplate(intent: Intent): String = when (intent) {
+        Intent.NAME_INPUT -> """
+            <?php
+            $name = trim($_POST['name'] ?? '');
+            if ($_SERVER['REQUEST_METHOD'] === 'POST' && $name !== '') {
+                echo 'Привет, ' . htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '!';
+            }
+            ?>
+            <form method="post"><label>Как вас зовут?<input name="name" required></label><button>Продолжить</button></form>
+        """
+        Intent.WEB_FORM -> webForm(Lang.PLAIN, php = true)
+        Intent.WINDOW -> """
+            <!doctype html><html lang="ru"><meta charset="UTF-8"><title>Окно</title>
+            <dialog id="dialog"><h2>Новое окно</h2><p>Содержимое диалога</p><button onclick="document.getElementById('dialog').close()">Закрыть</button></dialog>
+            <button onclick="document.getElementById('dialog').showModal()">Открыть окно</button></html>
+        """
+        Intent.HTML_PAGE -> htmlPage()
+        Intent.CSS_STYLES -> cssStyles(Lang.CSS)
+        Intent.FUNCTION -> """
+            <?php
+            function process_data(mixed $value): mixed {
+                return $value;
+            }
+            ?>
+        """
+        Intent.PROGRAM -> """
+            <?php
+            declare(strict_types=1);
+            echo "Программа запущена" . PHP_EOL;
+            ?>
+        """
+        Intent.LIBRARY -> """
+            <?php
+            // Для Composer: composer require vendor/package
+            // Затем подключите автозагрузчик:
+            require_once __DIR__ . '/vendor/autoload.php';
+            ?>
+        """
     }
 
     private fun title(intent: Intent): String = when (intent) {
