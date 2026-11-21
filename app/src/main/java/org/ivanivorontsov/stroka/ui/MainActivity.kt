@@ -1266,9 +1266,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             is VoiceAction.InsertBlock -> {
                 val t = editor.text ?: return
                 val c = minOf(editor.selectionStart, editor.selectionEnd).coerceAtLeast(0)
-                val prefix = if (c > 0 && t[c - 1] != '\\n') "\\n" else ""
-                val suffix = if (c < t.length && t[c] != '\\n') "\\n" else ""
-                editor.insertText(prefix + a.code.trim('\\n') + suffix)
+                val prefix = if (c > 0 && t[c - 1] != '\n') "\n" else ""
+                val suffix = if (c < t.length && t[c] != '\n') "\n" else ""
+                editor.insertText(prefix + a.code.trim('\n') + suffix)
             }
             VoiceAction.NewLine -> editor.insertText("\n")
             VoiceAction.Indent -> editor.insertIndent()
