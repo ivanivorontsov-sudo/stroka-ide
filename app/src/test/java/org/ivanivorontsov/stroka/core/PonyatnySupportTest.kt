@@ -59,7 +59,6 @@ class PonyatnySupportTest {
         assertEquals(listOf(VoiceAction.Insert("стоп")), VoiceMapper.map("стоп", Lang.PONYATNY, "main.pon"))
         assertEquals(listOf(VoiceAction.StopListening), VoiceMapper.map("выключи микрофон", Lang.PONYATNY, "main.pon"))
     }
-}
 
     @Test fun speechAlternativesPreferRecognizedPonyatnyKeywords() {
         assertEquals(
@@ -67,3 +66,4 @@ class PonyatnySupportTest {
             VoiceMapper.bestCandidate(listOf("непонятная фраза", "переменная число равно пять"), Lang.PONYATNY)
         )
     }
+}
