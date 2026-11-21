@@ -13,6 +13,7 @@ def install(callback):
     global _callback
     _callback = callback
     tk = types.ModuleType("tkinter")
+    tk.__path__ = []
     ttk = types.ModuleType("tkinter.ttk")
     messagebox = types.ModuleType("tkinter.messagebox")
 
