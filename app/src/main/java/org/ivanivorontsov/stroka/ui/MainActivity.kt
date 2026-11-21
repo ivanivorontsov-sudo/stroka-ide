@@ -1313,36 +1313,50 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         private const val WELCOME = "print(\"Привет! Это «Строка» — редактор кода для телефона.\")\n\n\ndef square(n):\n    return n * n\n\n\nfor i in range(1, 6):\n    print(i, \"→\", square(i))\n\nname = input(\"Как тебя зовут? \")\nprint(f\"Рад знакомству, {name}!\")\n"
 
         private val VOICE_HELP = """
-Нажмите 🎤 на панели над клавиатурой. Кнопка RU/EN переключает язык.
+Нажмите 🎤 на панели над клавиатурой. Кнопка RU/EN переключает основной язык распознавания. Для английского произношения команд выбирайте EN; для русской речи с английскими именами кода — RU.
 
-Символы (говорите словами):
-скобка / скобка закрыть → ( )
-фигурная скобка / фигурная закрыть → { }
-квадратная скобка / квадратная закрыть → [ ]
-кавычка → " (вторая закрывает), одинарная кавычка → '
-точка с запятой ; · двоеточие : · запятая , · точка .
-равно = · двойное равно == · не равно != · плюс, минус, звёздочка, слэш
-больше > · меньше < · стрелка -> · жирная стрелка =>
-подчёркивание _ · решётка # · пробел
-новая строка — перенос с автоотступом
-отступ / убрать отступ
+Языки программирования:
+Слова Python, JavaScript, TypeScript, Java, Kotlin, C++, C#, HTML, CSS и SQL можно диктовать как обычно. Английские ключевые слова: function, def, class, return, if, else, elif, for, while, try, catch, finally, throw, import, from, const, let, var, async, await, public, private, static, int, float, double, string, boolean, true, false, null, self, this.
 
-English: open paren, close paren, open brace, close brace, open bracket, quote, semicolon, colon, comma, dot, equals, double equals, not equal, new line, tab, indent, underscore.
+Русские варианты:
+«функция» → function · «если» → if · «иначе» → else · «иначе если» → elif
+«пока» → while · «класс» → class · «импорт» → import
+«возврат» → return · «истина» → true · «ложь» → false
+«публичный» → public · «приватный» → private · «статический» → static
 
-Имена: «кэмел user name» → userName, «снейк max speed» → max_speed, «капс max speed» → MAX_SPEED, «паскаль my class» → MyClass, «с большой буквы» — следующее слово с заглавной, «буквально точка» — вставить слово как есть.
-Числа словами становятся цифрами: «двадцать пять» → 25. «икс», «игрек» → x, y.
+Символы:
+open paren / close paren → ( )
+open brace / close brace → { }
+open bracket / close bracket → [ ]
+quote / single quote / backtick → кавычки
+semicolon ; · colon : · comma , · dot .
+equals = · double equals == · triple equals === · not equal !=
+plus + · minus - · asterisk * · slash / · power ** · arrow -> · fat arrow =>
+new line — новая строка · tab / indent — отступ · outdent — убрать отступ
 
-Команды (отдельной фразой):
-сохранить · запустить · отменить · повторить
-найти <текст> · перейти к строке <номер>
-выделить всё · копировать · вставить · вырезать
-стереть · удалить слово · удалить строку
-в начало строки · в конец строки · закомментировать
-стоп — выключить микрофон
-English: save, run, undo, redo, find <text>, go to line <n>, select all, copy, paste, delete line, stop.
-Если фраза похожа на обычный текст, начните с «команда …».
+Имена:
+«camel case user profile name» → userProfileName
+«pascal case user profile name» → UserProfileName
+«snake case user profile name» → user_profile_name
+«kebab case user profile name» → user-profile-name
+«flat case user profile name» → userprofilename
+«letter ex» → x · «letter why» → y. Русские названия букв (икс, игрек и т. д.) тоже поддерживаются.
+«literally dot» / «буквально точка» — вставить слово как текст, не как символ.
 
-Без интернета работает офлайн-модель Vosk: скачайте её в Настройки → Голосовой ввод.
+Числа:
+«twenty five» → 25 · «one hundred twenty three» → 123
+«two thousand twenty four» → 2024 · «forty-two» → 42
+
+Команды:
+save · run · undo · redo · find <text> · go to line <number>
+select all · copy · paste · cut · delete word · delete line · comment · stop
+сохранить · запустить · отменить · повторить · найти <текст> · перейти к строке <номер>
+выделить всё · копировать · вставить · вырезать · удалить слово · удалить строку
+закомментировать · стоп
+
+Команды управления произносятся отдельной фразой. Код можно диктовать длинной последовательностью, смешивая русские пояснения и английские ключевые слова. Для наиболее точного распознавания английских фраз выбирайте EN, русских — RU.
+
+Офлайн: скачайте нужную модель Vosk в Настройки → Голосовой ввод.
 """.trim()
     }
 }

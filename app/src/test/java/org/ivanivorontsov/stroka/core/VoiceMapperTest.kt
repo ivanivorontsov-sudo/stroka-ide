@@ -135,4 +135,49 @@ class VoiceMapperTest {
         assert(hints.contains("запусти код"))
         assert(hints.contains("open paren"))
     }
+    @Test
+    fun englishProgrammingKeywordsAndSymbols() {
+        assertEquals(
+            listOf(VoiceAction.Insert("function greet(name):"), VoiceAction.NewLine, VoiceAction.Insert("return name")),
+            VoiceMapper.map("function greet open paren name close paren colon new line return name")
+        )
+        assertEquals("console.log(\"hello\")", text("console log open paren quote hello quote close paren"))
+        assertEquals("x ** 2", text("x to the power of two"))
+    }
+
+    @Test
+    fun russianEnglishMixedProgrammingPhrases() {
+        assertEquals(
+            listOf(VoiceAction.Insert("function greet(name):"), VoiceAction.NewLine, VoiceAction.Insert("return name")),
+            VoiceMapper.map("функция greet open paren name close paren двоеточие новая строка возврат name")
+        )
+        assertEquals("if ready == true:", text("если ready double equals истина двоеточие"))
+    }
+
+    @Test
+    fun fullIdentifierStylesAndSpelledLetters() {
+        assertEquals("userProfileName", text("camel case user profile name"))
+        assertEquals("UserProfileName", text("pascal case user profile name"))
+        assertEquals("user_profile_name", text("snake case user profile name"))
+        assertEquals("user-profile-name", text("kebab case user profile name"))
+        assertEquals("userprofilename", text("flat case user profile name"))
+        assertEquals("x", text("letter ex"))
+    }
+
+    @Test
+    fun englishNumbersAndHyphenatedNumbers() {
+        assertEquals(123L, NumberWords.parseAll("one hundred twenty three"))
+        assertEquals(2024L, NumberWords.parseAll("two thousand twenty four"))
+        assertEquals(42L, NumberWords.parseAll("forty-two"))
+        assertEquals(2_000_000L, NumberWords.parseAll("two million"))
+    }
+
+    @Test
+    fun commonTranslatedLanguageKeywords() {
+        assertEquals("if ready: return true", text("если ready двоеточие возврат истина"))
+        assertEquals("class User", text("класс User"))
+        assertEquals("import os", text("импорт os"))
+        assertEquals("const total = 25;", text("константа total equals twenty five semicolon"))
+    }
+
 }

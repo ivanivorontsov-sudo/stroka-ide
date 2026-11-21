@@ -19,9 +19,14 @@ object NumberWords {
         "сто" to 100, "двести" to 200, "триста" to 300, "четыреста" to 400, "пятьсот" to 500, "шестьсот" to 600,
         "семьсот" to 700, "восемьсот" to 800, "девятьсот" to 900
     )
-    private val thousands = setOf("тысяча", "тысячи", "тысяч", "thousand")
+    private val scales = mapOf(
+        "тысяча" to 1_000L, "тысячи" to 1_000L, "тысяч" to 1_000L,
+        "thousand" to 1_000L, "thousands" to 1_000L,
+        "million" to 1_000_000L, "millions" to 1_000_000L,
+        "billion" to 1_000_000_000L, "billions" to 1_000_000_000L
+    )
 
-    fun isNumberWord(w: String): Boolean = w in units || w in tens || w in hundreds || w in thousands || w == "hundred" || w.all { it.isDigit() } && w.isNotEmpty()
+    fun isNumberWord(w: String): Boolean = w in units || w in tens || w in hundreds || w in scales || w == "hundred" || w.all { it.isDigit() } && w.isNotEmpty()
 
     fun parse(words: List<String>, from: Int): Pair<Long, Int>? {
         var i = from
@@ -44,7 +49,7 @@ object NumberWords {
                     if (lastWasUnit || (v >= 10 && current % 100 != 0L) || (current % 10 != 0L)) break
                     current += v; lastWasUnit = true
                 }
-                w in thousands -> { total += (if (current == 0L) 1 else current) * 1000; current = 0; lastWasUnit = false }
+                w in scales -> { total += (if (current == 0L) 1 else current) * scales.getValue(w); current = 0; lastWasUnit = false }
                 else -> break
             }
             any = true
@@ -55,7 +60,7 @@ object NumberWords {
     }
 
     fun parseAll(text: String): Long? {
-        val ws = text.trim().lowercase().replace('ё', 'е').split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val ws = text.trim().lowercase().replace('ё', 'е').replace('-', ' ').split(Regex("\\s+")).filter { it.isNotEmpty() }
         if (ws.isEmpty()) return null
         val r = parse(ws, 0) ?: return null
         return if (r.second == ws.size) r.first else null

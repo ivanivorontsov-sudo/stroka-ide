@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# Keep only the newest build for this branch; stale runs must never overwrite latest.
+concurrency:
+  group: stroka-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -89,6 +94,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          LATEST_SHA=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')
+          if [[ "$LATEST_SHA" != "$GITHUB_SHA" ]]; then
+            echo "Skipping stale build $GITHUB_SHA; main is now $LATEST_SHA"
+            exit 0
+          fi
           APK="dist/Stroka-${VERSION}.apk"
           NOTES="Строка ${VERSION} — редактор кода для Android. Подпись SHA-256: 01:62:14:A5:77:BA:EC:E8:9C:F5:A7:2A:8B:71:FC:4F:04:FE:43:43:99:22:60:9F:EE:74:30:34:32:03:14:38. $(cat test-summary.txt)"
           if gh release view latest >/dev/null 2>&1; then

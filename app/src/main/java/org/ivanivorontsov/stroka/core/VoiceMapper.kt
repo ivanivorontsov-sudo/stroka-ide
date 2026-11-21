@@ -87,6 +87,56 @@ object VoiceMapper {
         sym("++", Glue.BEFORE, "плюс плюс", "инкремент", "plus plus", "increment")
         sym("--", Glue.BEFORE, "минус минус", "декремент", "minus minus", "decrement")
         sym("//", Glue.NONE, "комментарий", "двойной слэш", "comment slash", "double slash")
+        // Bilingual programming vocabulary: spoken Russian aliases emit canonical source tokens.
+        sym("function", Glue.NONE, "функция", "функцию", "функшен", "фанкшн")
+        sym("return", Glue.NONE, "возврат", "вернуть значение", "верни значение", "ретерн")
+        sym("if", Glue.NONE, "если")
+        sym("else", Glue.NONE, "иначе")
+        sym("elif", Glue.NONE, "иначе если", "иначе условие")
+        sym("for", Glue.NONE, "для цикла", "цикл for")
+        sym("while", Glue.NONE, "пока")
+        sym("class", Glue.NONE, "класс", "создать класс")
+        sym("import", Glue.NONE, "импорт", "импортировать")
+        sym("from", Glue.NONE, "из модуля")
+        sym("as", Glue.NONE, "как псевдоним")
+        sym("try", Glue.NONE, "попробовать", "блок try")
+        sym("except", Glue.NONE, "обработать исключение", "блок except")
+        sym("finally", Glue.NONE, "в любом случае", "блок finally")
+        sym("throw", Glue.NONE, "выбросить исключение")
+        sym("new", Glue.NONE, "создать экземпляр")
+        sym("this", Glue.NONE, "текущий объект")
+        sym("self", Glue.NONE, "сам объект")
+        sym("const", Glue.NONE, "константа", "объявить константу")
+        sym("let", Glue.NONE, "объявить let")
+        sym("var", Glue.NONE, "объявить var")
+        sym("async", Glue.NONE, "асинхронный", "асинхронно")
+        sym("await", Glue.NONE, "ожидать результат", "дождаться результата")
+        sym("true", Glue.NONE, "истина", "истинно")
+        sym("false", Glue.NONE, "ложь", "ложно")
+        sym("undefined", Glue.NONE, "не определено")
+        sym("console.log", Glue.NONE, "console log", "консоль лог")
+        sym("println", Glue.NONE, "print line", "печать строки")
+        sym("public", Glue.NONE, "публичный", "открытый доступ")
+        sym("private", Glue.NONE, "приватный", "закрытый доступ")
+        sym("protected", Glue.NONE, "защищенный", "защищённый")
+        sym("static", Glue.NONE, "статический")
+        sym("void", Glue.NONE, "пустой тип", "тип void")
+        sym("int", Glue.NONE, "целое число", "тип int")
+        sym("float", Glue.NONE, "число с плавающей точкой", "тип float")
+        sym("double", Glue.NONE, "двойная точность", "тип double")
+        sym("string", Glue.NONE, "строковый тип", "тип string")
+        sym("boolean", Glue.NONE, "логический тип", "тип boolean")
+        sym("List", Glue.NONE, "тип list", "тип лист")
+        sym("Map", Glue.NONE, "тип map", "ассоциативный массив")
+        sym("**", Glue.NONE, "степень", "в степень", "to the power of", "power operator")
+        sym("!==", Glue.NONE, "строго не равно", "strict not equal")
+        sym("::", Glue.NONE, "оператор области видимости", "scope resolution")
+        sym("{", Glue.NONE, "left curly bracket", "open curly bracket", "open curly brace")
+        sym("}", Glue.NONE, "right curly bracket", "close curly bracket", "close curly brace")
+        sym("[", Glue.BOTH, "open square bracket")
+        sym("]", Glue.BEFORE, "close square bracket")
+        sym("\\"", Glue.NONE, "open quote", "close quote", "double quotes")
+        sym("'", Glue.NONE, "single quotes")
         sym(" ", Glue.BOTH, "пробел", "space")
         act(VoiceAction.NewLine, "новая строка", "новую строку", "с новой строки", "перенос строки", "перевод строки", "энтер", "ввод", "new line", "newline", "next line", "enter")
         act(VoiceAction.Indent, "отступ", "таб", "табуляция", "tab", "indent")
@@ -98,19 +148,36 @@ object VoiceMapper {
         mod("cap", "с большой", "с большой буквы", "заглавная", "capital", "cap")
         mod("literal", "буквально", "дословно", "literal", "literally")
         mod("nospace", "слитно", "без пробела", "no space")
+        mod("kebab", "kebab", "kebab case", "кебаб", "кебаб кейс", "через дефис")
+        mod("flat", "flat case", "flat", "слитно нижним регистром")
+        mod("lower", "lowercase", "lower case", "нижний регистр", "строчными")
     }
 
     private val letters = mapOf(
         "икс" to "x", "игрек" to "y", "зет" to "z", "зэт" to "z", "эй" to "a", "би" to "b", "си" to "c", "ди" to "d",
         "и краткое" to "й", "ай" to "i", "джей" to "j", "кей" to "k", "эн" to "n", "пи" to "p", "кью" to "q", "ар" to "r", "эс" to "s", "ти" to "t",
-        "ю" to "u", "ви" to "v", "дабл ю" to "w"
+        "ю" to "u", "ви" to "v", "дабл ю" to "w",
+        "letter a" to "a", "letter ay" to "a", "letter bee" to "b", "letter b" to "b",
+        "letter see" to "c", "letter cee" to "c", "letter c" to "c",
+        "letter dee" to "d", "letter d" to "d", "letter ee" to "e", "letter e" to "e",
+        "letter eff" to "f", "letter f" to "f", "letter gee" to "g", "letter g" to "g",
+        "letter aitch" to "h", "letter h" to "h", "letter eye" to "i", "letter i" to "i",
+        "letter jay" to "j", "letter j" to "j", "letter kay" to "k", "letter k" to "k",
+        "letter ell" to "l", "letter l" to "l", "letter em" to "m", "letter m" to "m",
+        "letter en" to "n", "letter n" to "n", "letter oh" to "o", "letter o" to "o",
+        "letter pee" to "p", "letter p" to "p", "letter cue" to "q", "letter queue" to "q",
+        "letter are" to "r", "letter r" to "r", "letter ess" to "s", "letter s" to "s",
+        "letter tee" to "t", "letter t" to "t", "letter you" to "u", "letter u" to "u",
+        "letter vee" to "v", "letter v" to "v", "letter double you" to "w", "letter w" to "w",
+        "letter ex" to "x", "letter x" to "x", "letter why" to "y", "letter y" to "y",
+        "letter zee" to "z", "letter zed" to "z", "letter z" to "z"
     )
 
     private val maxPhraseWords = phrases.keys.maxOf { it.split(' ').size }
 
     private val commandTable: List<Pair<Set<String>, VoiceAction>> = listOf(
-        setOf("сохранить", "сохрани", "сохраняй", "сохранить файл", "сохрани файл", "сохрани", "сохранить документ", "save", "save file", "save document") to VoiceAction.Save,
-        setOf("запустить", "запусти", "выполнить", "выполни", "пуск", "запуск", "запусти код", "запустить код", "выполни код", "выполнить код", "запусти программу", "старт", "run", "run code", "run it", "execute", "execute code", "start") to VoiceAction.Run,
+        setOf("сохранить", "сохрани", "сохраняй", "сохранить файл", "сохрани файл", "сохранить документ", "save", "save file", "save document", "save current file", "save current document") to VoiceAction.Save,
+        setOf("запустить", "запусти", "выполнить", "выполни", "пуск", "запуск", "запусти код", "запустить код", "выполни код", "выполнить код", "запусти программу", "старт", "run", "run code", "run it", "run program", "run current file", "execute", "execute code", "start", "start program", "run script") to VoiceAction.Run,
         setOf("отменить", "отмена", "отмени", "отмени последнее", "отменить последнее действие", "undo", "undo last") to VoiceAction.Undo,
         setOf("повторить", "повтори", "вернуть", "верни", "повтори действие", "redo", "redo last") to VoiceAction.Redo,
         setOf("выделить все", "выдели все", "выделить весь текст", "выдели весь текст", "select all", "select everything") to VoiceAction.SelectAll,
@@ -216,10 +283,17 @@ object VoiceMapper {
     fun recognitionHints(): List<String> {
         val commands = commandTable.flatMap { it.first }
         val codeWords = listOf(
-            "print", "println", "console log", "function", "return", "class", "import",
-            "package", "public", "private", "static", "if", "else", "for", "while",
-            "def", "lambda", "const", "let", "var", "true", "false", "null", "self",
-            "main", "string", "integer", "boolean", "python", "javascript", "html", "css"
+            "print", "println", "input", "range", "len", "console", "console log", "log",
+            "function", "func", "def", "lambda", "return", "yield", "class", "new", "this", "self",
+            "import", "from", "as", "package", "public", "private", "protected", "static", "final",
+            "if", "else", "elif", "for", "foreach", "while", "do", "break", "continue", "pass",
+            "try", "except", "catch", "finally", "throw", "throws", "raise", "assert",
+            "const", "let", "var", "async", "await", "true", "false", "null", "none", "undefined",
+            "int", "long", "short", "float", "double", "decimal", "bool", "boolean", "char",
+            "string", "str", "void", "object", "list", "dict", "map", "array", "tuple", "set",
+            "extends", "implements", "interface", "enum", "main", "super", "global", "nonlocal",
+            "with", "using", "python", "javascript", "typescript", "java", "kotlin", "c sharp",
+            "c plus plus", "html", "css", "sql", "json", "xml", "regex", "open tag", "close tag"
         )
         val priorityPhrases = listOf(
             "скобка открыть", "открыть скобку", "скобка", "open paren", "open parenthesis",
@@ -227,7 +301,7 @@ object VoiceMapper {
             "open bracket", "close bracket", "quote", "semicolon", "colon", "comma",
             "dot", "equals", "double equals", "not equal", "new line", "indent", "underscore"
         )
-        return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(150)
+        return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(220)
     }
 
     fun map(utterance: String): List<VoiceAction> {
@@ -285,6 +359,9 @@ object VoiceMapper {
                 "camel" -> group.mapIndexed { i, w -> if (i == 0) w.lowercase() else w.lowercase().replaceFirstChar { it.uppercaseChar() } }.joinToString("")
                 "pascal" -> group.joinToString("") { w -> w.lowercase().replaceFirstChar { it.uppercaseChar() } }
                 "snake" -> group.joinToString("_") { it.lowercase() }
+                "kebab" -> group.joinToString("-") { it.lowercase() }
+                "flat" -> group.joinToString("") { it.lowercase() }
+                "lower" -> group.joinToString("_") { it.lowercase() }
                 "upper" -> group.joinToString("_") { it.uppercase() }
                 else -> group.joinToString("")
             }
