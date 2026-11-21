@@ -21,6 +21,137 @@ while IFS= read -r -d '' f; do ROOT="$(dirname "$f")"; break; done < <(find "$WO
 if [ -z "$ROOT" ]; then
   while IFS= read -r -d '' f; do ROOT="$(dirname "$f")"; break; done < <(find "$WORK" -maxdepth 4 \( -name build.gradle -o -name build.gradle.kts \) -print0)
 fi
+if [ -z "$ROOT" ]; then
+  PYFILE="$(find "$WORK" -maxdepth 3 -type f -name '*.py' ! -name 'stroka_runner.py' ! -name 'stroka_tkinter.py' | head -n 1 || true)"
+  [ -n "$PYFILE" ] || fail "Не найден Android Gradle-проект или Python-файл."
+  echo "Обнаружен Python-проект без файлов сборки: $PYFILE"
+  APP="$WORK/.stroka-android"
+  mkdir -p "$APP/app/src/main/java/com/example/strokabuild" "$APP/app/src/main/python" "$APP/app/src/main/assets"
+  cp "$PYFILE" "$APP/app/src/main/python/main.py"
+  [ -f "$DOWNLOADS/stroka_runner.py" ] || fail "Не найден stroka_runner.py. Обновите приложение «Строка»."
+  [ -f "$DOWNLOADS/stroka_tkinter.py" ] || fail "Не найден stroka_tkinter.py. Обновите приложение «Строка»."
+  cp "$DOWNLOADS/stroka_runner.py" "$APP/app/src/main/python/"
+  cp "$DOWNLOADS/stroka_tkinter.py" "$APP/app/src/main/python/"
+  cp "$PYFILE" "$APP/app/src/main/assets/main.py"
+  cat > "$APP/settings.gradle.kts" <<'EOF'
+pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+rootProject.name = "PythonAndroidApp"
+include(":app")
+EOF
+  cat > "$APP/build.gradle.kts" <<'EOF'
+plugins {
+    id("com.android.application") version "8.7.3" apply false
+    id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+    id("com.chaquo.python") version "16.1.0" apply false
+}
+EOF
+  cat > "$APP/gradle.properties" <<'EOF'
+org.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8
+android.useAndroidX=true
+kotlin.code.style=official
+EOF
+  cat > "$APP/app/build.gradle.kts" <<'EOF'
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.chaquo.python")
+}
+android {
+    namespace = "com.example.strokabuild"
+    compileSdk = 36
+    defaultConfig {
+        applicationId = "com.example.strokabuild"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+        ndk { abiFilters += listOf("arm64-v8a") }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+}
+chaquopy { defaultConfig { version = "3.12" } }
+dependencies {
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.activity:activity-ktx:1.9.3")
+}
+EOF
+  cat > "$APP/app/src/main/AndroidManifest.xml" <<'EOF'
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Python app">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+EOF
+  cat > "$APP/app/src/main/java/com/example/strokabuild/MainActivity.kt" <<'EOF'
+package com.example.strokabuild
+
+import android.os.Bundle
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.appcompat.app.AppCompatActivity
+import com.chaquo.python.Python
+import com.chaquo.python.android.AndroidPlatform
+import java.util.concurrent.LinkedBlockingQueue
+
+class MainActivity : AppCompatActivity() {
+    private lateinit var web: WebView
+    private val events = LinkedBlockingQueue<String>()
+    private val bridge = object {
+        fun out(value: String, error: Boolean) { android.util.Log.d("PythonApp", value) }
+        fun showPreview(html: String) { runOnUiThread { web.loadDataWithBaseURL("https://app.local/", html, "text/html", "utf-8", null) } }
+        fun waitUiEvent(): String = events.take()
+        fun postUiEvent(value: String) { events.offer(value) }
+        fun readLine(prompt: String): String = ""
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        web = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            webChromeClient = WebChromeClient()
+            webViewClient = WebViewClient()
+            addJavascriptInterface(object {
+                @JavascriptInterface fun onUiEvent(value: String) { events.offer(value) }
+            }, "Stroka")
+        }
+        setContentView(web)
+        web.loadData("<meta name='viewport' content='width=device-width,initial-scale=1'><body style='font:16px sans-serif;padding:24px'>Запуск приложения…</body>", "text/html", "utf-8")
+        Thread({
+            try {
+                if (!Python.isStarted()) Python.start(AndroidPlatform(applicationContext))
+                val code = assets.open("main.py").bufferedReader().use { it.readText() }
+                Python.getInstance().getModule("stroka_runner").callAttr("run", code, "main.py", filesDir.absolutePath, bridge)
+            } catch (failure: Throwable) {
+                runOnUiThread {
+                    val message = failure.message ?: failure.javaClass.simpleName
+                    web.loadData("<meta name='viewport' content='width=device-width,initial-scale=1'><pre style='white-space:pre-wrap;color:#b00020;padding:20px'>" + message + "</pre>", "text/html", "utf-8")
+                }
+            }
+        }, "python-main").apply { isDaemon = true }.start()
+    }
+
+    override fun onDestroy() {
+        events.offer("__stop__")
+        web.destroy()
+        super.onDestroy()
+    }
+}
+EOF
+  ROOT="$APP"
+fi
 [ -n "$ROOT" ] || fail "Не найден Gradle Android-проект (settings.gradle или build.gradle)."
 echo "Проект: $ROOT"
 echo "Цель: $TARGET"
