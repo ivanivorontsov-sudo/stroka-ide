@@ -239,6 +239,26 @@ class VoiceMapperTest {
     }
 
     @Test
+    fun conversationalAndMistypedWindowRequestsAreUnderstood() {
+        val phrases = listOf("сделай мне окошко", "покажи окошко программы", "шоу виндов", "make me a window", "display window")
+        phrases.forEach { phrase ->
+            val block = VoiceCodeTemplates.generate(phrase, Lang.PYTHON)
+            assertNotNull("phrase should create a window block: $phrase", block)
+            assertEquals("Окно / диалог", block?.title)
+        }
+    }
+
+    @Test
+    fun conversationalFormAndInterfaceRequestsAreUnderstood() {
+        val form = VoiceCodeTemplates.generate("мне надо форму обратной связи", Lang.HTML)
+        assertNotNull(form)
+        assertEquals("Веб-форма", form?.title)
+        val ui = VoiceCodeTemplates.generate("сделай мне интерфейс с окном", Lang.JAVASCRIPT)
+        assertNotNull(ui)
+        assertEquals("Окно / диалог", ui?.title)
+    }
+
+    @Test
     fun requestedHtmlPageUsesHtmlTemplate() {
         val action = VoiceMapper.map("нужен блок кода для html веб страницы", Lang.PLAIN)
             .single() as VoiceAction.InsertBlock
