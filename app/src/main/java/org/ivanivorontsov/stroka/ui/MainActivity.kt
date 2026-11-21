@@ -113,6 +113,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private lateinit var voicePartial: TextView
     private lateinit var voiceLast: TextView
     private lateinit var voiceLangBtn: Button
+    private lateinit var voiceModeBtn: Button
+    private var voiceLiteralMode: String? = null
 
     private val docs = ArrayList<Doc>()
     private var current = -1
@@ -194,6 +196,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         voicePartial = findViewById(R.id.voicePartial)
         voiceLast = findViewById(R.id.voiceLast)
         voiceLangBtn = findViewById(R.id.voiceLang)
+        voiceModeBtn = findViewById(R.id.voiceMode)
         editor.listener = this
         extraKeys.listener = this
     }
@@ -1196,12 +1199,36 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private fun setupVoicePanel() {
         findViewById<ImageButton>(R.id.voiceClose).setOnClickListener { stopVoice() }
         findViewById<ImageButton>(R.id.voiceHelp).setOnClickListener { showVoiceHelp() }
+        updateVoiceModeButton()
+        voiceModeBtn.setOnClickListener { chooseVoiceMode() }
         voiceLangBtn.text = prefs.voiceLang.uppercase()
         voiceLangBtn.setOnClickListener {
             prefs.voiceLang = if (prefs.voiceLang == "ru") "en" else "ru"
             voiceLangBtn.text = prefs.voiceLang.uppercase()
             if (voice.isActive) voice.start(prefs.voiceLang, prefs.voiceEngine)
         }
+    }
+
+    private fun updateVoiceModeButton() {
+        voiceModeBtn.text = when (prefs.voiceMode) { "constructs" -> "ВСЁ"; "off" -> "ТЕКСТ"; else -> "БЛОКИ" }
+        voiceModeBtn.contentDescription = when (prefs.voiceMode) {
+            "constructs" -> "Распознавать блоки и полные конструкции"
+            "off" -> "Обычная диктовка, без команд"
+            else -> "Распознавать блоки кода"
+        }
+    }
+
+    private fun chooseVoiceMode() {
+        val labels = arrayOf("Блоки кода", "Блоки и полные конструкции", "Выключено — обычная диктовка")
+        val values = arrayOf("blocks", "constructs", "off")
+        MaterialAlertDialogBuilder(this).setTitle("Режим голосового программирования")
+            .setSingleChoiceItems(labels, values.indexOf(prefs.voiceMode).coerceAtLeast(0)) { dialog, which ->
+                prefs.voiceMode = values[which]
+                voiceLiteralMode = null
+                updateVoiceModeButton()
+                dialog.dismiss()
+                voiceStatus.text = labels[which]
+            }.setNegativeButton("Отмена", null).show()
     }
 
     private fun toggleVoice() {
@@ -1239,7 +1266,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     override fun onFinal(text: String) {
         voicePartial.text = ""
         val activeLanguage = docs.getOrNull(current)?.lang ?: Lang.PLAIN
-        val actions = VoiceMapper.map(text, activeLanguage, docs.getOrNull(current)?.name)
+        val actions = VoiceMapper.map(text, activeLanguage, docs.getOrNull(current)?.name, prefs.voiceMode, voiceLiteralMode)
         voiceLast.text = "«$text» → " + actions.joinToString(" ") { describe(it) }
         for (a in actions) applyVoice(a)
     }
@@ -1269,6 +1296,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         VoiceAction.Redo -> "[повторить]"
         is VoiceAction.Find -> "[найти ${a.query}]"
         is VoiceAction.GoToLine -> "[строка ${a.line}]"
+        is VoiceAction.SetLiteralMode -> if (a.kind == null) "[конец буквального режима]" else "[буквальный режим: ${a.kind}]"
         else -> "[" + a.javaClass.simpleName + "]"
     }
 
@@ -1308,6 +1336,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             VoiceAction.LineEnd -> editor.moveEnd()
             VoiceAction.Comment -> editor.toggleComment()
             VoiceAction.StopListening, VoiceAction.Close -> stopVoice()
+            is VoiceAction.SetLiteralMode -> { voiceLiteralMode = a.kind; voiceStatus.text = if (a.kind == null) "Слушаю · команды" else if (a.kind == "comment") "Диктую комментарий" else "Буквальный ввод" }
             is VoiceAction.Find -> showFind(a.query.ifBlank { null })
             is VoiceAction.GoToLine -> editor.goToLine(a.line)
         }
