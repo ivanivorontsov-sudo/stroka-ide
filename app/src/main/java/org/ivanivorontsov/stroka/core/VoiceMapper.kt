@@ -221,7 +221,13 @@ object VoiceMapper {
             "def", "lambda", "const", "let", "var", "true", "false", "null", "self",
             "main", "string", "integer", "boolean", "python", "javascript", "html", "css"
         )
-        return (commands + phrases.keys + codeWords).distinct().take(100)
+        val priorityPhrases = listOf(
+            "скобка открыть", "открыть скобку", "скобка", "open paren", "open parenthesis",
+            "close paren", "close parenthesis", "open brace", "close brace",
+            "open bracket", "close bracket", "quote", "semicolon", "colon", "comma",
+            "dot", "equals", "double equals", "not equal", "new line", "indent", "underscore"
+        )
+        return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(150)
     }
 
     fun map(utterance: String): List<VoiceAction> {
