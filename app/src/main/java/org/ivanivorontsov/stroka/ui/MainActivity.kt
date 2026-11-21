@@ -1360,6 +1360,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     private fun openVisualBuilder() {
+        if (::voice.isInitialized && voice.isActive) stopVoice()
         val seed = docs.getOrNull(current)?.let { if (it.lang == Lang.HTML) editor.text?.toString().orEmpty() else "" }.orEmpty()
         visualBuilderResult.launch(Intent(this, VisualBuilderActivity::class.java).putExtra("source", seed))
     }
