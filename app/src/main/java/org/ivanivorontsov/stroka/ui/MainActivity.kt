@@ -1466,11 +1466,17 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         updateVoiceModeButton()
         voiceModeBtn.setOnClickListener { chooseVoiceMode() }
         voiceBuilderBtn.setOnClickListener { openVisualBuilder() }
-        voiceLangBtn.text = prefs.voiceLang.uppercase()
+        voiceLangBtn.text = voiceRecognitionLanguage().uppercase()
         voiceLangBtn.setOnClickListener {
-            prefs.voiceLang = if (prefs.voiceLang == "ru") "en" else "ru"
-            voiceLangBtn.text = prefs.voiceLang.uppercase()
-            if (voice.isActive) voice.start(prefs.voiceLang, prefs.voiceEngine)
+            if (docs.getOrNull(current)?.lang == Lang.PONYATNY) {
+                voiceLangBtn.text = "RU"
+                if (voice.isActive) voice.start("ru", prefs.voiceEngine)
+                toast("Для языка «Понятный» распознавание речи работает на русском")
+            } else {
+                prefs.voiceLang = if (prefs.voiceLang == "ru") "en" else "ru"
+                voiceLangBtn.text = prefs.voiceLang.uppercase()
+                if (voice.isActive) voice.start(prefs.voiceLang, prefs.voiceEngine)
+            }
         }
     }
 
@@ -1505,13 +1511,16 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         startVoice()
     }
 
+    private fun voiceRecognitionLanguage(): String =
+        if (docs.getOrNull(current)?.lang == Lang.PONYATNY) "ru" else prefs.voiceLang
+
     private fun startVoice() {
         voicePanel.visibility = View.VISIBLE
         voiceStatus.text = "Запуск микрофона…"
         voicePartial.text = ""
-        voiceLangBtn.text = prefs.voiceLang.uppercase()
+        voiceLangBtn.text = voiceRecognitionLanguage().uppercase()
         extraKeys.setMicActive(true)
-        voice.start(prefs.voiceLang, prefs.voiceEngine)
+        voice.start(voiceRecognitionLanguage(), prefs.voiceEngine)
     }
 
     private fun stopVoice() {
@@ -1537,7 +1546,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     override fun onFinalCandidates(candidates: List<String>) {
-        onFinal(VoiceMapper.bestCandidate(candidates))
+        val language = docs.getOrNull(current)?.lang ?: Lang.PLAIN
+        onFinal(VoiceMapper.bestCandidate(candidates, language))
     }
 
     override fun onStopped() {
