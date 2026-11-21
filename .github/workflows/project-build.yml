@@ -1,0 +1,259 @@
+name: Project Build Center
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Build target
+        required: true
+        type: choice
+        default: auto
+        options:
+          - auto
+          - android-apk
+          - android-aab
+          - windows-exe
+          - website
+          - python-exe
+      project_path:
+        description: Project directory inside this repository
+        required: true
+        type: string
+        default: .
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-build-${{ github.repository }}-${{ github.ref }}-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect project and choose toolchain
+    runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.detect.outputs.target }}
+      project: ${{ steps.detect.outputs.project }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - id: detect
+        name: Validate path and detect project
+        shell: bash
+        env:
+          REQUESTED: ${{ inputs.target }}
+          PROJECT_PATH: ${{ inputs.project_path }}
+        run: |
+          set -euo pipefail
+          case "$PROJECT_PATH" in
+            ""|/*|../*|*/../*|*/..) echo "Unsafe project_path"; exit 2 ;;
+          esac
+          PROJECT_PATH="${PROJECT_PATH#./}"
+          PROJECT_PATH="${PROJECT_PATH:-.}"
+          test -d "$PROJECT_PATH" || { echo "Project directory not found: $PROJECT_PATH"; exit 2; }
+          if [[ "$REQUESTED" == "auto" ]]; then
+            if [[ -f "$PROJECT_PATH/settings.gradle" || -f "$PROJECT_PATH/settings.gradle.kts" || -f "$PROJECT_PATH/gradlew" ]]; then
+              TARGET=android-apk
+            elif find "$PROJECT_PATH" -maxdepth 2 \( -name '*.sln' -o -name '*.csproj' \) -print -quit | grep -q .; then
+              TARGET=windows-exe
+            elif [[ -f "$PROJECT_PATH/package.json" || -f "$PROJECT_PATH/index.html" ]]; then
+              TARGET=website
+            elif [[ -f "$PROJECT_PATH/pyproject.toml" || -f "$PROJECT_PATH/requirements.txt" || -f "$PROJECT_PATH/main.py" ]]; then
+              TARGET=python-exe
+            else
+              echo "Could not infer project type. Select Android APK, Windows EXE, Website or Python EXE explicitly."
+              exit 3
+            fi
+          else
+            TARGET="$REQUESTED"
+          fi
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "project=$PROJECT_PATH" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Build inspection"
+            echo "- Project: `$PROJECT_PATH`"
+            echo "- Selected target: `$TARGET`"
+            echo "- Commit: `$GITHUB_SHA`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  android:
+    name: Build Android package
+    needs: inspect
+    if: needs.inspect.outputs.target == 'android-apk' || needs.inspect.outputs.target == 'android-aab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Check Android project and restore toolchain
+        shell: bash
+        env:
+          PROJECT: ${{ needs.inspect.outputs.project }}
+          TARGET: ${{ needs.inspect.outputs.target }}
+        run: |
+          set -euo pipefail
+          test -f "$PROJECT/build.gradle" -o -f "$PROJECT/build.gradle.kts" -o -f "$PROJECT/app/build.gradle" -o -f "$PROJECT/app/build.gradle.kts"
+          if [[ -x "$PROJECT/gradlew" ]]; then
+            GRADLE="$PROJECT/gradlew"
+          else
+            echo "Gradle wrapper is missing; using the provisioned Gradle 8.9 runner toolchain."
+            GRADLE=gradle
+          fi
+          mkdir -p dist/android
+          if [[ "$TARGET" == "android-aab" ]]; then
+            "$GRADLE" -p "$PROJECT" --no-daemon bundleDebug
+            find "$PROJECT" -path '*/build/outputs/bundle/debug/*.aab' -exec cp {} dist/android/ \;
+          else
+            "$GRADLE" -p "$PROJECT" --no-daemon assembleDebug
+            find "$PROJECT" -path '*/build/outputs/apk/debug/*.apk' -exec cp {} dist/android/ \;
+          fi
+          test "$(find dist/android -type f | wc -l)" -gt 0
+          sha256sum dist/android/* > dist/android/SHA256SUMS.txt
+      - name: Explain Android build result
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p diagnostics
+          echo "Android build uses JDK 17, Android SDK platform 35 and Gradle 8.9. Missing SDK components are provisioned automatically. Source-code errors still require a developer decision." > diagnostics/BUILD-REPORT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-build-and-diagnostics
+          path: |
+            dist/android/
+            diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
+
+  windows:
+    name: Build Windows executable
+    needs: inspect
+    if: needs.inspect.outputs.target == 'windows-exe' || needs.inspect.outputs.target == 'python-exe'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build .NET Windows EXE
+        if: needs.inspect.outputs.target == 'windows-exe'
+        shell: pwsh
+        env:
+          PROJECT: ${{ needs.inspect.outputs.project }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force dist/windows | Out-Null
+          $projectFile = Get-ChildItem $env:PROJECT -Recurse -File -Include *.csproj | Select-Object -First 1
+          if (!$projectFile) { throw "No .csproj found. Add a .NET project or select Python EXE." }
+          dotnet restore $projectFile.FullName
+          dotnet publish $projectFile.FullName -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist/windows
+          $exe = Get-ChildItem dist/windows -Filter *.exe | Select-Object -First 1
+          if (!$exe) { throw "Publish finished without an EXE. Inspect compiler output and target framework." }
+          $bytes = [IO.File]::ReadAllBytes($exe.FullName)
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw "Output is not a Windows PE executable." }
+          Get-FileHash $exe.FullName -Algorithm SHA256 | Format-List | Out-File dist/windows/SHA256SUMS.txt
+      - name: Build Python Windows EXE
+        if: needs.inspect.outputs.target == 'python-exe'
+        shell: pwsh
+        env:
+          PROJECT: ${{ needs.inspect.outputs.project }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force dist/windows | Out-Null
+          python -m pip install --upgrade pip pyinstaller
+          $requirements = Join-Path $env:PROJECT 'requirements.txt'
+          if (Test-Path $requirements) { python -m pip install -r $requirements }
+          $entry = @('main.py','app.py','run.py') | ForEach-Object { Join-Path $env:PROJECT $_ } | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (!$entry) { throw "No main.py, app.py or run.py entry point. Add one or configure an entry point." }
+          python -m PyInstaller --clean --noconfirm --onefile --name App --distpath dist/windows $entry
+          if (!(Test-Path dist/windows/App.exe)) { throw "PyInstaller did not produce App.exe." }
+          Get-FileHash dist/windows/App.exe -Algorithm SHA256 | Format-List | Out-File dist/windows/SHA256SUMS.txt
+      - name: Write Windows build report
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force diagnostics | Out-Null
+          @"
+          Windows build runner: windows-latest
+          .NET SDK: 8.0
+          Python: 3.12
+          EXE validation checks the Windows PE MZ header. Build failures are not silently rewritten: compiler errors need review.
+          "@ | Set-Content diagnostics/BUILD-REPORT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-exe-and-diagnostics
+          path: |
+            dist/windows/
+            diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
+
+  website:
+    name: Package website
+    needs: inspect
+    if: needs.inspect.outputs.target == 'website'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies and build website
+        shell: bash
+        env:
+          PROJECT: ${{ needs.inspect.outputs.project }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/site
+          if [[ -f "$PROJECT/package.json" ]]; then
+            cd "$PROJECT"
+            if [[ -f package-lock.json ]]; then npm ci; else npm install; fi
+            npm run build --if-present
+            if [[ -d dist ]]; then cp -R dist/. "$GITHUB_WORKSPACE/dist/site/"
+            elif [[ -d build ]]; then cp -R build/. "$GITHUB_WORKSPACE/dist/site/"
+            else cp -R . "$GITHUB_WORKSPACE/dist/site/"; fi
+          else
+            test -f "$PROJECT/index.html"
+            cp -R "$PROJECT"/. dist/site/
+          fi
+          test -f dist/site/index.html
+          cd dist && zip -qr ../Website.zip site
+          sha256sum Website.zip > Website-SHA256SUMS.txt
+      - name: Write website report
+        if: always()
+        run: |
+          mkdir -p diagnostics
+          echo "Website build installs Node.js 22 and restores npm dependencies. Output must contain index.html. Review browser console and responsive layout before release." > diagnostics/BUILD-REPORT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: website-and-diagnostics
+          path: |
+            Website.zip
+            Website-SHA256SUMS.txt
+            diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
