@@ -1,5 +1,12 @@
 name: Pонятный — сборка для всех систем
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/build-ponyatny.mjs'
+      - 'tools/fixtures/ponyatny/**'
+      - 'app/src/main/assets/ponyatny/**'
+      - '.github/workflows/ponyatny-build.yml'
   workflow_dispatch:
     inputs:
       project_path:
@@ -60,6 +67,8 @@ jobs:
           case "$ENTRY" in "$PROJECT_PATH"/*) ;; *) echo "Entry must stay inside project folder"; exit 2 ;; esac
           echo "entry=$ENTRY" >> "$GITHUB_OUTPUT"
           echo "Project: $PROJECT_PATH; entry: $ENTRY" >> "$GITHUB_STEP_SUMMARY"
+      - name: Check build tool syntax
+        run: node --check tools/build-ponyatny.mjs
       - name: Build portable Node.js and Web versions, prepare Android project
         env:
           ENTRY: \${{ steps.entry.outputs.entry }}
