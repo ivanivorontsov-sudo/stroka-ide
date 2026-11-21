@@ -17,6 +17,14 @@ The Windows job uses the native `windows-latest` runner and .NET 8 SDK. It runs 
 
 A Windows build is OS- and architecture-specific. Additional targets such as `win-arm64` require separate publish jobs and tests. Self-contained EXEs are larger because they include the runtime.
 
+## Embedded local build backend
+
+The editor now has a no-shell local backend for static websites and `.pon` web apps. It classifies a project from its files, packages the site with Android's `ZipOutputStream`, writes the ZIP to `Download/StrokaBuild/stroka-website-build.zip`, and never invokes Termux, Node.js, or a cloud service. For `.pon` projects the app embeds `yadro.js` and `std.json` into a standalone offline web app; the visitor can edit and run the program in the browser, including imports from project files and the standard library. The website starter and visual builder provide a responsive multi-section design; each major section is independently selectable, editable, reorderable, and removable before export.
+
+The local backend intentionally does not claim to compile arbitrary Android Gradle projects. Android APK/AAB builds still use the existing Termux toolchain (or GitHub Actions), and Python / «Понятный» app packaging uses the existing tested build script. Windows/Linux targets remain on GitHub-hosted native runners. The default target is Auto: it selects the embedded website packager for a static site and routes other project kinds to their existing supported backend. Termux and GitHub paths are retained.
+
+A general Android-on-Android compiler needs an Android-host ARM64 `aapt2`, a Java/Kotlin compiler, D8, zipalign, apksig, SDK platform artifacts, dependency resolution and a Gradle/AGP compatibility layer. A Linux-host `aapt2` downloaded from the desktop SDK cannot simply execute on Android. Until a complete, license-compatible toolchain is bundled or fetched and verified, the app must not label a ZIP as an APK or report an unverified build as successful.
+
 ## What the smoke test does not claim
 
 These CI jobs validate that the pinned toolchains work and produce valid sample artifacts. They do not yet turn this Android editor into a general-purpose remote build service. A production in-app build feature still needs a project-export contract, dependency/SDK selection, a secure remote-build authentication flow, build-log streaming, artifact download, and user-managed signing credentials. Arbitrary Android projects also need Gradle plugin and SDK compatibility checks; arbitrary Windows projects need an identified project type and target runtime.
