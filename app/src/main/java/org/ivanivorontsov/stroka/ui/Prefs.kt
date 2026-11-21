@@ -25,6 +25,9 @@ class Prefs(ctx: Context) {
     val extraKeys: String get() = sp.getString("extra_keys", null)?.takeIf { it.isNotBlank() } ?: ExtraKeys.DEFAULT
     val haptics: Boolean get() = sp.getBoolean("haptics", true)
     val voiceEngine: String get() = sp.getString("voice_engine", "auto") ?: "auto"
+    var voiceMode: String
+        get() = sp.getString("voice_mode", "blocks") ?: "blocks"
+        set(v) = sp.edit().putString("voice_mode", v).apply()
     var voiceLang: String
         get() = sp.getString("voice_lang", "ru") ?: "ru"
         set(v) = sp.edit().putString("voice_lang", v).apply()
