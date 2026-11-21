@@ -51,8 +51,8 @@ jobs:
         id: entry
         shell: bash
         env:
-          PROJECT_PATH: ${{ inputs.project_path }}
-          ENTRY_FILE: ${{ inputs.entry_file }}
+          PROJECT_PATH: ${{ inputs.project_path || '.' }}
+          ENTRY_FILE: ${{ inputs.entry_file || 'tools/fixtures/ponyatny/main.pon' }}
         run: |
           set -euo pipefail
           case "$PROJECT_PATH" in ""|/*|../*|*/../*|*/..) echo "Unsafe project path"; exit 2 ;; esac
