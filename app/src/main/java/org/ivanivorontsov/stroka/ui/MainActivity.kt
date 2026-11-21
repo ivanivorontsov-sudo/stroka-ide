@@ -1140,67 +1140,152 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val source = (doc?.ref as? DocRef.Local)?.let { File(it.path) }
         val repo = git.findRepoRoot(source?.parentFile)
         val token = SecureStore(this).get("github_token")
-        val options = arrayOf("Автоопределение проекта", "Android APK", "Android App Bundle (AAB)", "Windows EXE", "Linux ELF (.NET)", "Сайт (HTML / Node.js)", "Python EXE (Windows)")
-        var selected = 0
-        val details = TextView(this).apply {
+        val options = listOf(
+            "Автоопределение проекта", "Android APK", "Android App Bundle (AAB)",
+            "Windows EXE", "Linux ELF (.NET)", "Сайт (HTML / Node.js)", "Python EXE (Windows)"
+        )
+        val targets = listOf("auto", "android-apk", "android-aab", "windows-exe", "linux-exe", "website", "python-exe")
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(8), dp(18), dp(12))
+        }
+        val explanation = TextView(this).apply {
             textSize = 13f
-            setPadding(dp(18), dp(8), dp(18), dp(8))
+            setTextColor(com.google.android.material.color.MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface))
+            text = "Строка проверит проект и отправит сборку на отдельную машину GitHub Actions. Android SDK и Windows-компилятор не требуется запускать внутри телефона."
+            setPadding(0, 0, 0, dp(12))
+        }
+        content.addView(explanation)
+        val targetLabel = TextView(this).apply {
+            text = "ЦЕЛЬ СБОРКИ"
+            textSize = 12f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(0, 0, 0, dp(4))
+        }
+        content.addView(targetLabel)
+        val radioGroup = android.widget.RadioGroup(this).apply {
+            orientation = android.widget.RadioGroup.VERTICAL
+        }
+        options.forEachIndexed { index, label ->
+            val radio = android.widget.RadioButton(this).apply {
+                id = View.generateViewId()
+                text = label
+                textSize = 14f
+                setPadding(dp(2), dp(5), 0, dp(5))
+                isChecked = index == 0
+            }
+            radioGroup.addView(radio, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+        }
+        content.addView(radioGroup)
+        val divider = View(this).apply {
+            setBackgroundColor(com.google.android.material.color.MaterialColors.getColor(this, com.google.android.material.R.attr.colorOutlineVariant))
+        }
+        content.addView(divider, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
+            topMargin = dp(8); bottomMargin = dp(10)
+        })
+        val remote = repo?.let { Git.open(it).use { g -> g.repository.config.getString("remote", "origin", "url") } }
+        val branch = repo?.let { runCatching { Git.open(it).use { g -> g.repository.branch } }.getOrNull() }
+        val status = TextView(this).apply {
+            textSize = 13f
+            setLineSpacing(dp(3).toFloat(), 1f)
             text = buildString {
-                append("Строка проверит проект и отправит сборку на отдельную машину GitHub Actions. ")
-                append("Это нужно потому, что Android SDK и Windows-компилятор нельзя надёжно запускать внутри Android-приложения.\n\n")
-                append("Текущий файл: ").append(doc?.name ?: "не выбран").append("\n")
-                append("Папка проекта: будет определена автоматически по структуре файлов\n")
-                append("Репозиторий: ").append(repo?.name ?: "не найден").append("\n")
-                append("GitHub-токен: ").append(if (token.isNullOrBlank()) "не настроен" else "есть").append("\n")
-                append("Если сборочного workflow нет, Строка добавит его в основную ветку репозитория.\n\n")
-                append("Важно: сборка берёт только уже отправленный (push) код. Незакоммиченные изменения не попадут в неё.")
+                append("ТЕКУЩИЙ ПРОЕКТ\n")
+                append("Файл: ").append(doc?.name ?: "не выбран").append("\n")
+                append("Папка сборки: определяется по структуре проекта\n")
+                append("Git-репозиторий: ").append(repo?.name ?: "не найден").append("\n")
+                if (repo != null) {
+                    append("Адрес origin: ").append(remote ?: "не задан").append("\n")
+                    append("Ветка: ").append(branch ?: "не определена").append("\n")
+                }
+                append("GitHub-токен: ").append(if (token.isNullOrBlank()) "не настроен" else "сохранён на устройстве").append("\n\n")
+                append("Перед запуском нужен GitHub-репозиторий с origin, настроенный токен и отправленный в origin последний коммит. Незакоммиченные изменения не попадут в облачную сборку.")
             }
         }
-        MaterialAlertDialogBuilder(this)
+        content.addView(status)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            clipToPadding = false
+            addView(content, ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT
+            ))
+        }
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Собрать проект")
-            .setSingleChoiceItems(options, 0) { _, which -> selected = which }
-            .setView(details)
-            .setPositiveButton("Проверить и собрать") { _, _ ->
-                val target = listOf("auto", "android-apk", "android-aab", "windows-exe", "linux-exe", "website", "python-exe")[selected]
+            .setView(scroll, dp(20), dp(4), dp(20), dp(4))
+            .setPositiveButton("Проверить и собрать", null)
+            .setNeutralButton("Настроить GitHub", null)
+            .setNegativeButton("Отмена", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                dialog.dismiss()
+                startActivity(Intent(this, SettingsActivity::class.java))
+            }
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val selectedIndex = radioGroup.checkedRadioButtonId.let { id ->
+                    (0 until radioGroup.childCount).firstOrNull { radioGroup.getChildAt(it).id == id } ?: 0
+                }
                 if (repo == null) {
-                    MaterialAlertDialogBuilder(this).setTitle("Не найден Git-репозиторий")
-                        .setMessage("Откройте файл внутри проекта, созданного или клонированного через Git, либо сначала инициализируйте репозиторий. Облачная сборка работает с отправленным на GitHub исходным кодом.")
-                        .setPositiveButton("Открыть Git", null).show()
-                    return@setPositiveButton
+                    dialog.dismiss()
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Git-репозиторий не подключён")
+                        .setMessage("Сначала откройте меню Git и выберите «Создать репозиторий» или «Клонировать репозиторий». Для облачной сборки нужен GitHub-адрес origin.")
+                        .setPositiveButton("Открыть Git") { _, _ -> showGitMenu() }
+                        .setNegativeButton("Отмена", null)
+                        .show()
+                    return@setOnClickListener
+                }
+                if (remote.isNullOrBlank()) {
+                    dialog.dismiss()
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Не задан адрес GitHub")
+                        .setMessage("В локальном репозитории нет origin. Подключите GitHub через меню Git → Коммит и отправить (push) или создайте/клонируйте репозиторий с GitHub-адресом.")
+                        .setPositiveButton("Открыть Git") { _, _ -> showGitMenu() }
+                        .setNegativeButton("Отмена", null)
+                        .show()
+                    return@setOnClickListener
                 }
                 if (token.isNullOrBlank()) {
-                    MaterialAlertDialogBuilder(this).setTitle("Нужен GitHub-токен")
-                        .setMessage("Добавьте токен в Настройки → Git и GitHub. Нужны права Actions: write и Contents: write, чтобы установить сборочный workflow.")
-                        .setPositiveButton("Понятно", null).show()
-                    return@setPositiveButton
+                    dialog.dismiss()
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Нужен GitHub-токен")
+                        .setMessage("Добавьте токен через «Настроить GitHub». Для облачной сборки нужны права Contents: read/write и Actions: read/write. Токен хранится в зашифрованном виде на устройстве.")
+                        .setPositiveButton("Настроить токен") { _, _ -> startActivity(Intent(this, SettingsActivity::class.java)) }
+                        .setNegativeButton("Отмена", null)
+                        .show()
+                    return@setOnClickListener
                 }
+                dialog.dismiss()
+                val target = targets[selectedIndex]
                 saveAllDirty()
                 showPanel(false)
-                appendConsole("▶ Проверка проекта перед сборкой…\n", Kind.INFO)
+                appendConsole("▶ Проверка проекта перед сборкой…\\n", Kind.INFO)
                 panelStatus.text = "Подготовка облачной сборки…"
                 gitIo.execute {
                     try {
                         val result = CloudBuild.dispatch(this, repo, source, target, token)
                         main.post {
-                            appendConsole("✓ Сборка отправлена: ${result.repo} / ${result.branch}\n", Kind.INFO)
-                            appendConsole("Откройте страницу Actions, чтобы наблюдать сборку и скачать проверенный артефакт.\n", Kind.INFO)
+                            appendConsole("✓ Сборка отправлена: ${result.repo} / ${result.branch}\\n", Kind.INFO)
+                            appendConsole("Откройте страницу Actions, чтобы наблюдать сборку и скачать артефакт.\\n", Kind.INFO)
                             panelStatus.text = "Сборка запущена на GitHub Actions"
                             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(result.actionsUrl)))
                         }
                     } catch (e: Throwable) {
                         val message = (e.message ?: e.toString()).replace(token, "***")
                         main.post {
-                            appendConsole("✕ Сборка не запущена: $message\n", Kind.ERR)
+                            appendConsole("✕ Сборка не запущена: $message\\n", Kind.ERR)
                             panelStatus.text = "Сборка не запущена"
                             MaterialAlertDialogBuilder(this).setTitle("Не удалось запустить сборку")
-                                .setMessage(message + "\n\nПроверьте GitHub-токен (Actions: write и Contents: write), чистоту Git и то, что последний коммит отправлен в origin.")
+                                .setMessage(message + "\\n\\nПроверьте права токена, чистоту Git и наличие последнего коммита в origin.")
                                 .setPositiveButton("Понятно", null).show()
                         }
                     }
                 }
             }
-            .setNegativeButton("Отмена", null)
-            .show()
+        }
+        dialog.show()
     }
 
     private fun showGitMenu() {
