@@ -270,4 +270,20 @@ class VoiceMapperTest {
         assert(action.code.contains("<!DOCTYPE html>"))
     }
 
+    @Test fun literalInputModeDoesNotInterpretCommands() {
+        assertEquals(VoiceAction.SetLiteralMode("text"), VoiceMapper.map("это ввод", Lang.PYTHON).single())
+        assertEquals(listOf(VoiceAction.Insert("выведи на экран привет")), VoiceMapper.map("выведи на экран привет", Lang.PYTHON, voiceMode = "constructs", literalMode = "text"))
+        assertEquals(VoiceAction.SetLiteralMode(null), VoiceMapper.map("конец ввода", Lang.PYTHON, literalMode = "text").single())
+    }
+
+    @Test fun fullConstructModeCreatesStatements() {
+        val output = VoiceMapper.map("выведи на экран Привет мир", Lang.PYTHON, voiceMode = "constructs").single() as VoiceAction.InsertBlock
+        assert(output.code.contains("print("))
+        val loop = VoiceMapper.map("создай цикл", Lang.PYTHON, voiceMode = "constructs").single() as VoiceAction.InsertBlock
+        assert(loop.code.contains("for "))
+    }
+
+    @Test fun offModeIsPlainDictation() {
+        assertEquals(listOf(VoiceAction.Insert("создай калькулятор")), VoiceMapper.map("создай калькулятор", Lang.HTML, voiceMode = "off"))
+    }
 }
