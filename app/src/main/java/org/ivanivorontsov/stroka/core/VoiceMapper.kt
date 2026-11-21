@@ -306,7 +306,12 @@ object VoiceMapper {
             "модальное окно", "диалоговое окно", "создай html страницу", "css оформление",
             "подключи библиотеку", "импортируй пакет", "сгенерируй функцию",
             "requests", "numpy", "pandas", "flask", "fastapi", "tkinter",
-            "axios", "react", "express", "lodash", "date-fns"
+            "axios", "react", "express", "lodash", "date-fns",
+            "сделай мне окно", "сделай окошко", "покажи окошко", "покажи окно программы",
+            "выведи окно", "открой окошко", "покажи форму", "сделай интерфейс",
+            "собери экран", "нарисуй интерфейс", "мне надо окно", "хочу чтобы было окно",
+            "show window", "display window", "open window", "make me a window",
+            "show form", "build interface", "show interface", "create a window"
         )
         return (priorityPhrases + commands + codeWords + phrases.keys).distinct().take(260)
     }
