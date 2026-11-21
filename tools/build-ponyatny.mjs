@@ -47,22 +47,40 @@ function compileSource(file) {
   const root = path.dirname(absolute);
   const source = fs.readFileSync(absolute, "utf8");
   const js = Pony.compile(source, { file: path.basename(absolute), guard: true, resolve: (request, importer) => resolveModule(root, request, importer) });
-  return { js, source };
+  return { js, source, projectRoot: root, fileName: path.basename(absolute) };
 }
 function lines(s) { return s.split("\n"); }
-function writeWeb(outDir, source, name) {
+function collectWebModules(projectRoot) {
+  const modules = {};
+  for (const [key, value] of Object.entries(std)) modules["стд/" + key + ".pon"] = value;
+  const walk = (dir) => {
+    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+      if ([".git", "node_modules", "build", "dist"].includes(item.name)) continue;
+      const full = path.join(dir, item.name);
+      if (item.isDirectory()) walk(full);
+      else if (item.isFile() && item.name.toLowerCase().endsWith(".pon")) {
+        modules[path.relative(projectRoot, full).replace(/\\/g, "/")] = fs.readFileSync(full, "utf8");
+      }
+    }
+  };
+  walk(projectRoot);
+  return modules;
+}
+function writeWeb(outDir, source, name, projectRoot, fileName) {
   const dir = path.join(outDir, "web");
   fs.mkdirSync(dir, { recursive: true });
   fs.copyFileSync(COMPILER_PATH, path.join(dir, "ponyatny.js"));
   fs.writeFileSync(path.join(dir, "std.json"), JSON.stringify(std), "utf8");
   fs.writeFileSync(path.join(dir, "program.pon"), source, "utf8");
+  const modules = collectWebModules(projectRoot);
   const app = [
     "(() => {",
     "const out=document.getElementById('output'), src=document.getElementById('source'), status=document.getElementById('status');",
+    "const modules=" + JSON.stringify(modules) + ";",
     "src.value=" + JSON.stringify(source) + ";",
-    "const modules=" + JSON.stringify(std) + ";",
     "const write=v=>{out.textContent+=String(v)+'\\n';};",
-    "document.getElementById('run').addEventListener('click',()=>{out.textContent='';try{PonyatnyYadro.run(src.value,{file:'main.pon',write,writeErr:v=>write('Ошибка: '+v),ask:q=>window.prompt(q||'Введите значение:')??'',resolve:req=>{const k=String(req).replace(/^стд\\//,'').replace(/\\.pon$/i,'');return Object.prototype.hasOwnProperty.call(modules,k)?{id:'std:'+k,name:'стд/'+k+'.pon',source:modules[k]}:null;}});status.textContent='Выполнено';}catch(e){status.textContent='Ошибка';write(e&&e.message?e.message:e);}});",
+    "const resolve=(req,from)=>{let key=String(req).replace(/\\\\/g,'/');if(!key.startsWith('стд/')){let parts=(key.startsWith('./')||key.startsWith('../'))?String(from||" + JSON.stringify(fileName || "main.pon") + ").replace(/\\\\/g,'/').split('/').slice(0,-1):[];for(const part of key.split('/')){if(!part||part==='.')continue;if(part==='..')parts.pop();else parts.push(part);}key=parts.join('/');}if(!/\\.pon$/i.test(key))key+='.pon';return Object.prototype.hasOwnProperty.call(modules,key)?{id:key,name:key,source:modules[key]}:null;};",
+    "document.getElementById('run').addEventListener('click',()=>{out.textContent='';try{PonyatnyYadro.run(src.value,{file:" + JSON.stringify(fileName || "main.pon") + ",write,writeErr:v=>write('Ошибка: '+v),ask:q=>window.prompt(q||'Введите значение:')??'',resolve});status.textContent='Выполнено';}catch(e){status.textContent='Ошибка';write(e&&e.message?e.message:e);}});",
     "document.getElementById('save').addEventListener('click',()=>{const a=document.createElement('a'),u=URL.createObjectURL(new Blob([src.value],{type:'text/plain;charset=utf-8'}));a.href=u;a.download='main.pon';a.click();URL.revokeObjectURL(u);});",
     "})();"
   ].join("\n");
@@ -103,7 +121,7 @@ function main() {
     process.exit(o.help ? 0 : 2);
   }
   if (!/\.pon$/i.test(o.source)) throw new Error("Ожидается исходный файл .pon");
-  const { js, source } = compileSource(o.source);
+  const { js, source, projectRoot, fileName } = compileSource(o.source);
   const out = path.resolve(o.out); fs.mkdirSync(out, { recursive: true });
   const name = o.name || safeName(path.basename(o.source));
   const standalone = Pony.standalone(js);
@@ -112,7 +130,7 @@ function main() {
     fs.writeFileSync(path.join(dir, name + ".js"), standalone, "utf8");
     fs.writeFileSync(path.join(dir, "README.txt"), "Запуск: node " + name + ".js\nТребуется Node.js 18 или новее.\n", "utf8");
   }
-  if (o.target === "all" || o.target === "web") writeWeb(out, source, name);
+  if (o.target === "all" || o.target === "web") writeWeb(out, source, name, projectRoot, fileName);
   if (o.target === "all" || o.target === "android") {
     const webDir = path.join(out, "web");
     if (!fs.existsSync(path.join(webDir, "index.html"))) writeWeb(out, source, name);
