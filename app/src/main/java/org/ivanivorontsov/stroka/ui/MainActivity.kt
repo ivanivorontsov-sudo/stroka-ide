@@ -114,6 +114,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private lateinit var voiceLast: TextView
     private lateinit var voiceLangBtn: Button
     private lateinit var voiceModeBtn: Button
+    private lateinit var voiceBuilderBtn: Button
     private var voiceLiteralMode: String? = null
 
     private val docs = ArrayList<Doc>()
@@ -138,6 +139,18 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private val findTask = Runnable { updateFindMatches() }
 
     private val openTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) addSafRoot(uri) }
+    private val visualBuilderResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val html = result.data?.getStringExtra("html") ?: return@registerForActivityResult
+            if (current >= 0) { editor.selectAll(); editor.insertText(html); onTextChanged() }
+            else {
+                val file = File(projectsDir, "website.html")
+                file.writeText(html)
+                openFile(file)
+            }
+            toast("Код из конструктора вставлен в редактор")
+        }
+    }
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) startVoice() else toast(getString(R.string.mic_permission))
     }
@@ -197,6 +210,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         voiceLast = findViewById(R.id.voiceLast)
         voiceLangBtn = findViewById(R.id.voiceLang)
         voiceModeBtn = findViewById(R.id.voiceMode)
+        voiceBuilderBtn = findViewById(R.id.voiceBuilder)
         editor.listener = this
         extraKeys.listener = this
     }
@@ -1201,6 +1215,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         findViewById<ImageButton>(R.id.voiceHelp).setOnClickListener { showVoiceHelp() }
         updateVoiceModeButton()
         voiceModeBtn.setOnClickListener { chooseVoiceMode() }
+        voiceBuilderBtn.setOnClickListener { openVisualBuilder() }
         voiceLangBtn.text = prefs.voiceLang.uppercase()
         voiceLangBtn.setOnClickListener {
             prefs.voiceLang = if (prefs.voiceLang == "ru") "en" else "ru"
@@ -1297,11 +1312,12 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         is VoiceAction.Find -> "[найти ${a.query}]"
         is VoiceAction.GoToLine -> "[строка ${a.line}]"
         is VoiceAction.SetLiteralMode -> if (a.kind == null) "[конец буквального режима]" else "[буквальный режим: ${a.kind}]"
+        VoiceAction.OpenVisualBuilder -> "[визуальный конструктор]"
         else -> "[" + a.javaClass.simpleName + "]"
     }
 
     fun applyVoice(a: VoiceAction) {
-        if (current < 0 && a !is VoiceAction.StopListening) return
+        if (current < 0 && a !is VoiceAction.StopListening && a != VoiceAction.OpenVisualBuilder) return
         when (a) {
             is VoiceAction.Insert -> {
                 val t = editor.text ?: return
@@ -1337,9 +1353,15 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             VoiceAction.Comment -> editor.toggleComment()
             VoiceAction.StopListening, VoiceAction.Close -> stopVoice()
             is VoiceAction.SetLiteralMode -> { voiceLiteralMode = a.kind; voiceStatus.text = if (a.kind == null) "Слушаю · команды" else if (a.kind == "comment") "Диктую комментарий" else "Буквальный ввод" }
+            VoiceAction.OpenVisualBuilder -> openVisualBuilder()
             is VoiceAction.Find -> showFind(a.query.ifBlank { null })
             is VoiceAction.GoToLine -> editor.goToLine(a.line)
         }
+    }
+
+    private fun openVisualBuilder() {
+        val seed = docs.getOrNull(current)?.let { if (it.lang == Lang.HTML) editor.text?.toString().orEmpty() else "" }.orEmpty()
+        visualBuilderResult.launch(Intent(this, VisualBuilderActivity::class.java).putExtra("source", seed))
     }
 
     private fun showVoiceHelp() {
