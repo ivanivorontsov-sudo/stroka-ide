@@ -1,0 +1,111 @@
+name: Pонятный — сборка для всех систем
+on:
+  workflow_dispatch:
+    inputs:
+      project_path:
+        description: Папка проекта в репозитории с исходниками .pon
+        required: true
+        type: string
+        default: .
+      entry_file:
+        description: Главный файл относительно папки проекта
+        required: false
+        type: string
+        default: main.pon
+permissions:
+  contents: read
+concurrency:
+  group: ponyatny-cross-build-\${{ github.repository }}-\${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    name: Понятный — Android, Windows, Linux, macOS, Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: \${{ github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Validate project path and find entry
+        id: entry
+        shell: bash
+        env:
+          PROJECT_PATH: \${{ inputs.project_path }}
+          ENTRY_FILE: \${{ inputs.entry_file }}
+        run: |
+          set -euo pipefail
+          case "$PROJECT_PATH" in ""|/*|../*|*/../*|*/..) echo "Unsafe project path"; exit 2 ;; esac
+          PROJECT_PATH=$(printf '%s' "$PROJECT_PATH" | sed 's#^\./##')
+          if [[ -z "$PROJECT_PATH" ]]; then PROJECT_PATH="."; fi
+          test -d "$PROJECT_PATH" || { echo "Project folder not found: $PROJECT_PATH"; exit 2; }
+          ENTRY="$PROJECT_PATH/$ENTRY_FILE"
+          if [[ ! -f "$ENTRY" ]]; then ENTRY=$(find "$PROJECT_PATH" -maxdepth 4 -type f -name '*.pon' -print -quit); fi
+          test -n "$ENTRY" && test -f "$ENTRY" || { echo "No .pon entry file found"; exit 2; }
+          case "$ENTRY" in "$PROJECT_PATH"/*) ;; *) echo "Entry must stay inside project folder"; exit 2 ;; esac
+          echo "entry=$ENTRY" >> "$GITHUB_OUTPUT"
+          echo "Project: $PROJECT_PATH; entry: $ENTRY" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build portable Node.js and Web versions, prepare Android project
+        env:
+          ENTRY: \${{ steps.entry.outputs.entry }}
+        run: |
+          set -euo pipefail
+          node tools/build-ponyatny.mjs "$ENTRY" --target all --out dist/ponyatny --name App
+          node dist/ponyatny/node/App.js > dist/ponyatny/node/smoke-output.txt
+          test -s dist/ponyatny/web/index.html
+          test -s dist/ponyatny/android-project/app/src/main/assets/index.html
+      - name: Build native Windows, Linux and macOS executables
+        env:
+          ENTRY: \${{ steps.entry.outputs.entry }}
+        run: |
+          set -euo pipefail
+          for TARGET in windows-x64 linux-x64 linux-arm64 macos-x64 macos-arm64; do
+            node tools/build-ponyatny.mjs "$ENTRY" --target "$TARGET" --out dist/ponyatny --name App
+          done
+          test -s dist/ponyatny/windows-x64/App.exe
+          test -s dist/ponyatny/linux-x64/App
+          test -s dist/ponyatny/linux-arm64/App
+          test -s dist/ponyatny/macos-x64/App
+          test -s dist/ponyatny/macos-arm64/App
+      - name: Build Android APK and AAB
+        run: |
+          set -euo pipefail
+          gradle -p dist/ponyatny/android-project --no-daemon assembleDebug bundleDebug
+          mkdir -p dist/ponyatny/android
+          cp dist/ponyatny/android-project/app/build/outputs/apk/debug/app-debug.apk dist/ponyatny/android/Ponyatny-App.apk
+          cp dist/ponyatny/android-project/app/build/outputs/bundle/debug/app-debug.aab dist/ponyatny/android/Ponyatny-App.aab
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/ponyatny/android/Ponyatny-App.apk
+      - name: Package web app and checksums
+        run: |
+          set -euo pipefail
+          cd dist/ponyatny/web
+          zip -qr ../Ponyatny-Web.zip .
+          cd ../..
+          find dist/ponyatny -type f -not -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > dist/ponyatny/SHA256SUMS.txt
+          echo "## Pонятный — cross-platform build" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Android: APK + AAB" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Windows: x64 EXE" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Linux: x64 and ARM64 ELF" >> "$GITHUB_STEP_SUMMARY"
+          echo "- macOS: Intel and Apple Silicon executables" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Web: static HTML/JS app" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ponyatny-cross-platform-build
+          path: dist/ponyatny/
+          if-no-files-found: error
+          retention-days: 30
