@@ -80,8 +80,9 @@ jobs:
           assert "Описание скопировано" in main and "setTextIsSelectable(true)" in main
           assert "setTextIsSelectable(true)" in tutor
           assert "self.variable.get()" in tkinter
+          print("Termux bridge, Python APK scaffold, Tkinter preview and copy actions: static checks passed")
+          PY
           PYTHONPATH=app/src/main/python python3 - <<'PY'
-          import sys
           from stroka_tkinter import install
           class Callback:
               def showPreview(self, html): pass
@@ -96,8 +97,6 @@ jobs:
           value.set("after")
           assert "after" in root._page(), "Label must refresh its StringVar text"
           print("Tkinter StringVar live-label test: passed")
-          PY
-          print("Termux bridge, Python APK scaffold, Tkinter preview and copy actions: static checks passed")
           PY
 
       - name: Unit tests
