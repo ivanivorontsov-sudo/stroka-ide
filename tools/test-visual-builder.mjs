@@ -61,4 +61,6 @@ assert.ok(activity.includes('voice?.start(language, "auto")'), 'visual builder m
 assert.ok(activity.includes('window.onVoiceStatus'), 'voice status must use a non-command callback');
 assert.ok(!activity.includes('SpeechRecognizer.createSpeechRecognizer'), 'legacy single-engine recognizer must not return');
 assert.ok(html.includes('window.onVoiceStatus='), 'builder must display listening status separately');
+assert.ok(html.includes('if(styleOnly&&!contentIntent){update();return}'), 'style-only commands must not create accidental blocks');
+assert.ok(html.includes('make (?:a )?website'), 'English website creation command must be supported');
 console.log('Visual builder: syntax OK; bilingual voice/theme/grid regression cases passed; 9 themes and explainer/templates present.');
