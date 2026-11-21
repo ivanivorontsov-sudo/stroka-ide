@@ -50,7 +50,7 @@ for (const [phrase, expected] of [
   assert.equal(grid.style.gridTemplateColumns, expected, 'voice grid: ' + phrase);
 }
 
-for (const theme of ['light','dark','luxury','ocean','aurora','minimal','material','fluent','shadcn']) {
+for (const theme of ['light','dark','luxury','ocean','aurora','minimal','material','fluent','shadcn','antd','carbon']) {
   assert.ok(html.includes('data-theme="' + theme + '"'), 'theme button missing: ' + theme);
 }
 for (const required of ['function explainCode()', 'Объяснятор кода', 'data-template="card"', 'data-template="landing"', 'data-template="portfolio"', 'data-template="shop"']) {
