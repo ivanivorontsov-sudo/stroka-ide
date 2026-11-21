@@ -109,21 +109,21 @@ object VoiceMapper {
     private val maxPhraseWords = phrases.keys.maxOf { it.split(' ').size }
 
     private val commandTable: List<Pair<Set<String>, VoiceAction>> = listOf(
-        setOf("сохранить", "сохрани", "сохраняй", "сохранить файл", "сохрани файл", "save", "save file") to VoiceAction.Save,
-        setOf("запустить", "запусти", "выполнить", "выполни", "пуск", "запуск", "run", "run code", "run it", "execute", "start") to VoiceAction.Run,
-        setOf("отменить", "отмена", "отмени", "undo") to VoiceAction.Undo,
-        setOf("повторить", "повтори", "вернуть", "верни", "redo") to VoiceAction.Redo,
-        setOf("выделить все", "выдели все", "select all") to VoiceAction.SelectAll,
-        setOf("копировать", "скопировать", "скопируй", "copy") to VoiceAction.Copy,
-        setOf("вставить", "вставь", "paste") to VoiceAction.Paste,
-        setOf("вырезать", "вырежи", "cut") to VoiceAction.Cut,
+        setOf("сохранить", "сохрани", "сохраняй", "сохранить файл", "сохрани файл", "сохрани", "сохранить документ", "save", "save file", "save document") to VoiceAction.Save,
+        setOf("запустить", "запусти", "выполнить", "выполни", "пуск", "запуск", "запусти код", "запустить код", "выполни код", "выполнить код", "запусти программу", "старт", "run", "run code", "run it", "execute", "execute code", "start") to VoiceAction.Run,
+        setOf("отменить", "отмена", "отмени", "отмени последнее", "отменить последнее действие", "undo", "undo last") to VoiceAction.Undo,
+        setOf("повторить", "повтори", "вернуть", "верни", "повтори действие", "redo", "redo last") to VoiceAction.Redo,
+        setOf("выделить все", "выдели все", "выделить весь текст", "выдели весь текст", "select all", "select everything") to VoiceAction.SelectAll,
+        setOf("копировать", "скопировать", "скопируй", "копировать текст", "скопировать текст", "copy", "copy text") to VoiceAction.Copy,
+        setOf("вставить", "вставь", "вставить текст", "paste", "paste text") to VoiceAction.Paste,
+        setOf("вырезать", "вырежи", "вырезать текст", "cut", "cut text") to VoiceAction.Cut,
         setOf("стереть", "сотри", "удалить символ", "backspace", "delete") to VoiceAction.Backspace,
         setOf("удалить слово", "удали слово", "стереть слово", "delete word") to VoiceAction.DeleteWord,
         setOf("удалить строку", "удали строку", "стереть строку", "delete line") to VoiceAction.DeleteLine,
         setOf("в начало строки", "начало строки", "home", "line start", "start of line") to VoiceAction.LineStart,
         setOf("в конец строки", "конец строки", "end", "line end", "end of line") to VoiceAction.LineEnd,
         setOf("закомментировать", "раскомментировать", "закомментируй", "toggle comment", "comment out", "comment line") to VoiceAction.Comment,
-        setOf("стоп", "хватит", "стоп запись", "выключи микрофон", "stop", "stop listening") to VoiceAction.StopListening,
+        setOf("стоп", "хватит", "стоп запись", "выключи микрофон", "остановить запись", "останови микрофон", "stop", "stop listening", "stop recording") to VoiceAction.StopListening,
         setOf("закрыть", "закрой", "close") to VoiceAction.Close
     )
 
@@ -133,11 +133,62 @@ object VoiceMapper {
 
     fun normalize(s: String): String = s.lowercase().replace('ё', 'е').replace(Regex("[\\s\\u00A0]+"), " ").trim()
 
+    private fun commandForPhrase(phrase: String, allowFuzzy: Boolean): VoiceAction? {
+        for ((names, action) in commandTable) if (phrase in names) return action
+        if (!allowFuzzy || phrase.length < 4) return null
+
+        val wordCount = phrase.split(' ').size
+        if (wordCount !in 1..3) return null
+
+        fun distance(a: String, b: String): Int {
+            val row = IntArray(b.length + 1) { it }
+            for (i in a.indices) {
+                var diagonal = row[0]
+                row[0] = i + 1
+                for (j in b.indices) {
+                    val above = row[j + 1]
+                    row[j + 1] = minOf(
+                        row[j + 1] + 1,
+                        row[j] + 1,
+                        diagonal + if (a[i] == b[j]) 0 else 1
+                    )
+                    diagonal = above
+                }
+            }
+            return row[b.length]
+        }
+
+        val limit = when {
+            phrase.length <= 6 -> 1
+            phrase.length <= 14 -> 2
+            else -> 2
+        }
+        var bestDistance = Int.MAX_VALUE
+        var bestAction: VoiceAction? = null
+        for ((names, action) in commandTable) {
+            for (name in names) {
+                val candidate = normalize(name)
+                if (candidate.split(' ').size != wordCount) continue
+                val d = distance(phrase, candidate)
+                if (d < bestDistance) {
+                    bestDistance = d
+                    bestAction = action
+                }
+            }
+        }
+        return bestAction.takeIf { bestDistance in 1..limit }
+    }
+
     fun parseCommand(utterance: String): VoiceAction? {
-        var n = normalize(utterance).trimEnd('.', '!', '?', ',')
+        var n = normalize(utterance).trim().trimEnd('.', '!', '?', ',', ';', ':')
         var forced = false
-        for (p in commandPrefixes) if (n.startsWith("$p ")) { n = n.removePrefix("$p ").trim(); forced = true }
-        for ((names, a) in commandTable) if (n in names) return a
+        for (p in commandPrefixes) {
+            if (n.startsWith("$p ")) {
+                n = n.removePrefix("$p ").trim()
+                forced = true
+                break
+            }
+        }
         for (p in gotoPrefixes) {
             if (n.startsWith("$p ")) {
                 val rest = n.removePrefix("$p ").trim().removePrefix("номер ").removePrefix("number ")
@@ -148,12 +199,29 @@ object VoiceMapper {
         for (p in findPrefixes) {
             if (n == p) return VoiceAction.Find("")
             if (n.startsWith("$p ")) {
-                val origWords = utterance.trim().trimEnd('.', '!', '?').split(Regex("\\s+"))
+                val origWords = utterance.trim().trimEnd('.', '!', '?', ',', ';', ':').split(Regex("\\s+"))
                 val skip = p.split(' ').size + if (forced) 1 else 0
                 return VoiceAction.Find(origWords.drop(skip).joinToString(" ").trim())
             }
         }
-        return null
+        val commandText = n.removeSuffix(" пожалуйста").removeSuffix(" please").trim()
+        return commandForPhrase(commandText, allowFuzzy = true)
+    }
+
+    fun bestCandidate(utterances: List<String>): String {
+        val candidates = utterances.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        return candidates.firstOrNull { parseCommand(it) != null } ?: candidates.firstOrNull().orEmpty()
+    }
+
+    fun recognitionHints(): List<String> {
+        val commands = commandTable.flatMap { it.first }
+        val codeWords = listOf(
+            "print", "println", "console log", "function", "return", "class", "import",
+            "package", "public", "private", "static", "if", "else", "for", "while",
+            "def", "lambda", "const", "let", "var", "true", "false", "null", "self",
+            "main", "string", "integer", "boolean", "python", "javascript", "html", "css"
+        )
+        return (commands + phrases.keys + codeWords).distinct().take(100)
     }
 
     fun map(utterance: String): List<VoiceAction> {
