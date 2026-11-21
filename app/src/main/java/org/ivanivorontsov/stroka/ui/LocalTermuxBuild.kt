@@ -91,6 +91,18 @@ object LocalTermuxBuild {
                 file.inputStream().buffered().use { it.copyTo(out) }
                 out.closeEntry()
             }
+            // A single .pon file is a complete build input: bundle the compiler and
+            // project generator so Termux can synthesize the missing Android project.
+            val ponyToolchain = listOf(
+                "ponyatny/build-ponyatny.mjs" to "tools/build-ponyatny.mjs",
+                "ponyatny/yadro.js" to "app/src/main/assets/ponyatny/yadro.js",
+                "ponyatny/std.json" to "app/src/main/assets/ponyatny/std.json"
+            )
+            ponyToolchain.forEach { (assetPath, archivePath) ->
+                out.putNextEntry(ZipEntry(archivePath))
+                context.assets.open(assetPath).use { it.copyTo(out) }
+                out.closeEntry()
+            }
         }
         publishDownload(context, "project.zip", "application/zip") { out ->
             zip.inputStream().buffered().use { it.copyTo(out) }
