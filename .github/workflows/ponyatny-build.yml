@@ -74,6 +74,8 @@ jobs:
           set -euo pipefail
           node tools/build-ponyatny.mjs "$ENTRY" --target all --out dist/ponyatny --name App
           node dist/ponyatny/node/App.js > dist/ponyatny/node/smoke-output.txt
+          grep -q "Удвоенное 21 = 42" dist/ponyatny/node/smoke-output.txt
+          node --check dist/ponyatny/web/app.js
           test -s dist/ponyatny/web/index.html
           test -s dist/ponyatny/android-project/app/src/main/assets/index.html
       - name: Build native Windows, Linux and macOS executables
