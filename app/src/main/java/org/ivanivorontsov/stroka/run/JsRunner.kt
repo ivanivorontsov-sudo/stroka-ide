@@ -161,7 +161,7 @@ class JsRunner(private val ctx: Context) {
             return { id: "project:" + key, name: key, source: projectFiles[key] };
           }
         }
-        var standard = requested.replace(/^стд\\//, "").replace(/\\.pon$/i, "");
+        var standard = requested.replace(/^стд\//, "").replace(/\.pon$/i, "");
         var standardSource = window.PonyatnyStdModules && window.PonyatnyStdModules[standard];
         if (standardSource !== undefined) {
           return { id: "std:" + standard, name: "стд/" + standard + ".pon", source: standardSource };
