@@ -278,9 +278,11 @@ object VoiceMapper {
         return commandForPhrase(commandText, allowFuzzy = true)
     }
 
-    fun bestCandidate(utterances: List<String>): String {
+    fun bestCandidate(utterances: List<String>, preferredLanguage: Lang = Lang.PLAIN): String {
         val candidates = utterances.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
-        return candidates.firstOrNull { parseCommand(it) != null } ?: candidates.firstOrNull().orEmpty()
+        return candidates.firstOrNull {
+            parseCommand(it) != null || (preferredLanguage == Lang.PONYATNY && PonyatnyVoiceMapper.map(it) != null)
+        } ?: candidates.firstOrNull().orEmpty()
     }
 
     fun recognitionHints(): List<String> {
