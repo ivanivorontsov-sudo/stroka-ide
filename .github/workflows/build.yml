@@ -34,7 +34,6 @@ jobs:
           ln -s "$ANDROID_HOME" "$HOME/android-sdk"
           echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
           mkdir -p "$HOME/storage/downloads/StrokaBuild"
-          cp app/src/main/assets/stroka_runner.py "$HOME/storage/downloads/StrokaBuild/" 2>/dev/null || true
           cp app/src/main/python/stroka_runner.py "$HOME/storage/downloads/StrokaBuild/"
           cp app/src/main/python/stroka_tkinter.py "$HOME/storage/downloads/StrokaBuild/"
       - name: Create a one-file Tkinter calculator fixture
@@ -67,10 +66,11 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK"
           echo "Generated Python APK: $APK"
           ls -lh "$APK"
+          cp "$APK" python-calculator-smoke.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Python-Calculator-APK-Smoke-Test
-          path: ~/storage/downloads/StrokaBuild/output/*.apk
+          path: python-calculator-smoke.apk
           retention-days: 7
 
   build:
