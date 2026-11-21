@@ -58,6 +58,8 @@ for (const required of ['function explainCode()', 'Объяснятор кода
 }
 assert.ok(activity.includes('VoiceInput.Listener'), 'visual builder must reuse resilient voice input');
 assert.ok(activity.includes('voice?.start(language, "auto")'), 'visual builder must enable automatic online/offline fallback');
+assert.ok(activity.includes('voice?.isActive == true'), 'voice button must be able to stop listening');
+assert.ok(activity.includes('voice?.release()'), 'voice engine resources must be released with the activity');
 assert.ok(activity.includes('window.onVoiceStatus'), 'voice status must use a non-command callback');
 assert.ok(!activity.includes('SpeechRecognizer.createSpeechRecognizer'), 'legacy single-engine recognizer must not return');
 assert.ok(html.includes('window.onVoiceStatus='), 'builder must display listening status separately');
