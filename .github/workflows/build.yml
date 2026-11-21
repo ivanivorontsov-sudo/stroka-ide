@@ -88,6 +88,7 @@ jobs:
           node <<'NODE'
           const assert = require("node:assert/strict");
           const pony = require("./app/src/main/assets/ponyatny/yadro.js");
+          const std = require("./app/src/main/assets/ponyatny/std.json");
           const output = [];
           const errors = [];
           const source = [
@@ -103,6 +104,10 @@ jobs:
             file: "smoke.pon",
             write: value => output.push(String(value)),
             writeErr: value => errors.push(String(value)),
+            resolve: path => {
+              const name = String(path).replace(/^стд\//, "").replace(/\.pon$/i, "");
+              return std[name] === undefined ? null : { id: "std:" + name, name: "стд/" + name + ".pon", source: std[name] };
+            },
             ask: () => "Тест",
             maxSteps: 10000,
             guard: true
