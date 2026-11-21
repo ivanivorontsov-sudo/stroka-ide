@@ -54,7 +54,8 @@ object CloudBuild {
     }
 
     private fun ensureWorkflow(context: Context, repo: String, token: String) {
-        val (_, metadata) = request("GET", "https://api.github.com/repos/$repo", token)
+        val (metadataCode, metadata) = request("GET", "https://api.github.com/repos/$repo", token)
+        if (metadataCode != 200) throw IllegalStateException("Не удалось прочитать репозиторий GitHub (HTTP $metadataCode): ${metadata.take(500)}")
         val defaultBranch = JSONObject(metadata).optString("default_branch").ifBlank { "main" }
         val path = ".github/workflows/project-build.yml"
         val encodedPath = path.split("/").joinToString("/") { java.net.URLEncoder.encode(it, "UTF-8") }
@@ -87,7 +88,7 @@ object CloudBuild {
                 File(current, "package.json").isFile || File(current, "pyproject.toml").isFile ||
                 File(current, "requirements.txt").isFile || File(current, "index.html").isFile
             if (projectRoot) {
-                candidate = current
+                if (candidate == null) candidate = current
                 if (androidRoot) break
             }
             if (current == repo) break
