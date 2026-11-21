@@ -275,21 +275,26 @@ jobs:
           PROJECT: ${{ needs.inspect.outputs.project }}
         run: |
           set -euo pipefail
-          mkdir -p dist/site
+          OUT="$RUNNER_TEMP/site-output"
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
           if [[ -f "$PROJECT/package.json" ]]; then
             cd "$PROJECT"
             if [[ -f package-lock.json ]]; then npm ci; else npm install; fi
             npm run build --if-present
-            if [[ -d dist ]]; then cp -R dist/. "$GITHUB_WORKSPACE/dist/site/"
-            elif [[ -d build ]]; then cp -R build/. "$GITHUB_WORKSPACE/dist/site/"
-            elif [[ -f index.html ]]; then cp index.html "$GITHUB_WORKSPACE/dist/site/"; else echo 'Build completed but no dist/, build/ or root index.html was found.'; exit 4; fi
+            if [[ -d dist ]]; then cp -R dist/. "$OUT/"
+            elif [[ -d build ]]; then cp -R build/. "$OUT/"
+            elif [[ -f index.html ]]; then cp index.html "$OUT/"
+            else echo "Build completed but no dist/, build/ or root index.html was found."; exit 4; fi
           else
             test -f "$PROJECT/index.html"
-            cp -R "$PROJECT"/. dist/site/
+            rsync -a --exclude='.git' --exclude='node_modules' --exclude='.github' "$PROJECT"/ "$OUT"/
           fi
-          test -f dist/site/index.html
-          cd dist && zip -qr ../Website.zip site
-          sha256sum Website.zip > Website-SHA256SUMS.txt
+          test -f "$OUT/index.html"
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          cd "$OUT"
+          zip -qr "$GITHUB_WORKSPACE/Website.zip" .
+          sha256sum "$GITHUB_WORKSPACE/Website.zip" > "$GITHUB_WORKSPACE/Website-SHA256SUMS.txt"
       - name: Write website report
         if: always()
         run: |
