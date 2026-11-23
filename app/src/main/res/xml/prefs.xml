@@ -31,6 +31,8 @@
     </PreferenceCategory>
     <PreferenceCategory app:title="Сборка на телефоне" app:iconSpaceReserved="false">
         <Preference app:key="build_output" app:title="Папка для готовых APK и EXE" app:summary="Сюда сохраняются собранные программы" app:iconSpaceReserved="false" />
+        <Preference app:key="signing_key_export" app:title="Экспортировать ключ подписи APK" app:summary="Сохранить PKCS#12 в выбранное место. Ключ позволяет выпускать обновления ваших приложений." app:iconSpaceReserved="false" />
+        <Preference app:key="signing_key_import" app:title="Импортировать ключ подписи APK" app:summary="Восстановить ранее сохранённый PKCS#12. Новый ключ изменит подпись будущих APK." app:iconSpaceReserved="false" />
         <SwitchPreferenceCompat app:key="ai_autofix" app:title="ИИ: исправлять ошибки сборки" app:summary="После неудачной сборки отправить ошибку в тот же чат, до 5 попыток" app:defaultValue="true" app:iconSpaceReserved="false" />
         <EditTextPreference app:key="ai_base" app:title="Адрес API ИИ" app:summary="Совместимый с OpenAI, например https://api.deepseek.com" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <EditTextPreference app:key="ai_model" app:title="Модель ИИ" app:defaultValue="deepseek-chat" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
