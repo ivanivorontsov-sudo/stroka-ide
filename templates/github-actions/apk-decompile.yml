@@ -23,11 +23,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate input path
         shell: bash
+        env:
+          APK_PATH: ${{ inputs.apk_path }}
         run: |
-          APK="${{ inputs.apk_path }}"
-          test -f "$APK" || { echo "APK not found: $APK"; exit 1; }
-          case "$APK" in *.apk) ;; *) echo "Input must be an .apk file"; exit 1 ;; esac
-          case "$APK" in /*|../*|*/../*) echo "Unsafe path"; exit 1 ;; esac
+          test -f "$APK_PATH" || { echo "APK not found: $APK_PATH"; exit 1; }
+          case "$APK_PATH" in *.apk) ;; *) echo "Input must be an .apk file"; exit 1 ;; esac
+          case "$APK_PATH" in /*|../*|*/../*) echo "Unsafe path"; exit 1 ;; esac
       - name: Download JADX
         run: |
           curl -fL --retry 3 https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip -o jadx.zip
@@ -35,14 +36,19 @@ jobs:
           chmod +x jadx/bin/jadx
       - name: Decompile code and resources
         shell: bash
+        env:
+          APK_PATH: ${{ inputs.apk_path }}
+          DEOBFUSCATE: ${{ inputs.deobfuscate }}
         run: |
           mkdir -p decompiled
           EXTRA=()
-          if [ "${{ inputs.deobfuscate }}" = "true" ]; then EXTRA+=(--deobf); fi
-          ./jadx/bin/jadx "${EXTRA[@]}" --show-bad-code -d decompiled "${{ inputs.apk_path }}"
+          if [ "$DEOBFUSCATE" = "true" ]; then EXTRA+=(--deobf); fi
+          ./jadx/bin/jadx "${EXTRA[@]}" --show-bad-code -d decompiled "$APK_PATH"
       - name: Preserve original APK metadata
+        env:
+          APK_PATH: ${{ inputs.apk_path }}
         run: |
-          sha256sum "${{ inputs.apk_path }}" > decompiled/SOURCE_SHA256.txt
+          sha256sum "$APK_PATH" > decompiled/SOURCE_SHA256.txt
           echo "JADX may not recover original source exactly. Inspect decompiled Java and resources; use smali/DEX data when output is incomplete." > decompiled/README-RECOVERY.txt
       - uses: actions/upload-artifact@v4
         with:
