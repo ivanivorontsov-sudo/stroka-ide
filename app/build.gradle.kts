@@ -116,7 +116,9 @@ dependencies {
     implementation("com.alphacephei:vosk-android:0.3.75")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.13.5.202508271544-r")
     implementation("com.android.tools.build:apksig:8.7.3")
-    // Android-compatible ECJ batch compiler. The dependency is needed both at\n    // compile time (JavaCompile imports Main) and runtime (the app invokes ECJ).\n    implementation("org.eclipse.jdt:ecj:3.18.0")
+    // Android-compatible ECJ batch compiler. The dependency is needed both at
+    // compile time (JavaCompile imports Main) and runtime (the app invokes ECJ).
+    implementation("org.eclipse.jdt:ecj:3.18.0")
     implementation("com.android.tools:r8:8.7.18")
     testImplementation("junit:junit:4.13.2")
     // Use a real JVM JSON implementation in local unit tests instead of the
