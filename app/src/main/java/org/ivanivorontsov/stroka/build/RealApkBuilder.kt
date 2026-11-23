@@ -21,7 +21,8 @@ object RealApkBuilder {
         extractNativeLibs: Boolean = false,
         kotlinSources: List<File> = emptyList(),
         kotlinStdlib: File? = null,
-        activityClass: String = "Main"
+        activityClass: String = "Main",
+        iconPng: ByteArray? = null
     ): File {
         val err = toolchain.check()
         if (err != null) throw BuildException(err)
@@ -51,9 +52,13 @@ object RealApkBuilder {
 """,
             Charsets.UTF_8
         )
-        val mip = File(res, "mipmap-mdpi")
-        mip.mkdirs()
-        File(mip, "ic_launcher.png").writeBytes(PngIcon.launcher())
+        val icon = iconPng ?: PngIcon.launcher(192)
+        val iconSizes = linkedMapOf("mdpi" to 48, "hdpi" to 72, "xhdpi" to 96, "xxhdpi" to 144, "xxxhdpi" to 192)
+        for ((density, size) in iconSizes) {
+            val mip = File(res, "mipmap-$density")
+            mip.mkdirs()
+            File(mip, "ic_launcher.png").writeBytes(IconComposer.resizePng(icon, size))
+        }
         val manifest = File(work, "AndroidManifest.xml")
         manifest.writeText(manifestXml(pkg, versionName, versionCode, extractNativeLibs, activityClass), Charsets.UTF_8)
         for ((name, data) in www) {
