@@ -83,7 +83,7 @@ jobs:
           $appId = ([Guid]::new($guidBytes)).ToString()
           $script = @"
           [Setup]
-          AppId={{$appId}}
+          AppId={{$appId}
           AppName=$name
           AppVersion=$env:APP_VERSION
           AppPublisher=Built with Stroka
