@@ -37,6 +37,12 @@ Python
   Размер такого APK заметно больше обычного (десятки мегабайт из-за libpython и стандартной библиотеки).
 - stroka_tkinter — совместимый модуль tkinter для панели «Просмотр» и Python-APK, написан для Строки.
 
+Kotlin/JVM на Android (добавлено в ветке расширения IDE)
+- Android-патч Kotlin compiler 2.4.0 (PranavPurwar/kotlinc-android) — исходный код компилятора Kotlin под Apache License 2.0 и совместимые upstream-лицензии; см. LICENSE и заголовки исходников upstream.
+  https://github.com/PranavPurwar/kotlinc-android
+- Kotlin standard library 2.4.0 — Apache License 2.0.
+  https://github.com/JetBrains/kotlin
+
 Совместимость компилятора Java на Android
 - Минимальная заглушка javax.lang.model.SourceVersion (без Runtime.Version) собирается в jar
   и встраивается в Строку, чтобы ECJ мог загрузиться на ART, где нет модуля java.compiler.
