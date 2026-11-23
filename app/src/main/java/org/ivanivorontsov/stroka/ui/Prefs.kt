@@ -62,6 +62,10 @@ class Prefs(ctx: Context) {
         get() = sp.getString("build_output_uri", "") ?: ""
         set(v) = sp.edit().putString("build_output_uri", v).apply()
 
+    var buildAppName: String
+        get() = sp.getString("build_app_name", "") ?: ""
+        set(v) = sp.edit().putString("build_app_name", v).apply()
+
     var buildVersionName: String
         get() = sp.getString("build_version_name", "1.0.0") ?: "1.0.0"
         set(v) = sp.edit().putString("build_version_name", v).apply()
