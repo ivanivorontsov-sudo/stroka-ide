@@ -44,8 +44,27 @@ object AiWebChat {
       return JSON.stringify({url:location.href,title:document.title,edits:edits,buttons:buttons,body:body});
     })()"""
 
-    fun injectScript(prompt: String): String {
+    private fun providerSelector(provider: String): String = when (provider) {
+        "deepseek" -> ".ds-markdown"
+        "qwen" -> ".response-message-content,.qwen-markdown"
+        "chatgpt" -> "[data-message-author-role=assistant]"
+        "claude" -> "[data-testid*=conversation-turn],.font-claude-message"
+        "gemini" -> "message-content,.model-response-text"
+        "grok" -> ".message-bubble"
+        "kimi" -> "[class*=message-content],[class*=chat-message]"
+        "minimax" -> "[class*=message-content],[class*=markdown],[class*=chat-item]"
+        "perplexity" -> "[class*=prose],[class*=answer]"
+        "poe" -> "[class*=Message_message],[class*=ChatMessage]"
+        "mistral" -> "[class*=markdown],[class*=message-content]"
+        "meta" -> "[class*=message],[class*=markdown]"
+        "alice" -> "[class*=markdown],[class*=message_assistant]"
+        "copilot" -> "[class*=markdown],[class*=response]"
+        else -> ""
+    }
+
+    fun injectScript(prompt: String, provider: String = ""): String {
         val p = JSONObject.quote(prompt)
+        val hint = JSONObject.quote(providerSelector(provider))
         return """(function(){
           var prompt=$p;
           function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>8&&r.height>8&&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.02;}
@@ -63,7 +82,9 @@ object AiWebChat {
           var best=candidates[0];
           if(!best||best.score<2)return JSON.stringify({status:'NO_COMPOSER',candidates:candidates.slice(0,5).map(function(x){return x.label;})});
           var el=best.e;
-          var oldNodes=Array.from(document.querySelectorAll('[data-message-author-role=assistant],[data-author=assistant],[data-role=assistant],[role=article],[data-testid*=conversation-turn],main article,main [class*=message],main [class*=markdown]')).filter(visible);
+          var oldNodes=[];
+          try{if($hint)oldNodes=Array.from(document.querySelectorAll($hint)).filter(visible);}catch(e){}
+          Array.from(document.querySelectorAll('[data-message-author-role=assistant],[data-author=assistant],[data-role=assistant],[role=article],[data-testid*=conversation-turn]')).filter(visible).forEach(function(e){if(oldNodes.indexOf(e)<0)oldNodes.push(e);});
           var oldTexts=oldNodes.map(function(e){return (e.innerText||e.textContent||'').replace(/\\s+/g,' ').trim();}).filter(Boolean);
           window.__strokaBefore={count:oldTexts.length,last:oldTexts.length?oldTexts[oldTexts.length-1]:''};
           window.__strokaPrompt=prompt;
