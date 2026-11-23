@@ -14,7 +14,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.os.VibratorManager
 import android.provider.Settings
 import android.widget.Toast
 import android.webkit.JavascriptInterface
@@ -65,9 +64,7 @@ class JsRunner(private val ctx: Context) {
             val duration = durationMs.coerceIn(1L, 1000L)
             main.post {
                 try {
-                    val vibrator = if (Build.VERSION.SDK_INT >= 31)
-                        ctx.getSystemService(VibratorManager::class.java).defaultVibrator
-                    else (ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
+                    val vibrator = ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                     if (vibrator.hasVibrator()) vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
                 } catch (_: Exception) { }
             }
