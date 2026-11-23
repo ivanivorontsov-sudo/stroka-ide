@@ -16,7 +16,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
-import android.os.VibratorManager;
 import android.provider.Settings;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
@@ -136,9 +135,7 @@ public class Main extends Activity {
             final long duration = Math.max(1L, Math.min(1000L, durationMs));
             main.post(() -> {
                 try {
-                    Vibrator vibrator = Build.VERSION.SDK_INT >= 31
-                            ? activity.getSystemService(VibratorManager.class).getDefaultVibrator()
-                            : (Vibrator) activity.getSystemService(Activity.VIBRATOR_SERVICE);
+                    Vibrator vibrator = (Vibrator) activity.getSystemService(Activity.VIBRATOR_SERVICE);
                     if (vibrator != null && vibrator.hasVibrator())
                         vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
                 } catch (Exception ignored) { }
