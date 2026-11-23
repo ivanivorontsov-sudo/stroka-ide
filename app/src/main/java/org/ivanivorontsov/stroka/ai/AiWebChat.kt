@@ -22,7 +22,7 @@ object AiWebChat {
         AiChatProvider("deepseek", "DeepSeek", "https://chat.deepseek.com/"),
         AiChatProvider("qwen", "Qwen", "https://chat.qwen.ai/"),
         AiChatProvider("kimi", "Kimi", "https://www.kimi.com/"),
-        AiChatProvider("minimax", "MiniMax", "https://chat.minimax.io/"),
+        AiChatProvider("minimax", "MiniMax", "https://agent.minimax.io/legacy-chat"),
         AiChatProvider("perplexity", "Perplexity", "https://www.perplexity.ai/"),
         AiChatProvider("poe", "Poe", "https://poe.com/"),
         AiChatProvider("mistral", "Le Chat (Mistral)", "https://chat.mistral.ai/"),
