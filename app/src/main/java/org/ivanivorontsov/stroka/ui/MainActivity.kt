@@ -1017,11 +1017,35 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             Lang.JAVASCRIPT -> runJs(code, d.name)
             Lang.PONYATNY -> runPonyatny(code, d.name)
             Lang.HTML, Lang.CSS, Lang.MARKDOWN -> openPreview()
-            else -> {
-                showPanel(false)
-                appendConsole("Запуск ${d.lang.title} прямо на телефоне не поддерживается. Запускаются Python, JavaScript, «Понятный», HTML и Markdown (просмотр).\n", Kind.INFO)
-            }
+            else -> showUniversalSourcePreview(d)
         }
+    }
+
+    private fun showUniversalSourcePreview(doc: Doc) {
+        showPanel(true)
+        consoleBox.visibility = View.GONE
+        previewBox.visibility = View.VISIBLE
+        val escaped = doc.text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        val html = """
+            <!doctype html>
+            <html><head><meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body{margin:0;padding:16px;background:#111827;color:#e5e7eb;font:14px sans-serif}
+              .tag{color:#93c5fd;font-weight:600;margin-bottom:12px}
+              pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1220;padding:14px;border-radius:12px;line-height:1.5}
+              .note{color:#9ca3af;font-size:12px;margin:10px 0}
+            </style></head><body>
+            <div class="tag">${doc.lang.title} · ${doc.name}</div>
+            <div class="note">Универсальный предпросмотр исходного кода. Для языков без встроенного исполнителя показан исходник, а не имитация запуска.</div>
+            <pre>$escaped</pre>
+            </body></html>
+        """.trimIndent()
+        ensurePreview().loadDataWithBaseURL("https://stroka.local/", html, "text/html", "utf-8", null)
+        panelStatus.text = "Предпросмотр исходника: ${doc.name}"
     }
 
     private fun runPython(code: String, name: String, cwd: String) {
