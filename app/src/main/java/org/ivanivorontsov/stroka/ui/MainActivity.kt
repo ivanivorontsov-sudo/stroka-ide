@@ -117,7 +117,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private lateinit var panelStatus: TextView
     private lateinit var panelTabs: MaterialButtonToggleGroup
     private lateinit var consoleBox: View
+    private lateinit var panelContent: View
     private lateinit var previewBox: FrameLayout
+    private var panelCollapsed = false
+    private var panelExpandedHeight = 0
     private lateinit var voicePanel: View
     private lateinit var voiceStatus: TextView
     private lateinit var voicePartial: TextView
@@ -225,6 +228,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         panelStatus = findViewById(R.id.panelStatus)
         panelTabs = findViewById(R.id.panelTabs)
         consoleBox = findViewById(R.id.consoleBox)
+        panelContent = findViewById(R.id.panelContent)
         previewBox = findViewById(R.id.previewBox)
         voicePanel = findViewById(R.id.voicePanel)
         voiceStatus = findViewById(R.id.voiceStatus)
@@ -955,6 +959,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupPanel() {
+        val collapseButton = findViewById<TextView>(R.id.panelCollapse)
+        collapseButton.setOnClickListener { togglePanelCollapsed() }
+        panelExpandedHeight = prefs.panelHeight.takeIf { it > dp(58) } ?: dp(280)
         findViewById<ImageButton>(R.id.panelClose).setOnClickListener { hidePanel() }
         findViewById<ImageButton>(R.id.panelClear).setOnClickListener {
             if (previewBox.visibility == View.VISIBLE) refreshPreview() else { consoleBuf.clear(); consoleText.text = "" }
@@ -967,6 +974,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         consoleInput.setOnEditorActionListener { _, a, _ -> if (a == EditorInfo.IME_ACTION_SEND || a == EditorInfo.IME_ACTION_DONE) { sendInput(); true } else false }
         panelTabs.addOnButtonCheckedListener { _, id, checked ->
             if (!checked) return@addOnButtonCheckedListener
+            if (panelCollapsed) expandPanel()
             if (id == R.id.tabPreview) {
                 consoleBox.visibility = View.GONE
                 previewBox.visibility = View.VISIBLE
@@ -981,22 +989,64 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         var startH = 0
         handle.setOnTouchListener { _, e ->
             when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> { startY = e.rawY; startH = panel.height; true }
+                MotionEvent.ACTION_DOWN -> {
+                    if (panelCollapsed) expandPanel()
+                    startY = e.rawY
+                    startH = panel.height
+                    true
+                }
                 MotionEvent.ACTION_MOVE -> {
                     val host = findViewById<View>(R.id.main).height
                     val h = (startH + (startY - e.rawY)).toInt().coerceIn(dp(110), (host * 0.8f).toInt())
                     panel.layoutParams = panel.layoutParams.apply { height = h }
+                    panelExpandedHeight = h
                     true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { prefs.panelHeight = panel.height; true }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (!panelCollapsed) {
+                        panelExpandedHeight = panel.height
+                        prefs.panelHeight = panelExpandedHeight
+                    }
+                    true
+                }
                 else -> true
             }
         }
-        if (prefs.panelHeight > 0) panel.layoutParams = panel.layoutParams.apply { height = prefs.panelHeight }
+        if (prefs.panelHeight > 0) {
+            panelExpandedHeight = prefs.panelHeight
+            panel.layoutParams = panel.layoutParams.apply { height = panelExpandedHeight }
+        }
+    }
+
+    private fun togglePanelCollapsed() {
+        if (panelCollapsed) {
+            expandPanel()
+        } else {
+            if (panel.height > dp(58)) panelExpandedHeight = panel.height
+            panelCollapsed = true
+            panelContent.visibility = View.GONE
+            panel.layoutParams = panel.layoutParams.apply { height = dp(58) }
+            findViewById<TextView>(R.id.panelCollapse).apply {
+                text = "▴"
+                contentDescription = "Развернуть консоль"
+            }
+        }
+    }
+
+    private fun expandPanel() {
+        if (!panelCollapsed) return
+        panelCollapsed = false
+        panelContent.visibility = View.VISIBLE
+        panel.layoutParams = panel.layoutParams.apply { height = panelExpandedHeight.coerceAtLeast(dp(120)) }
+        findViewById<TextView>(R.id.panelCollapse).apply {
+            text = "▾"
+            contentDescription = "Свернуть консоль"
+        }
     }
 
     private fun showPanel(preview: Boolean) {
         panel.visibility = View.VISIBLE
+        if (panelCollapsed) expandPanel()
         panelTabs.check(if (preview) R.id.tabPreview else R.id.tabConsole)
         if (!preview) {
             consoleBox.visibility = View.VISIBLE
