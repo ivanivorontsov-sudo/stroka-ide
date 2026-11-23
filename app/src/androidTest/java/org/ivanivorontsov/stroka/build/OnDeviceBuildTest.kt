@@ -26,13 +26,13 @@ class OnDeviceBuildTest {
 
         work.deleteRecursively()
         val t1 = System.nanoTime()
-        val ponApk = OneFileBuild.buildApk(pon, "калькулятор.pon", "Калькулятор", File(work, "pon"), assets, File(outDir, "Калькулятор.apk")) { log.append(it).append('\n') }
+        val ponApk = OneFileBuild.buildApk(pon, "калькулятор.pon", "Калькулятор", File(work, "pon"), assets, File(outDir, "Калькулятор.apk"), log = { log.append(it).append('\n'); Unit })
         val ponMs = (System.nanoTime() - t1) / 1_000_000L
         File(outDir, "time-ponyatny.txt").writeText("$ponMs\n")
 
         work.deleteRecursively()
         val t2 = System.nanoTime()
-        val javaApk = OneFileBuild.buildApk(java, "Калькулятор.java", "Калькулятор", File(work, "java"), assets, File(outDir, "Калькулятор-java.apk")) { log.append(it).append('\n') }
+        val javaApk = OneFileBuild.buildApk(java, "Калькулятор.java", "Калькулятор", File(work, "java"), assets, File(outDir, "Калькулятор-java.apk"), log = { log.append(it).append('\n'); Unit })
         val javaMs = (System.nanoTime() - t2) / 1_000_000L
         File(outDir, "time-java.txt").writeText("$javaMs\n")
 
@@ -63,10 +63,10 @@ class OnDeviceBuildTest {
             assertTrue("Generated Java Activity did not start: $launch", launch.contains("Starting"))
             assertTrue("Calculator screen did not appear", device.wait(Until.hasObject(By.text("Калькулятор")), 10_000))
 
-            val first = device.wait(Until.findObject(By.clazz("android.widget.EditText").instance(0)), 5_000)
-            val second = device.wait(Until.findObject(By.clazz("android.widget.EditText").instance(1)), 5_000)
-            val firstField = first ?: error("First input field missing")
-            val secondField = second ?: error("Second input field missing")
+            val fields = device.wait(Until.findObjects(By.clazz("android.widget.EditText")), 5_000)
+            assertTrue("Expected two calculator input fields", fields != null && fields.size >= 2)
+            val firstField = fields!![0]
+            val secondField = fields[1]
             firstField.setText("7")
             secondField.setText("5")
 
