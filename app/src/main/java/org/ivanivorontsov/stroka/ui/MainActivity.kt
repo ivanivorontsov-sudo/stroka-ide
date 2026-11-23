@@ -1619,10 +1619,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 work.mkdirs()
                 val env = compileEnvFor(d)
                 if (kind == "apk") {
-                    val tmp = File(work, "$label.apk")
+                    val tmp = File(work, "$label-${prefs.buildVersionName}.apk")
                     val apk = OneFileBuild.buildApk(source, fileName, label, work, assets, tmp, { msg ->
                         main.post { appendConsole(msg + "\n", Kind.INFO) }
-                    }, env)
+                    }, env, prefs.buildVersionName, prefs.buildVersionCode)
                     val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, apk.name, apk.readBytes())
                     val ms = (System.nanoTime() - t0) / 1_000_000L
                     main.post {
