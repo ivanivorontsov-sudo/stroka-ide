@@ -38,6 +38,7 @@ class JsRunner(private val ctx: Context) {
     private var sink: Sink? = null
     private var started = 0L
     private var pending: String? = null
+    private var systemApiEnabled = false
     var isRunning = false
         private set
 
@@ -159,7 +160,7 @@ class JsRunner(private val ctx: Context) {
         w.settings.allowFileAccess = false
         w.settings.allowContentAccess = false
         w.addJavascriptInterface(Bridge(), "StrokaHost")
-        w.addJavascriptInterface(SystemBridge(), "StrokaSystem")
+        if (systemApiEnabled) w.addJavascriptInterface(SystemBridge(), "StrokaSystem")
         w.webChromeClient = object : WebChromeClient() {
             override fun onJsPrompt(view: WebView?, url: String?, message: String?, defaultValue: String?, result: JsPromptResult): Boolean {
                 val s = sink
@@ -180,12 +181,13 @@ class JsRunner(private val ctx: Context) {
         return w
     }
 
-    fun run(code: String, fileName: String, sink: Sink) {
+    fun run(code: String, fileName: String, sink: Sink, enableSystemApi: Boolean = false) {
         if (isRunning) return
         this.sink = sink
         isRunning = true
         started = System.currentTimeMillis()
         release()
+        systemApiEnabled = enableSystemApi
         val payload = JSONObject.quote(code)
         val name = JSONObject.quote(fileName)
         pending = "window.__strokaRun($payload, $name);"
@@ -203,6 +205,7 @@ class JsRunner(private val ctx: Context) {
     fun release() {
         web?.destroy()
         web = null
+        systemApiEnabled = false
     }
 
     companion object {
