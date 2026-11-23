@@ -12,7 +12,6 @@ import android.webkit.WebViewClient
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ScrollView
-import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -42,10 +41,8 @@ class AiChatActivity : AppCompatActivity() {
     private lateinit var input: EditText
     private lateinit var send: MaterialButton
     private lateinit var applyBtn: MaterialButton
-    private lateinit var providerSpinner: Spinner
     private lateinit var webPanel: View
     private lateinit var webView: WebView
-    private lateinit var chatControls: View
     private lateinit var chatScroll: ScrollView
     private lateinit var inputRow: View
     private lateinit var diagnoseBtn: MaterialButton
@@ -73,6 +70,7 @@ class AiChatActivity : AppCompatActivity() {
         bar.setNavigationOnClickListener { finish() }
         bar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.aiProviderMenu -> { chooseProvider(); true }
                 R.id.aiNewThread -> { newThread(); true }
                 R.id.aiChooseThread -> { chooseThread(); true }
                 R.id.aiLoginMenu -> { openBrowserForLogin(); true }
@@ -87,10 +85,8 @@ class AiChatActivity : AppCompatActivity() {
         input = findViewById(R.id.aiInput)
         send = findViewById(R.id.aiSend)
         applyBtn = findViewById(R.id.aiApply)
-        providerSpinner = findViewById(R.id.aiProvider)
         webPanel = findViewById(R.id.aiWebPanel)
         webView = findViewById(R.id.aiWebView)
-        chatControls = findViewById(R.id.aiChatControls)
         chatScroll = findViewById(R.id.aiScroll)
         inputRow = findViewById(R.id.aiInputRow)
         diagnoseBtn = findViewById(R.id.aiDiagnose)
@@ -105,8 +101,6 @@ class AiChatActivity : AppCompatActivity() {
         store = AiChatStore(this)
         threads = store.load().filterNot { it.providerId == "meta" }.toMutableList()
         store.save(threads)
-        providerSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, providerOptions)
-        providerSpinner.setSelection(0)
         val existing = threads.firstOrNull { it.providerId == "api" }
         thread = existing ?: store.create("api", "")
         if (existing == null) threads.add(thread)
@@ -137,18 +131,20 @@ class AiChatActivity : AppCompatActivity() {
             }
         }
 
-        providerSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                selectProvider(position)
-            }
-        }
         findViewById<MaterialButton>(R.id.aiWebUse).setOnClickListener { useCurrentWebChat() }
         findViewById<MaterialButton>(R.id.aiWebDone).setOnClickListener { hideBrowser() }
         diagnoseBtn.setOnClickListener { diagnoseWebInterface() }
         send.setOnClickListener { turn() }
         applyBtn.setOnClickListener { confirmAndApply() }
         updateControls()
+    }
+
+    private fun chooseProvider() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Выбрать нейросеть")
+            .setItems(providerOptions.toTypedArray()) { _, which -> selectProvider(which) }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     private fun selectProvider(position: Int) {
@@ -164,6 +160,7 @@ class AiChatActivity : AppCompatActivity() {
     private fun updateControls() {
         val web = thread.providerId != "api"
         val menu = findViewById<MaterialToolbar>(R.id.aiToolbar).menu
+        menu.findItem(R.id.aiProviderMenu)?.isVisible = true
         menu.findItem(R.id.aiLoginMenu)?.isVisible = web
         menu.findItem(R.id.aiChooseThread)?.isVisible = threads.size > 1
         menu.findItem(R.id.aiNewThread)?.isVisible = true
@@ -209,8 +206,6 @@ class AiChatActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this).setTitle("Выбрать чат")
             .setItems(labels) { _, which ->
                 thread = choices[which]
-                val index = if (thread.providerId == "api") 0 else AiWebChat.providers.indexOfFirst { it.id == thread.providerId } + 1
-                providerSpinner.setSelection(index.coerceAtLeast(0))
                 provider = AiWebChat.providers.firstOrNull { it.id == thread.providerId }
                 restoreThread()
                 if (thread.providerId != "api" && thread.url.isNotBlank()) loadWebPage(thread.url)
@@ -222,7 +217,6 @@ class AiChatActivity : AppCompatActivity() {
         val p = provider ?: return
         val url = thread.url.ifBlank { p.url }
         webPanel.visibility = View.VISIBLE
-        chatControls.visibility = View.GONE
         chatScroll.visibility = View.GONE
         applyBtn.visibility = View.GONE
         inputRow.visibility = View.GONE
@@ -272,7 +266,6 @@ class AiChatActivity : AppCompatActivity() {
         val url = webView.url.orEmpty()
         if (url.isNotBlank() && thread.providerId != "api") thread.url = url
         webPanel.visibility = View.GONE
-        chatControls.visibility = View.VISIBLE
         chatScroll.visibility = View.VISIBLE
         inputRow.visibility = View.VISIBLE
         applyBtn.visibility = if (pendingPlan?.operations?.isNotEmpty() == true) View.VISIBLE else View.GONE
@@ -510,7 +503,6 @@ class AiChatActivity : AppCompatActivity() {
 
     private fun setBusy(busy: Boolean) {
         send.isEnabled = !busy
-        providerSpinner.isEnabled = !busy
         val menu = findViewById<MaterialToolbar>(R.id.aiToolbar).menu
         menu.findItem(R.id.aiNewThread)?.isEnabled = !busy
         menu.findItem(R.id.aiChooseThread)?.isEnabled = !busy
