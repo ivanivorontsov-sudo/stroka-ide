@@ -340,11 +340,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 val localPath = (docs[index].ref as? DocRef.Local)?.let { File(it.path).canonicalPath }
                 if (localPath != null && changed.containsKey(localPath)) {
                     val value = changed[localPath]
-                    if (value != null) {
-                        docs[index].text = value
-                        docs[index].dirty = false
-                        if (index == current) activeChanged = true
-                    }
+                    docs[index].text = value.orEmpty()
+                    docs[index].dirty = false
+                    if (index == current) activeChanged = true
                 }
             }
             if (activeChanged && current in docs.indices) editor.setText(docs[current].text)
