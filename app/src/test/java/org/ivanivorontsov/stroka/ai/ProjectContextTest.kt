@@ -9,7 +9,7 @@ import java.nio.file.Files
 class ProjectContextTest {
     @Test
     fun includesSourceAndSkipsBuildOutput() {
-        val root = createTempDir(prefix = "stroka-project-")
+        val root = Files.createTempDirectory("stroka-project-").toFile()
         try {
             File(root, "src").mkdirs()
             File(root, "src/Main.kt").writeText("class MainActivity")
@@ -26,7 +26,7 @@ class ProjectContextTest {
 
     @Test
     fun excludesBinaryFiles() {
-        val root = createTempDir(prefix = "stroka-project-")
+        val root = Files.createTempDirectory("stroka-project-").toFile()
         try {
             File(root, "image.png").writeBytes(byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0))
             File(root, "readme.md").writeText("hello")
