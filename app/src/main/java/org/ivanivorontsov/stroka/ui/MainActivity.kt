@@ -80,6 +80,7 @@ import org.ivanivorontsov.stroka.run.JsRunner
 import org.ivanivorontsov.stroka.run.PythonRunner
 import org.ivanivorontsov.stroka.voice.VoiceInput
 import org.ivanivorontsov.stroka.ai.ProjectContext
+import org.ivanivorontsov.stroka.build.IconComposer
 import org.ivanivorontsov.stroka.build.BuildCoordinator
 import org.ivanivorontsov.stroka.build.CompileEnv
 import org.ivanivorontsov.stroka.build.BuildException
@@ -148,6 +149,20 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     private val openTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) addSafRoot(uri) }
     private var pendingBuild: String? = null
+    private var iconOptionsKind: String? = null
+    private val openBuildIcon = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                prefs.buildIconUri = uri.toString()
+                prefs.buildIconEmoji = ""
+                iconOptionsKind?.let { startBuild(it) }
+            } catch (e: Exception) {
+                toast("Не удалось сохранить доступ к фото: ${e.message}")
+            }
+        }
+        iconOptionsKind = null
+    }
     private val openBuildFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
@@ -1557,15 +1572,29 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             setText(prefs.buildVersionCode.toString())
             inputType = InputType.TYPE_CLASS_NUMBER
         }
+        val iconStatus = TextView(this).apply {
+            text = when {
+                prefs.buildIconUri.isNotBlank() -> "Иконка: фото из галереи"
+                prefs.buildIconEmoji.isNotBlank() -> "Иконка: ${prefs.buildIconEmoji}"
+                else -> "Иконка: стандартная"
+            }
+        }
+        val photo = Button(this).apply { text = "Выбрать фото из галереи" }
+        val emoji = Button(this).apply { text = "Случайный эмодзи" }
+        val reset = Button(this).apply { text = "Стандартная иконка" }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(8), dp(24), 0)
             addView(TextView(this@MainActivity).apply { text = "Версия приложения" })
             addView(version)
-            addView(TextView(this@MainActivity).apply { text = "Version code (должен расти при обновлении)" })
+            addView(TextView(this@MainActivity).apply { text = "Version code (увеличивайте при обновлении)" })
             addView(code)
+            addView(iconStatus)
+            addView(photo)
+            addView(emoji)
+            addView(reset)
         }
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Параметры сборки APK")
             .setView(content)
             .setPositiveButton("Собрать") { _, _ ->
@@ -1580,7 +1609,25 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 performBuild(kind)
             }
             .setNegativeButton("Отмена", null)
-            .show()
+            .create()
+        photo.setOnClickListener {
+            prefs.buildVersionName = version.text.toString().trim().ifBlank { prefs.buildVersionName }
+            prefs.buildVersionCode = code.text.toString().toIntOrNull() ?: prefs.buildVersionCode
+            iconOptionsKind = kind
+            dialog.dismiss()
+            openBuildIcon.launch(arrayOf("image/png", "image/jpeg", "image/webp"))
+        }
+        emoji.setOnClickListener {
+            prefs.buildIconEmoji = IconComposer.randomEmoji()
+            prefs.buildIconUri = ""
+            iconStatus.text = "Иконка: ${prefs.buildIconEmoji}"
+        }
+        reset.setOnClickListener {
+            prefs.buildIconEmoji = ""
+            prefs.buildIconUri = ""
+            iconStatus.text = "Иконка: стандартная"
+        }
+        dialog.show()
     }
 
     private fun performBuild(kind: String) {
@@ -1621,9 +1668,14 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 val env = compileEnvFor(d)
                 if (kind == "apk") {
                     val tmp = File(work, "$label-${prefs.buildVersionName}.apk")
+                    val iconPng = when {
+                        prefs.buildIconUri.isNotBlank() -> IconComposer.fromUri(this@MainActivity, Uri.parse(prefs.buildIconUri))
+                        prefs.buildIconEmoji.isNotBlank() -> IconComposer.emojiPng(prefs.buildIconEmoji)
+                        else -> null
+                    }
                     val apk = OneFileBuild.buildApk(source, fileName, label, work, assets, tmp, { msg ->
                         main.post { appendConsole(msg + "\n", Kind.INFO) }
-                    }, env, prefs.buildVersionName, prefs.buildVersionCode)
+                    }, env, prefs.buildVersionName, prefs.buildVersionCode, iconPng)
                     val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, apk.name, apk.readBytes())
                     val ms = (System.nanoTime() - t0) / 1_000_000L
                     main.post {
