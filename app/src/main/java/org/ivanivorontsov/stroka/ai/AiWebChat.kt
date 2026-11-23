@@ -36,6 +36,7 @@ object AiWebChat {
 
     /** A live semantic inventory, useful for adaptation and actionable diagnostics. */
     fun inspectScript(): String = """(function(){
+      function deepAll(sel){var out=[];function walk(root){Array.from(root.querySelectorAll(sel)).forEach(function(e){out.push(e);if(e.shadowRoot)walk(e.shadowRoot);});}walk(document);return out;}
       function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>8&&r.height>8&&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.02;}
       function name(e){return [e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('data-placeholder'),e.getAttribute('title'),e.getAttribute('name'),e.innerText,e.value].filter(Boolean).join(' ').replace(/\s+/g,' ').trim().slice(0,120);}
       var edits=Array.from(deepAll('textarea,input,[contenteditable=true],[role=textbox],[role=combobox]')).filter(visible).map(function(e){return {tag:e.tagName,role:e.getAttribute('role')||'',label:name(e),type:e.getAttribute('type')||'',rect:(function(){var r=e.getBoundingClientRect();return [Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)];})()};}).slice(0,30);
@@ -109,6 +110,7 @@ object AiWebChat {
     }
 
     fun sendScript(): String = """(function(){
+      function deepAll(sel){var out=[];function walk(root){Array.from(root.querySelectorAll(sel)).forEach(function(e){out.push(e);if(e.shadowRoot)walk(e.shadowRoot);});}walk(document);return out;}
       function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden';}
       function label(e){return [e.getAttribute('aria-label'),e.getAttribute('title'),e.innerText,e.textContent].filter(Boolean).join(' ').replace(/\s+/g,' ').trim().toLowerCase();}
       var buttons=Array.from(deepAll('button,[role=button],input[type=submit]')).filter(visible).map(function(e){
@@ -179,6 +181,7 @@ object AiWebChat {
     }
 
     fun snapshotScript(): String = """(function(){
+      function deepAll(sel){var out=[];function walk(root){Array.from(root.querySelectorAll(sel)).forEach(function(e){out.push(e);if(e.shadowRoot)walk(e.shadowRoot);});}walk(document);return out;}
       function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden';}
       function txt(e){return [e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('title'),e.innerText].filter(Boolean).join(' ').replace(/\s+/g,' ').trim().slice(0,100);}
       var controls=Array.from(deepAll('textarea,input,[contenteditable=true],[role=textbox],button,[role=button]')).filter(visible).map(function(e){return {tag:e.tagName,role:e.getAttribute('role')||'',text:txt(e)};}).slice(0,80);
