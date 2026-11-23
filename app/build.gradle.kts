@@ -8,6 +8,19 @@ val abiList = (project.findProperty("abis") as String? ?: "arm64-v8a,x86_64").sp
 val ksPath: String? = System.getenv("STROKA_KEYSTORE")
 
 val kotlinRuntimeForDevice by configurations.creating
+// kotlinc-android embeds JNA classes. Keep the JNA Android AAR (including
+// native dispatch libraries for Vosk) and remove only duplicate JNA bytecode
+// from the compiler fat JAR before D8 packages the application.
+val kotlinCompilerRaw by configurations.creating {
+    isTransitive = false
+}
+val filteredKotlinCompiler by tasks.registering(Jar::class) {
+    archiveFileName.set("kotlinc-android-filtered.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("generated/kotlinc"))
+    from({ zipTree(kotlinCompilerRaw.singleFile) }) {
+        exclude("com/sun/jna/**")
+    }
+}
 val stageKotlinRuntime by tasks.registering(Copy::class) {
     from(kotlinRuntimeForDevice)
     include("kotlin-stdlib-2.4.0.jar")
@@ -87,8 +100,8 @@ chaquopy {
 
 dependencies {
     add(kotlinRuntimeForDevice.name, "org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
-    implementation("com.github.PranavPurwar:kotlinc-android:2.4.0")
-    implementation(files("libs/javax-lang-model-stub.jar"))
+    add(kotlinCompilerRaw.name, "com.github.PranavPurwar:kotlinc-android:2.4.0")
+    implementation(files(filteredKotlinCompiler.flatMap { it.archiveFile }))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-ktx:1.9.3")
@@ -110,5 +123,5 @@ dependencies {
 
 
 tasks.named("preBuild").configure {
-    dependsOn(stageKotlinRuntime)
+    dependsOn(stageKotlinRuntime, filteredKotlinCompiler)
 }
