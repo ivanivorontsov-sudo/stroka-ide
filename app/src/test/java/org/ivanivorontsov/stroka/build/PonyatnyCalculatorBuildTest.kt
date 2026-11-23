@@ -87,6 +87,25 @@ class PonyatnyCalculatorBuildTest {
     }
 
     @Test
+    fun ponyatnySystemCallsAreRecognizedAsBuiltins() {
+        val root = locateRoot()
+        val yadro = File(root, "app/src/main/assets/ponyatny/yadro.js").readText(Charsets.UTF_8)
+        val src = """
+            уведомление("Готово")
+            вибрация(80)
+            открой_ссылку("https://example.com")
+            скопируй_в_буфер("текст")
+            пусть буфер = прочитай_буфер()
+            пусть устройство = из_json(информация_устройства())
+            пиши заряд_батареи()
+            пиши сеть_доступна()
+            открой_настройки()
+        """.trimIndent()
+        val js = PonyatnyJs.compile(src, yadro)
+        assertTrue("Ponyatny Android API calls should compile", js.isNotBlank())
+    }
+
+    @Test
     fun rhinoCompilesPonyatnyWithoutNode() {
         val root = locateRoot()
         val yadro = File(root, "app/src/main/assets/ponyatny/yadro.js").readText(Charsets.UTF_8)
