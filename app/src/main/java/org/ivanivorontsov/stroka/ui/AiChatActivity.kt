@@ -337,10 +337,14 @@ class AiChatActivity : AppCompatActivity() {
                     val currentUrl = evalJsBlocking("location.href").trim('\"')
                     if (currentUrl != thread.url) loadWebPage(thread.url) else waitForWebPage()
                     val prompt = if (initialContext.isNotBlank()) initialContext + "\n\nЗАДАНИЕ ПОЛЬЗОВАТЕЛЯ:\n" + text else text + "\n\nВерни только JSON по ранее заданной схеме."
-                    val insertedRaw = evalJsBlocking(AiWebChat.injectScript(prompt))
+                    val insertedRaw = evalJsBlocking(AiWebChat.injectScript(prompt, p.id))
                     val inserted = try { JSONObject(insertedRaw).optString("status") } catch (_: Exception) { insertedRaw }
                     if (inserted != "OK") {
                         val snapshot = evalJsBlocking(AiWebChat.snapshotScript())
+                        if (snapshot.contains("sign in", true) || snapshot.contains("log in", true) ||
+                            snapshot.contains("войти", true) || snapshot.contains("login", true)) {
+                            throw AiExceptionForLogin()
+                        }
                         throw Exception("Не удалось распознать поле ввода на сайте. Диагностика: " + snapshot.take(1400) + ". Откройте браузер, проверьте страницу и нажмите «Диагностика» или выберите чат вручную.")
                     }
                     val sendResult = evalJsBlocking(AiWebChat.sendScript())
