@@ -1,5 +1,8 @@
 package org.ivanivorontsov.stroka.ai
 
+import android.content.Context
+import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -107,6 +110,79 @@ object AiPatchEngine {
                 try { p.staged?.delete() } catch (_: Exception) { }
             }
             throw if (e is AiException) e else AiException("Не удалось применить изменения: ${e.message}")
+        }
+    }
+
+    /** Applies a validated plan in a user-granted SAF tree with private backups and rollback. */
+    fun applySaf(context: Context, treeUri: Uri, plan: AiPatchPlan, backupDir: File): Map<String, String?> {
+        val root = DocumentFile.fromTreeUri(context, treeUri) ?: throw AiException("Папка SAF больше недоступна.")
+        if (!root.isDirectory || !root.canWrite()) throw AiException("Нет права записи в выбранной SAF-папке.")
+        data class Prepared(val op: AiFileOperation, val parent: DocumentFile, val name: String, val oldUri: String, val existed: Boolean, val backup: File?)
+        val prepared = ArrayList<Prepared>()
+        val createdDirs = ArrayList<DocumentFile>()
+        val backupRoot = File(backupDir, "saf-${System.currentTimeMillis()}")
+        fun mime(name: String): String = when (name.substringAfterLast(".", "").lowercase()) {
+            "kt", "kts", "java", "js", "mjs", "ts", "py", "pon", "txt", "md", "css", "html", "htm", "xml", "json", "gradle", "properties", "yaml", "yml", "sh", "c", "h", "cpp", "hpp", "rs", "go", "sql", "svg" -> "text/plain"
+            else -> "application/octet-stream"
+        }
+        try {
+            // Resolve targets and back up all existing files before changing any of them.
+            for (op in plan.operations) {
+                validateRelativePath(op.path)
+                val parts = op.path.split("/")
+                var parent = root
+                for (segment in parts.dropLast(1)) {
+                    val next = parent.findFile(segment)
+                    if (next == null) {
+                        if (op.action == "delete") throw AiException("Не найдена папка для удаления: $segment")
+                        val made = parent.createDirectory(segment) ?: throw AiException("Не удалось создать папку: $segment")
+                        createdDirs += made
+                        parent = made
+                    } else {
+                        if (!next.isDirectory) throw AiException("Часть пути не является папкой: $segment")
+                        parent = next
+                    }
+                }
+                val name = parts.last()
+                val existing = parent.findFile(name)
+                if (existing != null && !existing.isFile) throw AiException("Путь не является обычным файлом: ${op.path}")
+                if (op.action == "delete" && existing == null) throw AiException("Нельзя удалить отсутствующий файл: ${op.path}")
+                if (existing != null && existing.length() > 2_000_000L) throw AiException("Файл слишком большой для безопасной замены: ${op.path}")
+                var backup: File? = null
+                if (existing != null) {
+                    backup = File(backupRoot, op.path)
+                    backup.parentFile?.mkdirs()
+                    context.contentResolver.openInputStream(existing.uri)?.use { input -> backup.outputStream().use { output -> input.copyTo(output) } }
+                        ?: throw AiException("Не удалось создать резервную копию: ${op.path}")
+                }
+                prepared += Prepared(op, parent, name, existing?.uri?.toString().orEmpty(), existing != null, backup)
+            }
+            val updates = LinkedHashMap<String, String?>()
+            for (p in prepared) {
+                val current = p.parent.findFile(p.name)
+                if (p.op.action == "delete") {
+                    if (current == null || !current.delete()) throw AiException("Не удалось удалить ${p.op.path}")
+                    updates["saf:${p.oldUri}"] = null
+                } else {
+                    val target = current ?: p.parent.createFile(mime(p.name), p.name) ?: throw AiException("Не удалось создать файл ${p.op.path}")
+                    context.contentResolver.openOutputStream(target.uri, "wt")?.use { it.write(p.op.content.toByteArray(Charsets.UTF_8)); it.flush() }
+                        ?: throw AiException("Нет доступа на запись: ${p.op.path}")
+                    updates["saf:${if (p.existed) p.oldUri else target.uri.toString()}"] = p.op.content
+                }
+            }
+            return updates
+        } catch (e: Exception) {
+            for (p in prepared.asReversed()) {
+                try {
+                    val current = p.parent.findFile(p.name)
+                    if (p.existed && p.backup?.isFile == true) {
+                        val target = current ?: p.parent.createFile(mime(p.name), p.name)
+                        if (target != null) context.contentResolver.openOutputStream(target.uri, "wt")?.use { out -> p.backup.inputStream().use { it.copyTo(out) } }
+                    } else if (!p.existed) current?.delete()
+                } catch (_: Exception) { }
+            }
+            createdDirs.asReversed().forEach { try { if (it.listFiles().isEmpty()) it.delete() } catch (_: Exception) { } }
+            throw if (e is AiException) e else AiException("Не удалось применить SAF-изменения: ${e.message}")
         }
     }
 
