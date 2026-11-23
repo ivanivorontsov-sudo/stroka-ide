@@ -12,6 +12,7 @@
     </queries>
 
     <application
+        <activity android:name=".ui.GitHubActionsActivity" android:exported="false" />
         android:name=".ui.StrokaApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
