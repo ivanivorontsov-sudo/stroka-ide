@@ -57,7 +57,7 @@ object AiWebChat {
           var e=a.length?a[a.length-1]:null, text=e?(e.innerText||e.textContent||'').trim():'';
           var busy=!!document.querySelector('button[data-testid=stop-button],.stop-generating,[data-is-streaming=true],[class*=typing-cursor],[class*=is-streaming]');
           var login=!!document.querySelector('input[type=password]')||!document.querySelector('#prompt-textarea,textarea#chat-input,textarea,[contenteditable=true]');
-          return JSON.stringify({text:text,busy:busy,login:login,count:a.length,before:window.__strokaBefore||0,fresh:a.length>(window.__strokaBefore||0)});
+          return JSON.stringify({text:text,busy:busy,login:login,count:a.length,before:window.__strokaBefore||0,fresh:a.length>(window.__strokaBefore||0)&&text!==window.__strokaPrompt});
         })()"""
     }
 
