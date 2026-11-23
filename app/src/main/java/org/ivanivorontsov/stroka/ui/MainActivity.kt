@@ -990,9 +990,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         handle.setOnTouchListener { _, e ->
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    if (panelCollapsed) expandPanel()
+                    val wasCollapsed = panelCollapsed
+                    if (wasCollapsed) expandPanel()
                     startY = e.rawY
-                    startH = panel.height
+                    startH = if (wasCollapsed) panelExpandedHeight else panel.height
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
