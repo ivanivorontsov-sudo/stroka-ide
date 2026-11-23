@@ -28,8 +28,8 @@ class AiPatchEngineTest {
 
     @Test
     fun appliesChangesAndCreatesBackup() {
-        val root = createTempDir(prefix = "stroka-ai-project-")
-        val backups = createTempDir(prefix = "stroka-ai-backup-")
+        val root = Files.createTempDirectory("stroka-ai-project-").toFile()
+        val backups = Files.createTempDirectory("stroka-ai-backup-").toFile()
         try {
             File(root, "Main.kt").writeText("old")
             val plan = AiPatchPlan("update", listOf(
@@ -49,8 +49,8 @@ class AiPatchEngineTest {
 
     @Test
     fun failedDeleteRollsBackEarlierWrites() {
-        val root = createTempDir(prefix = "stroka-ai-project-")
-        val backups = createTempDir(prefix = "stroka-ai-backup-")
+        val root = Files.createTempDirectory("stroka-ai-project-").toFile()
+        val backups = Files.createTempDirectory("stroka-ai-backup-").toFile()
         try {
             File(root, "Main.kt").writeText("old")
             val plan = AiPatchPlan("rollback", listOf(
