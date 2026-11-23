@@ -90,6 +90,13 @@
                 android:text="Использовать этот чат" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/aiDiagnose"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Диагностика" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/aiWebDone"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
