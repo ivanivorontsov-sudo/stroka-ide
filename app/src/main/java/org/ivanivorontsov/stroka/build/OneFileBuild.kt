@@ -26,7 +26,9 @@ object OneFileBuild {
         assets: BuildAssets,
         outApk: File,
         log: (String) -> Unit = {},
-        env: CompileEnv = CompileEnv()
+        env: CompileEnv = CompileEnv(),
+        versionName: String = "1.0",
+        versionCode: Int = 1
     ): File {
         val err = assets.toolchain.check()
         if (err != null) throw BuildException(err)
@@ -34,14 +36,14 @@ object OneFileBuild {
         val lower = fileName.lowercase()
         return when {
             lower.endsWith(".py") || lower.endsWith(".pyw") ->
-                PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log)
+                PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log, versionName, versionCode)
             lower.endsWith(".java") ->
-                buildJavaApk(source, fileName, label, work, assets, outApk, log)
+                buildJavaApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode)
             lower.endsWith(".kt") ->
-                buildKotlinApk(source, fileName, label, work, assets, outApk, log)
+                buildKotlinApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode)
             lower.endsWith(".kts") ->
                 throw BuildException("Файлы .kts — это Kotlin Script для Gradle/скриптов. Для Android APK используйте .kt с классом Activity.")
-            else -> buildWebApk(source, fileName, label, work, assets, outApk, log, env)
+            else -> buildWebApk(source, fileName, label, work, assets, outApk, log, env, versionName, versionCode)
         }
     }
 
@@ -133,7 +135,9 @@ object OneFileBuild {
         assets: BuildAssets,
         outApk: File,
         log: (String) -> Unit = {},
-        env: CompileEnv = CompileEnv()
+        env: CompileEnv = CompileEnv(),
+        versionName: String = "1.0",
+        versionCode: Int = 1
     ): File {
         log("Компилирую «Понятный»")
         val lower = fileName.lowercase()
@@ -159,8 +163,8 @@ object OneFileBuild {
             work = File(work, "apk"),
             label = label,
             pkg = pkg,
-            versionName = "1.0",
-            versionCode = 1,
+            versionName = versionName,
+            versionCode = versionCode,
             www = www,
             mainJava = java,
             toolchain = assets.toolchain,
@@ -177,7 +181,9 @@ object OneFileBuild {
         work: File,
         assets: BuildAssets,
         outApk: File,
-        log: (String) -> Unit = {}
+        log: (String) -> Unit = {},
+        versionName: String = "1.0",
+        versionCode: Int = 1
     ): File {
         log("Собираю Java-приложение")
         val pkg = packageOf(source) ?: ApkPacker.packageName(label)
@@ -210,7 +216,9 @@ object OneFileBuild {
         work: File,
         assets: BuildAssets,
         outApk: File,
-        log: (String) -> Unit = {}
+        log: (String) -> Unit = {},
+        versionName: String = "1.0",
+        versionCode: Int = 1
     ): File {
         log("Собираю Kotlin/JVM Android-приложение")
         val stdlib = assets.kotlinStdlib
