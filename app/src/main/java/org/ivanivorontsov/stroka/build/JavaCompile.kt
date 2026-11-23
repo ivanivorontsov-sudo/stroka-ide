@@ -14,20 +14,23 @@ object JavaCompile {
         val main = Main(PrintWriter(out, true), PrintWriter(err, true), false, null, null)
         val args = ArrayList<String>()
         args.addAll(listOf(
-            "-source", "17",
-            "-target", "17",
-            "--system", "none",
+            // Android's android.jar is the platform boot classpath. ECJ's
+            // modular system-library mode expects a JDK image, which Android
+            // runtimes do not ship. Java 8 compliance still supports lambdas,
+            // method references, streams, default methods and try-with-resources.
+            "-source", "1.8",
+            "-target", "1.8",
             "-encoding", "UTF-8",
+            "-bootclasspath", bootclasspath.absolutePath,
             "-d", outDir.absolutePath,
             "-proc:none",
             "-nowarn",
             "-g:none"
         ))
-        // ECJ rejects -bootclasspath for Java 9+ compliance. Android's
-        // android.jar is the platform API surface, so put it first on the
-        // ordinary classpath together with bundled/user dependencies.
-        args.add("-classpath")
-        args.add((listOf(bootclasspath) + classpath).joinToString(File.pathSeparator) { it.absolutePath })
+        if (classpath.isNotEmpty()) {
+            args.add("-classpath")
+            args.add(classpath.joinToString(File.pathSeparator) { it.absolutePath })
+        }
         sources.forEach { args.add(it.absolutePath) }
         val ok = main.compile(args.toTypedArray())
         if (!ok) {
