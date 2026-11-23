@@ -38,6 +38,7 @@ class Prefs(ctx: Context) {
         get() = sp.getString("ai_model", "deepseek-chat") ?: "deepseek-chat"
         set(v) = sp.edit().putString("ai_model", v).apply()
     val aiAutofix: Boolean get() = sp.getBoolean("ai_autofix", true)
+    val aiInterfaceAssist: Boolean get() = sp.getBoolean("ai_interface_assist", true)
     val gitUser: String get() = sp.getString("git_user", "") ?: ""
     val gitName: String get() = sp.getString("git_name", "") ?: ""
     val gitEmail: String get() = sp.getString("git_email", "") ?: ""
