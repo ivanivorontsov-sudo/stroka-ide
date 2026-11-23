@@ -28,7 +28,8 @@ object OneFileBuild {
         log: (String) -> Unit = {},
         env: CompileEnv = CompileEnv(),
         versionName: String = "1.0",
-        versionCode: Int = 1
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
     ): File {
         val err = assets.toolchain.check()
         if (err != null) throw BuildException(err)
@@ -36,7 +37,7 @@ object OneFileBuild {
         val lower = fileName.lowercase()
         return when {
             lower.endsWith(".py") || lower.endsWith(".pyw") ->
-                PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log, versionName, versionCode)
+                PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log, versionName, versionCode, iconPng)
             lower.endsWith(".java") ->
                 buildJavaApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode)
             lower.endsWith(".kt") ->
@@ -137,7 +138,8 @@ object OneFileBuild {
         log: (String) -> Unit = {},
         env: CompileEnv = CompileEnv(),
         versionName: String = "1.0",
-        versionCode: Int = 1
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
     ): File {
         log("Компилирую «Понятный»")
         val lower = fileName.lowercase()
@@ -170,7 +172,8 @@ object OneFileBuild {
             toolchain = assets.toolchain,
             key = assets.userKey,
             outApk = outApk,
-            log = log
+            log = log,
+            iconPng = iconPng
         )
     }
 
@@ -183,7 +186,8 @@ object OneFileBuild {
         outApk: File,
         log: (String) -> Unit = {},
         versionName: String = "1.0",
-        versionCode: Int = 1
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
     ): File {
         log("Собираю Java-приложение")
         val pkg = packageOf(source) ?: ApkPacker.packageName(label)
@@ -205,7 +209,8 @@ object OneFileBuild {
             key = assets.userKey,
             outApk = outApk,
             log = log,
-            extraJars = jars
+            extraJars = jars,
+            iconPng = iconPng
         )
     }
 
@@ -218,7 +223,8 @@ object OneFileBuild {
         outApk: File,
         log: (String) -> Unit = {},
         versionName: String = "1.0",
-        versionCode: Int = 1
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
     ): File {
         log("Собираю Kotlin/JVM Android-приложение")
         val stdlib = assets.kotlinStdlib
@@ -251,7 +257,8 @@ object OneFileBuild {
             extraJars = jars,
             kotlinSources = listOf(kt),
             kotlinStdlib = stdlib,
-            activityClass = activityClass
+            activityClass = activityClass,
+            iconPng = iconPng
         )
     }
 
