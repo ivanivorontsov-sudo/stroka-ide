@@ -116,7 +116,7 @@ dependencies {
     implementation("com.alphacephei:vosk-android:0.3.75")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.13.5.202508271544-r")
     implementation("com.android.tools.build:apksig:8.7.3")
-    // ECJ 3.18.0 is the Android-compatible batch compiler line (Termux pins Eclipse 4.12).\n    // Later ECJ FileSystem versions eagerly link javax.lang.model.SourceVersion from\n    // java.compiler during class initialization; that module is absent on Android ART.\n    // JavaCompile deliberately emits Java 8 bytecode, which ECJ 3.18.0 supports.\n    implementation("org.eclipse.jdt:ecj:3.18.0")
+    // Android-compatible ECJ batch compiler. The dependency is needed both at\n    // compile time (JavaCompile imports Main) and runtime (the app invokes ECJ).\n    implementation("org.eclipse.jdt:ecj:3.18.0")
     implementation("com.android.tools:r8:8.7.18")
     testImplementation("junit:junit:4.13.2")
     // Use a real JVM JSON implementation in local unit tests instead of the
@@ -129,4 +129,31 @@ dependencies {
 
 tasks.named("preBuild").configure {
     dependsOn(stageKotlinRuntime, filteredKotlinCompiler)
+}
+
+
+// Guard the compiler dependency before Kotlin compilation. This catches
+// repository/classpath regressions with a precise message instead of a pair
+// of misleading "Unresolved reference: jdt/Main" diagnostics.
+val verifyEcjCompileDependency by tasks.registering {
+    doLast {
+        val compileClasspath = configurations.getByName("debugCompileClasspath")
+        val ecjJar = compileClasspath.files.firstOrNull {
+            it.name == "ecj-3.18.0.jar" || it.name.startsWith("ecj-")
+        } ?: throw GradleException(
+            "ECJ is missing from debugCompileClasspath. Resolved files: " +
+                compileClasspath.files.joinToString { it.name }
+        )
+        val mainClass = zipTree(ecjJar).matching {
+            include("org/eclipse/jdt/internal/compiler/batch/Main.class")
+        }.files
+        check(mainClass.isNotEmpty()) {
+            "Resolved ECJ artifact does not contain org/eclipse/jdt/internal/compiler/batch/Main.class: $ecjJar"
+        }
+        logger.lifecycle("ECJ compile dependency verified: $ecjJar")
+    }
+}
+
+tasks.matching { it.name == "compileDebugKotlin" }.configureEach {
+    dependsOn(verifyEcjCompileDependency)
 }
