@@ -48,9 +48,6 @@ class AiChatActivity : AppCompatActivity() {
     private lateinit var chatControls: View
     private lateinit var chatScroll: ScrollView
     private lateinit var inputRow: View
-    private lateinit var loginBtn: MaterialButton
-    private lateinit var newBtn: MaterialButton
-    private lateinit var chooseBtn: MaterialButton
     private lateinit var diagnoseBtn: MaterialButton
     private lateinit var store: AiChatStore
     private var threads = mutableListOf<AiChatThread>()
@@ -75,10 +72,16 @@ class AiChatActivity : AppCompatActivity() {
         val bar = findViewById<MaterialToolbar>(R.id.aiToolbar)
         bar.setNavigationOnClickListener { finish() }
         bar.setOnMenuItemClickListener { item ->
-            if (item.itemId == R.id.aiSettings) {
-                startActivity(android.content.Intent(this, SettingsActivity::class.java))
-                true
-            } else false
+            when (item.itemId) {
+                R.id.aiNewThread -> { newThread(); true }
+                R.id.aiChooseThread -> { chooseThread(); true }
+                R.id.aiLoginMenu -> { openBrowserForLogin(); true }
+                R.id.aiSettings -> {
+                    startActivity(android.content.Intent(this, SettingsActivity::class.java))
+                    true
+                }
+                else -> false
+            }
         }
         log = findViewById(R.id.aiLog)
         input = findViewById(R.id.aiInput)
@@ -90,9 +93,6 @@ class AiChatActivity : AppCompatActivity() {
         chatControls = findViewById(R.id.aiChatControls)
         chatScroll = findViewById(R.id.aiScroll)
         inputRow = findViewById(R.id.aiInputRow)
-        loginBtn = findViewById(R.id.aiLogin)
-        newBtn = findViewById(R.id.aiNew)
-        chooseBtn = findViewById(R.id.aiChoose)
         diagnoseBtn = findViewById(R.id.aiDiagnose)
 
         fileName = intent.getStringExtra(EXTRA_NAME) ?: "проект"
@@ -103,7 +103,8 @@ class AiChatActivity : AppCompatActivity() {
         projectSafUri = intent.getStringExtra(EXTRA_PROJECT_SAF_URI).orEmpty()
 
         store = AiChatStore(this)
-        threads = store.load()
+        threads = store.load().filterNot { it.providerId == "meta" }.toMutableList()
+        store.save(threads)
         providerSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, providerOptions)
         providerSpinner.setSelection(0)
         val existing = threads.firstOrNull { it.providerId == "api" }
@@ -142,9 +143,6 @@ class AiChatActivity : AppCompatActivity() {
                 selectProvider(position)
             }
         }
-        loginBtn.setOnClickListener { openBrowserForLogin() }
-        newBtn.setOnClickListener { newThread() }
-        chooseBtn.setOnClickListener { chooseThread() }
         findViewById<MaterialButton>(R.id.aiWebUse).setOnClickListener { useCurrentWebChat() }
         findViewById<MaterialButton>(R.id.aiWebDone).setOnClickListener { hideBrowser() }
         diagnoseBtn.setOnClickListener { diagnoseWebInterface() }
@@ -165,12 +163,14 @@ class AiChatActivity : AppCompatActivity() {
 
     private fun updateControls() {
         val web = thread.providerId != "api"
-        loginBtn.visibility = if (web) View.VISIBLE else View.GONE
-        newBtn.visibility = View.VISIBLE
-        chooseBtn.visibility = if (threads.size > 1) View.VISIBLE else View.GONE
+        val menu = findViewById<MaterialToolbar>(R.id.aiToolbar).menu
+        menu.findItem(R.id.aiLoginMenu)?.isVisible = web
+        menu.findItem(R.id.aiChooseThread)?.isVisible = threads.size > 1
+        menu.findItem(R.id.aiNewThread)?.isVisible = true
         if (web) {
             provider = AiWebChat.providers.firstOrNull { it.id == thread.providerId }
-            loginBtn.text = if (thread.url.isBlank()) "Войти" else "Войти / открыть чат"
+            menu.findItem(R.id.aiLoginMenu)?.title =
+                if (thread.url.isBlank()) "Войти в чат" else "Открыть чат / войти"
         }
     }
 
@@ -511,9 +511,10 @@ class AiChatActivity : AppCompatActivity() {
     private fun setBusy(busy: Boolean) {
         send.isEnabled = !busy
         providerSpinner.isEnabled = !busy
-        loginBtn.isEnabled = !busy
-        newBtn.isEnabled = !busy
-        chooseBtn.isEnabled = !busy
+        val menu = findViewById<MaterialToolbar>(R.id.aiToolbar).menu
+        menu.findItem(R.id.aiNewThread)?.isEnabled = !busy
+        menu.findItem(R.id.aiChooseThread)?.isEnabled = !busy
+        menu.findItem(R.id.aiLoginMenu)?.isEnabled = !busy
     }
 
     private fun scrollDown() {
