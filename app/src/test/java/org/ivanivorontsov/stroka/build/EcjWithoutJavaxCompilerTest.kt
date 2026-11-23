@@ -17,7 +17,13 @@ class EcjWithoutJavaxCompilerTest {
         val src = File(work, "Hello.java")
         src.writeText(
             "public class Hello {\n" +
-                "    public static String hi() { return \"ok\"; }\n" +
+                "    public static String hi() {\n" +
+                "        Runnable task = () -> {};\n" +
+                "        task.run();\n" +
+                "        return \"\"\"\n" +
+                "            ok\n" +
+                "            \"\"\";\n" +
+                "    }\n" +
                 "}\n"
         )
         val out = File(work, "classes")
