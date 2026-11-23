@@ -13,7 +13,8 @@ class BuildAssets(
     val libDir: java.io.File? = null,
     val cacheDir: java.io.File? = null,
     val setupStub: ByteArray = ByteArray(0),
-    val qjsLinuxAmd64: ByteArray = ByteArray(0)
+    val qjsLinuxAmd64: ByteArray = ByteArray(0),
+    val kotlinStdlib: File? = null
 )
 
 object OneFileBuild {
@@ -36,8 +37,10 @@ object OneFileBuild {
                 PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log)
             lower.endsWith(".java") ->
                 buildJavaApk(source, fileName, label, work, assets, outApk, log)
-            lower.endsWith(".kt") || lower.endsWith(".kts") ->
-                throw BuildException("Сборка Kotlin в APK на телефоне пока требует исходник на Java (один файл Activity) или программу на «Понятном». Сохраните программу как .java или .pon.")
+            lower.endsWith(".kt") ->
+                buildKotlinApk(source, fileName, label, work, assets, outApk, log)
+            lower.endsWith(".kts") ->
+                throw BuildException("Файлы .kts — это Kotlin Script для Gradle/скриптов. Для Android APK используйте .kt с классом Activity.")
             else -> buildWebApk(source, fileName, label, work, assets, outApk, log, env)
         }
     }
@@ -197,6 +200,50 @@ object OneFileBuild {
             outApk = outApk,
             log = log,
             extraJars = jars
+        )
+    }
+
+    fun buildKotlinApk(
+        source: String,
+        fileName: String,
+        label: String,
+        work: File,
+        assets: BuildAssets,
+        outApk: File,
+        log: (String) -> Unit = {}
+    ): File {
+        log("Собираю Kotlin/JVM Android-приложение")
+        val stdlib = assets.kotlinStdlib
+            ?: throw BuildException("Kotlin runtime не встроен в эту сборку. Обновите Строку и повторите.")
+        val pkg = Regex("""^\s*package\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)""", RegexOption.MULTILINE)
+            .find(source)?.groupValues?.get(1) ?: ApkPacker.packageName(label)
+        val classMatch = Regex("""\bclass\s+([A-Za-z_]\w*)\s*(?:\([^)]*\))?\s*:\s*(?:android\.app\.)?Activity\b""")
+            .find(source)
+            ?: throw BuildException("Для APK Kotlin-файл должен содержать класс Activity, например: class MainActivity : Activity().")
+        val activityClass = classMatch.groupValues[1]
+        val kotlinSource = if (Regex("""^\s*package\s+""", RegexOption.MULTILINE).containsMatchIn(source))
+            source else "package $pkg\n\n$source"
+        val srcDir = File(work, "kotlin-src/" + pkg.replace('.', '/'))
+        srcDir.mkdirs()
+        val kt = File(srcDir, "$activityClass.kt")
+        kt.writeText(kotlinSource, Charsets.UTF_8)
+        val jars = LibResolver.javaJars(LibResolver.javaImports(source), assets.libDir, assets.cacheDir, true, log)
+        return RealApkBuilder.build(
+            work = File(work, "apk"),
+            label = label,
+            pkg = pkg,
+            versionName = "1.0",
+            versionCode = 1,
+            www = emptyMap(),
+            mainJava = "",
+            toolchain = assets.toolchain,
+            key = assets.userKey,
+            outApk = outApk,
+            log = log,
+            extraJars = jars,
+            kotlinSources = listOf(kt),
+            kotlinStdlib = stdlib,
+            activityClass = activityClass
         )
     }
 
