@@ -37,7 +37,7 @@ object AiWebChat {
     /** A live semantic inventory, useful for adaptation and actionable diagnostics. */
     fun inspectScript(): String = """(function(){
       function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>8&&r.height>8&&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.02;}
-      function name(e){return [e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('data-placeholder'),e.getAttribute('title'),e.getAttribute('name'),e.innerText,e.value].filter(Boolean).join(' ').replace(/\\s+/g,' ').trim().slice(0,120);}
+      function name(e){return [e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('data-placeholder'),e.getAttribute('title'),e.getAttribute('name'),e.innerText,e.value].filter(Boolean).join(' ').replace(/\s+/g,' ').trim().slice(0,120);}
       var edits=Array.from(document.querySelectorAll('textarea,input,[contenteditable=true],[role=textbox],[role=combobox]')).filter(visible).map(function(e){return {tag:e.tagName,role:e.getAttribute('role')||'',label:name(e),type:e.getAttribute('type')||'',rect:(function(){var r=e.getBoundingClientRect();return [Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)];})()};}).slice(0,30);
       var buttons=Array.from(document.querySelectorAll('button,[role=button]')).filter(visible).map(function(e){return name(e).slice(0,100);}).filter(Boolean).slice(-60);
       var body=(document.body.innerText||'').slice(0,1600);
@@ -85,7 +85,7 @@ object AiWebChat {
           var oldNodes=[];
           try{if($hint)oldNodes=Array.from(document.querySelectorAll($hint)).filter(visible);}catch(e){}
           Array.from(document.querySelectorAll('[data-message-author-role=assistant],[data-author=assistant],[data-role=assistant],[role=article],[data-testid*=conversation-turn]')).filter(visible).forEach(function(e){if(oldNodes.indexOf(e)<0)oldNodes.push(e);});
-          var oldTexts=oldNodes.map(function(e){return (e.innerText||e.textContent||'').replace(/\\s+/g,' ').trim();}).filter(Boolean);
+          var oldTexts=oldNodes.map(function(e){return (e.innerText||e.textContent||'').replace(/\s+/g,' ').trim();}).filter(Boolean);
           window.__strokaBefore={count:oldTexts.length,last:oldTexts.length?oldTexts[oldTexts.length-1]:''};
           window.__strokaPrompt=prompt;
           el.focus();
@@ -108,7 +108,7 @@ object AiWebChat {
 
     fun sendScript(): String = """(function(){
       function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden';}
-      function label(e){return [e.getAttribute('aria-label'),e.getAttribute('title'),e.innerText,e.textContent].filter(Boolean).join(' ').replace(/\\s+/g,' ').trim().toLowerCase();}
+      function label(e){return [e.getAttribute('aria-label'),e.getAttribute('title'),e.innerText,e.textContent].filter(Boolean).join(' ').replace(/\s+/g,' ').trim().toLowerCase();}
       var buttons=Array.from(document.querySelectorAll('button,[role=button],input[type=submit]')).filter(visible).map(function(e){
         var t=label(e),r=e.getBoundingClientRect(),score=0;
         if(/send|submit|отправ|послать|сгенерировать|ask|ответить/i.test(t))score+=12;
@@ -144,7 +144,7 @@ object AiWebChat {
         val hint = JSONObject.quote(providerHints)
         return """(function(){
           function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden';}
-          function norm(s){return (s||'').replace(/\\s+/g,' ').trim();}
+          function norm(s){return (s||'').replace(/\s+/g,' ').trim();}
           function composer(){return Array.from(document.querySelectorAll('textarea,input:not([type=password]),[contenteditable=true],[role=textbox]')).some(visible);}
           function assistant(e){
             var role=(e.getAttribute('data-message-author-role')||e.getAttribute('data-author')||e.getAttribute('data-role')||'').toLowerCase();
@@ -177,7 +177,7 @@ object AiWebChat {
 
     fun snapshotScript(): String = """(function(){
       function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden';}
-      function txt(e){return [e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('title'),e.innerText].filter(Boolean).join(' ').replace(/\\s+/g,' ').trim().slice(0,100);}
+      function txt(e){return [e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('title'),e.innerText].filter(Boolean).join(' ').replace(/\s+/g,' ').trim().slice(0,100);}
       var controls=Array.from(document.querySelectorAll('textarea,input,[contenteditable=true],[role=textbox],button,[role=button]')).filter(visible).map(function(e){return {tag:e.tagName,role:e.getAttribute('role')||'',text:txt(e)};}).slice(0,80);
       return JSON.stringify({url:location.href,title:document.title,controls:controls,body:(document.body.innerText||'').slice(0,1000)});
     })()"""
