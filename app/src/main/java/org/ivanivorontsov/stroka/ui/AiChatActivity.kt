@@ -51,6 +51,7 @@ class AiChatActivity : AppCompatActivity() {
     private lateinit var loginBtn: MaterialButton
     private lateinit var newBtn: MaterialButton
     private lateinit var chooseBtn: MaterialButton
+    private lateinit var diagnoseBtn: MaterialButton
     private lateinit var store: AiChatStore
     private var threads = mutableListOf<AiChatThread>()
     private lateinit var thread: AiChatThread
@@ -92,6 +93,7 @@ class AiChatActivity : AppCompatActivity() {
         loginBtn = findViewById(R.id.aiLogin)
         newBtn = findViewById(R.id.aiNew)
         chooseBtn = findViewById(R.id.aiChoose)
+        diagnoseBtn = findViewById(R.id.aiDiagnose)
 
         fileName = intent.getStringExtra(EXTRA_NAME) ?: "проект"
         langName = intent.getStringExtra(EXTRA_LANG) ?: "текст"
@@ -145,6 +147,7 @@ class AiChatActivity : AppCompatActivity() {
         chooseBtn.setOnClickListener { chooseThread() }
         findViewById<MaterialButton>(R.id.aiWebUse).setOnClickListener { useCurrentWebChat() }
         findViewById<MaterialButton>(R.id.aiWebDone).setOnClickListener { hideBrowser() }
+        diagnoseBtn.setOnClickListener { diagnoseWebInterface() }
         send.setOnClickListener { turn() }
         applyBtn.setOnClickListener { confirmAndApply() }
         updateControls()
@@ -227,6 +230,31 @@ class AiChatActivity : AppCompatActivity() {
         append("Открыл ${p.name}. Войдите в аккаунт, затем нажмите «Использовать этот чат». Сессия сайта хранится в CookieManager Android.\n")
     }
 
+    private fun diagnoseWebInterface() {
+        io.execute {
+            val raw = evalJsBlocking(AiWebChat.inspectScript())
+            main.post {
+                val data = try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
+                val edits = data.optJSONArray("edits")
+                val buttons = data.optJSONArray("buttons")
+                val lines = StringBuilder()
+                lines.append("Страница: ").append(data.optString("title")).append("\n")
+                lines.append(data.optString("url")).append("\n\n")
+                lines.append("Поля ввода: ").append(edits?.length() ?: 0).append("\n")
+                if (edits != null) for (i in 0 until edits.length()) {
+                    val e = edits.optJSONObject(i) ?: continue
+                    lines.append("• ").append(e.optString("tag")).append(" — ")
+                        .append(e.optString("label").ifBlank { "(без подписи)" }).append("\n")
+                }
+                lines.append("\nКнопки: ").append(buttons?.length() ?: 0).append("\n")
+                if (buttons != null) for (i in 0 until buttons.length()) lines.append("• ").append(buttons.optString(i)).append("\n")
+                if ((edits?.length() ?: 0) == 0) lines.append("\nПоле чата не обнаружено. Возможно, сайт ещё загружается или требует входа.")
+                MaterialAlertDialogBuilder(this).setTitle("Распознавание интерфейса")
+                    .setMessage(lines.toString()).setPositiveButton("ОК", null).show()
+            }
+        }
+    }
+
     private fun useCurrentWebChat() {
         val url = webView.url.orEmpty()
         if (url.isNotBlank()) {
@@ -306,12 +334,20 @@ class AiChatActivity : AppCompatActivity() {
                 val raw = if (isWeb) {
                     val p = provider ?: AiWebChat.providers.first { it.id == thread.providerId }
                     if (thread.url.isBlank()) thread.url = p.url
-                    if (webView.url != thread.url) loadWebPage(thread.url) else waitForWebPage()
+                    val currentUrl = evalJsBlocking("location.href").trim('\"')
+                    if (currentUrl != thread.url) loadWebPage(thread.url) else waitForWebPage()
                     val prompt = if (initialContext.isNotBlank()) initialContext + "\n\nЗАДАНИЕ ПОЛЬЗОВАТЕЛЯ:\n" + text else text + "\n\nВерни только JSON по ранее заданной схеме."
-                    val inserted = evalJsBlocking(AiWebChat.injectScript(prompt))
-                    if (inserted == "NO_INPUT") throw AiExceptionForLogin()
+                    val insertedRaw = evalJsBlocking(AiWebChat.injectScript(prompt))
+                    val inserted = try { JSONObject(insertedRaw).optString("status") } catch (_: Exception) { insertedRaw }
+                    if (inserted != "OK") {
+                        val snapshot = evalJsBlocking(AiWebChat.snapshotScript())
+                        throw Exception("Не удалось распознать поле ввода на сайте. Диагностика: " + snapshot.take(1400) + ". Откройте браузер, проверьте страницу и нажмите «Диагностика» или выберите чат вручную.")
+                    }
                     val sendResult = evalJsBlocking(AiWebChat.sendScript())
-                    if (sendResult == "NO_INPUT") throw AiExceptionForLogin()
+                    if (sendResult == "NO_COMPOSER" || sendResult == "NO_INPUT") {
+                        val snapshot = evalJsBlocking(AiWebChat.snapshotScript())
+                        throw Exception("Поле найдено, но кнопку отправки распознать не удалось. Диагностика: " + snapshot.take(1400))
+                    }
                     webPromptSubmitted = true
                     var last = ""
                     var stableSince = System.currentTimeMillis()
