@@ -45,6 +45,13 @@ object EcjLimitedCompileMain {
     fun main(args: Array<String>) {
         try {
             Class.forName("javax.lang.model.SourceVersion")
+            System.err.println("JAVA_COMPILER_MODULE_PRESENT")
+            kotlin.system.exitProcess(3)
+        } catch (_: ClassNotFoundException) {
+            // Expected: java.compiler is intentionally excluded from this JVM.
+        }
+
+        try {
             JavaCompile.compile(listOf(File(args[0])), File(args[1]), File(args[2]))
             if (!File(args[2], "Hello.class").isFile) {
                 System.err.println("NO_CLASS")
