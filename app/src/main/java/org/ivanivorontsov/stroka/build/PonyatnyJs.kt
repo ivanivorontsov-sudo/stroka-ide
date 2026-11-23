@@ -16,7 +16,7 @@ object PonyatnyJs {
     fun wrap(js: String, title: String, mode: String): String {
         val t = json(title)
         val m = json(mode)
-        val exports = Regex("""(?m)^function (\\$[A-Za-z_$][A-Za-z0-9_$]*)\\s*\\(""")
+        val exports = Regex("""(?m)^function ([$][A-Za-z_$][A-Za-z0-9_$]*)\\s*\\(""")
             .findAll(js)
             .map { it.groupValues[1] }
             .distinct()
