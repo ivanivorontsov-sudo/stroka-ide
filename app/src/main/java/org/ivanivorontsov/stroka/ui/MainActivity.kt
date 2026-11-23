@@ -1545,6 +1545,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     private fun startBuild(kind: String) {
+        if (kind != "apk") { performBuild(kind); return }
         val version = EditText(this).apply {
             setSingleLine(true)
             hint = "Например 1.2.0"
