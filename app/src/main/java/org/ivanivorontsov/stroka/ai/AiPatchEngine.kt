@@ -150,10 +150,11 @@ object AiPatchEngine {
                 if (existing != null && existing.length() > 2_000_000L) throw AiException("Файл слишком большой для безопасной замены: ${op.path}")
                 var backup: File? = null
                 if (existing != null) {
-                    backup = File(backupRoot, op.path)
-                    backup.parentFile?.mkdirs()
-                    context.contentResolver.openInputStream(existing.uri)?.use { input -> backup.outputStream().use { output -> input.copyTo(output) } }
+                    val backupFile = File(backupRoot, op.path)
+                    backupFile.parentFile?.mkdirs()
+                    context.contentResolver.openInputStream(existing.uri)?.use { input -> backupFile.outputStream().use { output -> input.copyTo(output) } }
                         ?: throw AiException("Не удалось создать резервную копию: ${op.path}")
+                    backup = backupFile
                 }
                 prepared += Prepared(op, parent, name, existing?.uri?.toString().orEmpty(), existing != null, backup)
             }
