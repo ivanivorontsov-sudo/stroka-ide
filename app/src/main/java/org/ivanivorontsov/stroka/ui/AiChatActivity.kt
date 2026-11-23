@@ -110,6 +110,7 @@ class AiChatActivity : AppCompatActivity() {
         append("ИИ отвечает структурированным JSON. Перед изменением файлов можно проверить список операций и подтвердить применение.\n\n")
 
         CookieManager.getInstance().setAcceptCookie(true)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -277,7 +278,7 @@ class AiChatActivity : AppCompatActivity() {
         val text = input.text.toString().trim()
         if (text.isEmpty()) return
         input.setText("")
-        send.isEnabled = false
+        setBusy(true)
         append("Вы: $text\nИИ обрабатывает запрос…\n")
         if (thread.title == "Новый чат") thread.title = text.take(48)
         thread.messages += AiMessage("user", text)
@@ -339,7 +340,7 @@ class AiChatActivity : AppCompatActivity() {
                         append("Файлы не изменялись.\n\n")
                         applyBtn.visibility = View.GONE
                     }
-                    send.isEnabled = true
+                    setBusy(false)
                     scrollDown()
                 }
             } catch (e: AiExceptionForLogin) {
@@ -407,6 +408,14 @@ class AiChatActivity : AppCompatActivity() {
             }
             .setNegativeButton("Отмена", null)
             .show()
+    }
+
+    private fun setBusy(busy: Boolean) {
+        send.isEnabled = !busy
+        providerSpinner.isEnabled = !busy
+        loginBtn.isEnabled = !busy
+        newBtn.isEnabled = !busy
+        chooseBtn.isEnabled = !busy
     }
 
     private fun scrollDown() {
