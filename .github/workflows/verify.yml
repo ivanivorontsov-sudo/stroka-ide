@@ -64,3 +64,23 @@ jobs:
           path: ${{ runner.temp }}/stroka-evidence/*
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Run generated APK interaction tests on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            ./gradlew --no-daemon connectedDebugAndroidTest
+            mkdir -p "${{ runner.temp }}/generated-calculator"
+            adb pull "/sdcard/Android/data/org.ivanivorontsov.stroka/files/build-out/Калькулятор-java.apk" "${{ runner.temp }}/generated-calculator/Калькулятор-java.apk"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Stroka-java-calculator-device-test
+          path: ${{ runner.temp }}/generated-calculator/Калькулятор-java.apk
+          if-no-files-found: ignore
+          retention-days: 7
