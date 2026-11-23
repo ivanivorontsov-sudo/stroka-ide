@@ -11,6 +11,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.view.View;
+import android.view.WindowInsets;
 
 public class Main extends Activity {
     @Override
@@ -76,6 +78,24 @@ public class Main extends Activity {
             }
         });
         web.loadUrl("file:///android_asset/www/index.html");
-        setContentView(web);
+
+        // Android 15 enforces edge-to-edge for targetSdk 35. Keep generated
+        // app content below the status bar and above the navigation area.
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View view, WindowInsets insets) {
+                view.setPadding(
+                        insets.getSystemWindowInsetLeft(),
+                        insets.getSystemWindowInsetTop(),
+                        insets.getSystemWindowInsetRight(),
+                        insets.getSystemWindowInsetBottom());
+                return insets;
+            }
+        });
+        setContentView(root);
     }
 }
