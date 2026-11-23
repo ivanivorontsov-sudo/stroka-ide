@@ -57,6 +57,7 @@ class AiChatActivity : AppCompatActivity() {
     private var provider: AiChatProvider? = null
     private var pendingPlan: AiPatchPlan? = null
     private var projectRoot = ""
+    private var projectSafUri = ""
     private var projectContext = ""
     private var currentCode = ""
     private var fileName = "проект"
@@ -97,6 +98,7 @@ class AiChatActivity : AppCompatActivity() {
         currentCode = intent.getStringExtra(EXTRA_CODE).orEmpty()
         projectContext = intent.getStringExtra(EXTRA_PROJECT_CONTEXT).orEmpty()
         projectRoot = intent.getStringExtra(EXTRA_PROJECT_ROOT).orEmpty()
+        projectSafUri = intent.getStringExtra(EXTRA_PROJECT_SAF_URI).orEmpty()
 
         store = AiChatStore(this)
         threads = store.load()
@@ -395,8 +397,8 @@ class AiChatActivity : AppCompatActivity() {
     private fun confirmAndApply() {
         val plan = pendingPlan ?: return
         if (plan.operations.isEmpty()) return
-        if (projectRoot.isBlank()) {
-            Toast.makeText(this, "Для массовой правки откройте проект из папки приложения. SAF-папки пока доступны только для чтения ИИ.", Toast.LENGTH_LONG).show()
+        if (projectRoot.isBlank() && projectSafUri.isBlank()) {
+            Toast.makeText(this, "Откройте проект из папки приложения или выберите его через системный доступ к папке Android.", Toast.LENGTH_LONG).show()
             return
         }
         val details = plan.operations.joinToString("\n") { op -> "${if (op.action == "delete") "Удалить" else "Изменить/создать"}: ${op.path}" }
@@ -405,12 +407,17 @@ class AiChatActivity : AppCompatActivity() {
             .setMessage((plan.summary + "\n\n" + details + "\n\nПеред применением будут сохранены резервные копии изменяемых файлов.").trim())
             .setPositiveButton("Применить") { _, _ ->
                 try {
-                    val root = File(projectRoot)
-                    AiPatchEngine.apply(root, plan, File(filesDir, "ai-backups"))
-                    val updates = LinkedHashMap<String, String?>()
-                    plan.operations.forEach { op ->
-                        val target = File(root, op.path).canonicalFile
-                        updates[target.absolutePath] = if (op.action == "delete") null else target.readText(Charsets.UTF_8)
+                    val updates = if (projectSafUri.isNotBlank()) {
+                        AiPatchEngine.applySaf(this, android.net.Uri.parse(projectSafUri), plan, File(filesDir, "ai-backups"))
+                    } else {
+                        val root = File(projectRoot)
+                        AiPatchEngine.apply(root, plan, File(filesDir, "ai-backups"))
+                        val localUpdates = LinkedHashMap<String, String?>()
+                        plan.operations.forEach { op ->
+                            val target = File(root, op.path).canonicalFile
+                            localUpdates[target.absolutePath] = if (op.action == "delete") null else target.readText(Charsets.UTF_8)
+                        }
+                        localUpdates
                     }
                     AiBridge.pendingFiles = updates
                     pendingPlan = null
@@ -454,6 +461,7 @@ class AiChatActivity : AppCompatActivity() {
         const val EXTRA_LANG = "lang"
         const val EXTRA_PROJECT_CONTEXT = "project_context"
         const val EXTRA_PROJECT_ROOT = "project_root"
+        const val EXTRA_PROJECT_SAF_URI = "project_saf_uri"
     }
 }
 
