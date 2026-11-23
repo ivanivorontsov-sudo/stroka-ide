@@ -23,7 +23,9 @@ public class Main extends Activity {
         root.setPadding(p, p, p, p);
 
         TextView title = new TextView(this);
-        title.setText("Калькулятор");
+        title.setText("""
+            Калькулятор
+            """.trim());
         title.setTextSize(22);
         root.addView(title);
 
