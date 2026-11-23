@@ -34,7 +34,7 @@ object AiPatchEngine {
             val o = array.optJSONObject(i) ?: throw AiException("Операция №${i + 1} должна быть объектом JSON.")
             val action = o.optString("action", "").lowercase()
             if (action !in setOf("write", "delete")) throw AiException("Неизвестное действие «$action» в операции №${i + 1}.")
-            val path = o.optString("path", "").replace('\\\\', '/').trim()
+            val path = o.optString("path", "").replace('\\', '/').trim()
             validateRelativePath(path)
             if (!seen.add(path)) throw AiException("Путь повторяется в ответе ИИ: $path")
             val body = o.optString("content", "")
