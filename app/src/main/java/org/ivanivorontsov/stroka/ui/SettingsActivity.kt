@@ -190,7 +190,7 @@ class SettingsActivity : AppCompatActivity() {
             }
             MaterialAlertDialogBuilder(ctx)
                 .setTitle("Токен GitHub")
-                .setMessage("Создайте fine-grained токен на github.com → Settings → Developer settings с правом Contents: Read and write. Токен хранится только на этом телефоне в зашифрованном виде.")
+                .setMessage("Создайте fine-grained токен на github.com → Settings → Developer settings с правами Contents: Read and write и Actions: Read and write для управления workflow. Токен хранится только на этом телефоне в зашифрованном виде.")
                 .setView(box)
                 .setPositiveButton("Сохранить") { _, _ ->
                     val v = input.text.toString().trim()
