@@ -7,7 +7,7 @@
 - **Kotlin/JVM APK build path**: Android-патченный Kotlin compiler вызывается непосредственно на устройстве; результат Kotlin-компиляции вместе с Kotlin runtime передаётся в D8. Первая поддерживаемая форма — один `.kt`-файл с Android `Activity`. Kotlin Script (`.kts`), Kotlin/Native, Kotlin/JS и Kotlin/Wasm не выдаются за поддерживаемые Android APK targets.
 - **Java build path** остаётся на Eclipse ECJ → D8 → apksig.
 - **Универсальная вкладка предпросмотра**: если для языка нет исполняемого адаптера, она показывает исходник в безопасно экранированном HTML-представлении и явно сообщает, что это предпросмотр кода, а не запуск программы.
-- **AI project context**: чат получает ограниченный текстовый снимок локального проекта (до 80 файлов / 90 000 символов), исключая .git, build, node_modules, бинарные файлы и зависимости. Сейчас кнопка «Применить» по-прежнему применяет один основной блок кода в открытый файл; многфайловое применение должно быть отдельным протоколом патчей с подтверждением пользователя.
+- **AI project context**: чат получает ограниченный текстовый снимок локального проекта (до 80 файлов / 90 000 символов), исключая .git, build, node_modules, бинарные файлы и зависимости. Сейчас кнопка «Применить» по-прежнему применяет один основной блок кода в открытый файл; многофайловое применение должно быть отдельным протоколом патчей с подтверждением пользователя.
 - **Android system bars**: базовая WebView-оболочка генерируемого APK учитывает верхний и нижний системные отступы на устройствах с edge-to-edge, включая Android 15.
 - **GitHub Actions**: добавлена проверка сборки на PR и workflow для создания стандартного Windows Setup.exe через Inno Setup. Веб-запуск доступен на странице Actions репозитория.
 
@@ -19,7 +19,7 @@
 | `.js` | запуск / APK / portable EXE | WebView JS / QuickJS |
 | `.html`, `.htm` | предпросмотр / APK | WebView |
 | `.py`, `.pyw` | запуск / APK | Chaquopy 3.12; APK использует Python runtime из установленной Строки |
-| `.java` | APK | Eclipse ECJ → D8 → apksig; для одnofайловой сборки нужен Android Activity |
+| `.java` | APK | Eclipse ECJ → D8 → apksig; для однофайловой сборки нужен Android Activity |
 | `.kt` | APK | Android-patched Kotlin/JVM compiler → D8 → apksig; нужен Android Activity |
 | `.kts` | не является самостоятельным APK target | Gradle Kotlin Script; нужен Gradle project runner |
 | C/C++, Rust, Go, Swift, Kotlin/Native и другие native targets | пока не встроены в мобильный локальный toolchain | требуют NDK/LLVM/Go/Rust toolchain или отдельной CI-сборки под целевую ОС |
