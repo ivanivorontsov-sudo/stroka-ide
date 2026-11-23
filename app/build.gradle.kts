@@ -137,7 +137,7 @@ val stageAndroidLambdaStubs by tasks.registering {
     doLast {
         val sdkPath = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
             ?: throw GradleException("ANDROID_HOME/ANDROID_SDK_ROOT is required to stage core-lambda-stubs.jar")
-        val buildTools = file("$sdkPath/build-tools")
+        val buildTools = java.io.File(sdkPath, "build-tools")
         val source = buildTools.listFiles()
             ?.map { java.io.File(it, "core-lambda-stubs.jar") }
             ?.filter { it.isFile }
@@ -163,7 +163,7 @@ val verifyEcjCompileDependency by tasks.registering {
         val ecjJar = compileClasspath.files.firstOrNull {
             it.name == "ecj-3.18.0.jar" || it.name.startsWith("ecj-")
         } ?: throw GradleException(
-            "Android-compatible ECJ 3.18.0 is missing from debugCompileClasspath. Resolved files: "
+            "Android-compatible ECJ 3.18.0 is missing from debugCompileClasspath. Resolved files: " +
                 compileClasspath.files.joinToString { it.name }
         )
         val mainClass = zipTree(ecjJar).matching {
