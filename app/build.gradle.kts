@@ -7,6 +7,13 @@ plugins {
 val abiList = (project.findProperty("abis") as String? ?: "arm64-v8a,x86_64").split(",").map { it.trim() }.filter { it.isNotEmpty() }
 val ksPath: String? = System.getenv("STROKA_KEYSTORE")
 
+val kotlinRuntimeForDevice by configurations.creating
+val stageKotlinRuntime by tasks.registering(Copy::class) {
+    from(kotlinRuntimeForDevice)
+    include("kotlin-stdlib-2.4.0.jar")
+    into(layout.projectDirectory.dir("src/main/assets/libs/kotlin"))
+}
+
 android {
     namespace = "org.ivanivorontsov.stroka"
     compileSdk = 35
@@ -79,6 +86,8 @@ chaquopy {
 }
 
 dependencies {
+    add(kotlinRuntimeForDevice.name, "org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
+    implementation("com.github.PranavPurwar:kotlinc-android:2.4.0")
     implementation(files("libs/javax-lang-model-stub.jar"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
@@ -97,4 +106,9 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
+}
+
+
+tasks.named("preBuild").configure {
+    dependsOn(stageKotlinRuntime)
 }
