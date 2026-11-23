@@ -17,16 +17,16 @@ object JavaCompile {
             "-source", "17",
             "-target", "17",
             "-encoding", "UTF-8",
-            "-bootclasspath", bootclasspath.absolutePath,
             "-d", outDir.absolutePath,
             "-proc:none",
             "-nowarn",
             "-g:none"
         ))
-        if (classpath.isNotEmpty()) {
-            args.add("-classpath")
-            args.add(classpath.joinToString(File.pathSeparator) { it.absolutePath })
-        }
+        // ECJ rejects -bootclasspath for Java 9+ compliance. Android's
+        // android.jar is the platform API surface, so put it first on the
+        // ordinary classpath together with bundled/user dependencies.
+        args.add("-classpath")
+        args.add((listOf(bootclasspath) + classpath).joinToString(File.pathSeparator) { it.absolutePath })
         sources.forEach { args.add(it.absolutePath) }
         val ok = main.compile(args.toTypedArray())
         if (!ok) {
