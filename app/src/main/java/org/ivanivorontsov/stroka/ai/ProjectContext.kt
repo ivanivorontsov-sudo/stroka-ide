@@ -17,6 +17,10 @@ object ProjectContext {
         ".git", ".gradle", ".idea", ".kotlin", "build", "out", "dist", "target",
         "node_modules", ".venv", "venv", "__pycache__", ".cache"
     )
+    private val excludedFiles = setOf(
+        "local.properties", "gradle.properties", "keystore.properties",
+        "secrets.properties", "credentials.json", "id_rsa", "id_ed25519"
+    )
 
     fun collect(root: File, currentFile: File? = null, maxFiles: Int = 80, maxChars: Int = 90_000): String {
         if (!root.isDirectory) return ""
@@ -32,6 +36,8 @@ object ProjectContext {
                 if (child.isDirectory) {
                     if (child.name !in excludedDirs && !child.name.startsWith(".")) walk(child)
                 } else {
+                    val lowerName = child.name.lowercase()
+                    if (lowerName in excludedFiles || listOf("secret", "credential", "password", "token", "keystore").any { it in lowerName }) continue
                     val ext = child.name.substringAfterLast('.', "").lowercase()
                     if (ext in allowed && child.length() in 1..48_000L) files += child
                 }
