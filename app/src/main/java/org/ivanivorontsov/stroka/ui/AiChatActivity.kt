@@ -121,6 +121,10 @@ class AiChatActivity : AppCompatActivity() {
         }
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                pageLoaded = false
+                if (pageLatch == null) pageLatch = CountDownLatch(1)
+            }
             override fun onPageFinished(view: WebView?, url: String?) {
                 pageLoaded = true
                 CookieManager.getInstance().flush()
@@ -182,7 +186,7 @@ class AiChatActivity : AppCompatActivity() {
         thread = store.create(id, url)
         threads.add(thread)
         if (id != "api") {
-            webView.loadUrl(url)
+            loadWebPage(url)
             thread.url = url
         }
         restoreThread()
@@ -247,17 +251,23 @@ class AiChatActivity : AppCompatActivity() {
     }
 
     private fun loadWebPage(url: String) {
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            pageLoaded = false
-            webView.loadUrl(url)
-            return
-        }
         val latch = CountDownLatch(1)
         pageLatch = latch
         pageLoaded = false
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            webView.loadUrl(url)
+            return
+        }
         main.post { webView.loadUrl(url) }
         latch.await(60, TimeUnit.SECONDS)
-        pageLatch = null
+        if (pageLatch === latch) pageLatch = null
+    }
+
+    private fun waitForWebPage() {
+        if (pageLoaded) return
+        val latch = pageLatch ?: CountDownLatch(1).also { pageLatch = it }
+        latch.await(60, TimeUnit.SECONDS)
+        if (pageLatch === latch) pageLatch = null
     }
 
     private fun evalJsBlocking(script: String, timeoutSeconds: Long = 10): String {
@@ -293,7 +303,7 @@ class AiChatActivity : AppCompatActivity() {
                 val raw = if (isWeb) {
                     val p = provider ?: AiWebChat.providers.first { it.id == thread.providerId }
                     if (thread.url.isBlank()) thread.url = p.url
-                    if (webView.url != thread.url) loadWebPage(thread.url)
+                    if (webView.url != thread.url) loadWebPage(thread.url) else waitForWebPage()
                     val prompt = if (initialContext.isNotBlank()) initialContext + "\n\nЗАДАНИЕ ПОЛЬЗОВАТЕЛЯ:\n" + text else text + "\n\nВерни только JSON по ранее заданной схеме."
                     val inserted = evalJsBlocking(AiWebChat.injectScript(prompt))
                     if (inserted == "NO_INPUT") throw AiExceptionForLogin()
