@@ -60,7 +60,7 @@ class PonyatnyCalculatorBuildTest {
         }
         val dexText = String(dexBytes, Charsets.ISO_8859_1)
         assertTrue("Main Activity must be present in DEX", dexText.contains("Lorg/stroka/app/jcalc/Main;"))
-        assertTrue("Anonymous click listener must be present in DEX", dexText.contains("Lorg/stroka/app/jcalc/Main$1;"))
+        assertTrue("Anonymous click listener must be present in DEX", dexText.contains("Lorg/stroka/app/jcalc/Main\$1;"))
         copyEvidence(root, apk, "Калькулятор-java.apk")
     }
 
