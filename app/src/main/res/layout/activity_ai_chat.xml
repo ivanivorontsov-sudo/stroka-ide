@@ -16,49 +16,16 @@
     <LinearLayout
         android:id="@+id/aiChatControls"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:gravity="center_vertical"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp">
+        android:paddingEnd="10dp">
 
         <Spinner
             android:id="@+id/aiProvider"
             android:layout_width="match_parent"
-            android:layout_height="48dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/aiLogin"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Войти" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/aiNew"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Новый чат" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/aiChoose"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Выбрать" />
-        </LinearLayout>
+            android:layout_height="44dp" />
     </LinearLayout>
 
     <FrameLayout
