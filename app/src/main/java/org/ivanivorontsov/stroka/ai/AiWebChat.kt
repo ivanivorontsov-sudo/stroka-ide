@@ -67,15 +67,26 @@ object AiWebChat {
         else -> ""
     }
 
-    fun injectScript(prompt: String, provider: String = ""): String {
+    fun composerCandidatesScript(): String = """(function(){
+      function deepAll(sel){var out=[];function walk(root){Array.from(root.querySelectorAll('*')).forEach(function(e){if(e.matches(sel))out.push(e);if(e.shadowRoot)walk(e.shadowRoot);});}walk(document);return out;}
+      function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>8&&r.height>8&&s.display!=='none'&&s.visibility!=='hidden';}
+      var list=deepAll('textarea,input:not([type=password]),[contenteditable=true],[role=textbox]').filter(visible).map(function(e,index){
+        var r=e.getBoundingClientRect(),labels=e.labels?Array.from(e.labels).map(function(x){return x.innerText||'';}).join(' '):'';
+        return {index:index,tag:e.tagName,role:e.getAttribute('role')||'',type:e.getAttribute('type')||'',label:[e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('data-placeholder'),e.getAttribute('title'),e.getAttribute('name'),labels].filter(Boolean).join(' ').slice(0,160),rect:[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)]};
+      });
+      return JSON.stringify({candidates:list});
+    })()"""
+
+    fun injectScript(prompt: String, provider: String = "", forcedIndex: Int? = null): String {
         val p = JSONObject.quote(prompt)
         val hint = JSONObject.quote(providerSelector(provider))
+        val forced = forcedIndex?.toString() ?: "null"
         return """(function(){
       function deepAll(sel){var out=[];function walk(root){Array.from(root.querySelectorAll('*')).forEach(function(e){if(e.matches(sel))out.push(e);if(e.shadowRoot)walk(e.shadowRoot);});}walk(document);return out;}
           var prompt=$p;
           function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>8&&r.height>8&&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.02;}
           function label(e){var a=[e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('data-placeholder'),e.getAttribute('title'),e.getAttribute('name')];if(e.labels)Array.from(e.labels).forEach(function(l){a.push(l.innerText);});var p=e.parentElement;if(p)a.push(p.getAttribute('aria-label'),p.innerText);return a.filter(Boolean).join(' ').toLowerCase();}
-          var candidates=Array.from(deepAll('textarea,input:not([type=password]),[contenteditable=true],[role=textbox]')).filter(visible).map(function(e){
+          var candidates=Array.from(deepAll('textarea,input:not([type=password]),[contenteditable=true],[role=textbox]')).filter(visible).map(function(e,index){
             var l=label(e),r=e.getBoundingClientRect(),score=0;
             if(e.matches('[contenteditable=true],[role=textbox],textarea'))score+=4;
             if(/message|prompt|ask|чат|сообщ|спрос|напис|введите|ответ|send a message/i.test(l))score+=9;
@@ -83,10 +94,10 @@ object AiWebChat {
             if(r.height>35)score+=2;if(r.width>Math.min(280,innerWidth*.45))score+=2;
             if(r.bottom>innerHeight*.55)score+=3;
             if(e.closest('form'))score+=1;
-            return {e:e,score:score,y:r.bottom,label:l};
+            return {e:e,score:score,y:r.bottom,label:l,index:index};
           }).sort(function(a,b){return b.score-a.score||b.y-a.y;});
-          var best=candidates[0];
-          if(!best||best.score<2)return JSON.stringify({status:'NO_COMPOSER',candidates:candidates.slice(0,5).map(function(x){return x.label;})});
+          var best=Number.isInteger(forcedIndex)?candidates.find(function(x){return x.index===forcedIndex;}):candidates[0];
+          if(!best||(!Number.isInteger(forcedIndex)&&best.score<2))return JSON.stringify({status:'NO_COMPOSER',candidates:candidates.slice(0,5).map(function(x){return x.label;})});
           var el=best.e;
           var oldNodes=[];
           try{if($hint)oldNodes=Array.from(deepAll($hint)).filter(visible);}catch(e){}
