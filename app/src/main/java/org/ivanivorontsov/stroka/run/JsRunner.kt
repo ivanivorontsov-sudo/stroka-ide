@@ -1,14 +1,30 @@
 package org.ivanivorontsov.stroka.run
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
+import android.os.BatteryManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.provider.Settings
+import android.widget.Toast
 import android.webkit.JavascriptInterface
 import android.webkit.JsPromptResult
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import org.json.JSONObject
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 class JsRunner(private val ctx: Context) {
 
@@ -38,6 +54,97 @@ class JsRunner(private val ctx: Context) {
         }
     }
 
+    inner class SystemBridge {
+        @JavascriptInterface
+        fun toast(message: String) {
+            main.post { Toast.makeText(ctx, message.take(3000), Toast.LENGTH_SHORT).show() }
+        }
+
+        @JavascriptInterface
+        fun vibrate(durationMs: Long): Boolean {
+            val duration = durationMs.coerceIn(1L, 1000L)
+            main.post {
+                try {
+                    val vibrator = if (Build.VERSION.SDK_INT >= 31)
+                        ctx.getSystemService(VibratorManager::class.java).defaultVibrator
+                    else @Suppress("DEPRECATION") (ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
+                    if (vibrator.hasVibrator()) vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+                } catch (_: Exception) { }
+            }
+            return true
+        }
+
+        @JavascriptInterface
+        fun openUrl(value: String): Boolean {
+            val uri = runCatching { Uri.parse(value.trim()) }.getOrNull() ?: return false
+            if (uri.scheme !in setOf("http", "https")) return false
+            main.post {
+                runCatching {
+                    ctx.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }.onFailure { toast("Не удалось открыть ссылку: " + (it.message ?: "ошибка")) }
+            }
+            return true
+        }
+
+        @JavascriptInterface
+        fun copyText(value: String): Boolean {
+            main.post {
+                runCatching {
+                    val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Строка", value))
+                }
+            }
+            return true
+        }
+
+        @JavascriptInterface
+        fun clipboardText(): String = onMain("") {
+            val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty()
+        }
+
+        @JavascriptInterface
+        fun deviceInfo(): String = JSONObject()
+            .put("manufacturer", Build.MANUFACTURER)
+            .put("model", Build.MODEL)
+            .put("android", Build.VERSION.RELEASE)
+            .put("sdk", Build.VERSION.SDK_INT)
+            .toString()
+
+        @JavascriptInterface
+        fun batteryPercent(): Int = try {
+            ctx.getSystemService(BatteryManager::class.java)
+                .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
+        } catch (_: Exception) { -1 }
+
+        @JavascriptInterface
+        fun networkAvailable(): Boolean = try {
+            val manager = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = manager.activeNetwork ?: return false
+            val caps = manager.getNetworkCapabilities(network) ?: return false
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        } catch (_: Exception) { false }
+
+        @JavascriptInterface
+        fun openSettings(): Boolean {
+            main.post {
+                runCatching { ctx.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }
+            return true
+        }
+    }
+
+    private fun <T> onMain(fallback: T, action: () -> T): T {
+        if (Looper.myLooper() == Looper.getMainLooper()) return runCatching(action).getOrDefault(fallback)
+        val value = AtomicReference(fallback)
+        val latch = CountDownLatch(1)
+        main.post {
+            try { value.set(action()) } catch (_: Exception) { } finally { latch.countDown() }
+        }
+        return try { if (latch.await(2, TimeUnit.SECONDS)) value.get() else fallback } catch (_: InterruptedException) { fallback }
+    }
+
     private fun finish(code: Int) {
         if (!isRunning) return
         isRunning = false
@@ -53,6 +160,7 @@ class JsRunner(private val ctx: Context) {
         w.settings.allowFileAccess = false
         w.settings.allowContentAccess = false
         w.addJavascriptInterface(Bridge(), "StrokaHost")
+        w.addJavascriptInterface(SystemBridge(), "StrokaSystem")
         w.webChromeClient = object : WebChromeClient() {
             override fun onJsPrompt(view: WebView?, url: String?, message: String?, defaultValue: String?, result: JsPromptResult): Boolean {
                 val s = sink
