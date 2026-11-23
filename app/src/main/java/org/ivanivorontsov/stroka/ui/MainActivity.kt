@@ -1615,7 +1615,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 panelStatus.text = "Завершено: код $code, $millis мс"
                 appendConsole("■ код выхода $code ($millis мс)\n", if (code == 0) Kind.INFO else Kind.ERR)
             }
-        })
+        }, enableSystemApi = true)
     }
 
     private fun pickBuildFolder() {
