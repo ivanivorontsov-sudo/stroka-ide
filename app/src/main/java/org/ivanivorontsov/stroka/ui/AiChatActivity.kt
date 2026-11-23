@@ -43,14 +43,20 @@ class AiChatActivity : AppCompatActivity() {
         fileName = intent.getStringExtra(EXTRA_NAME) ?: "файл"
         langName = intent.getStringExtra(EXTRA_LANG) ?: "текст"
         val code = intent.getStringExtra(EXTRA_CODE).orEmpty()
+        val projectContext = intent.getStringExtra(EXTRA_PROJECT_CONTEXT).orEmpty()
         val prefs = Prefs(this)
         history.add(AiMessage("system", AiClient.systemPrompt(langName, fileName)))
         if (code.isNotBlank()) {
             history.add(AiMessage("user", "Текущий текст файла «$fileName»:\n\n```\n$code\n```"))
-            append("Контекст: открыт «$fileName». Напишите, что изменить или создать.\n\n")
+            append("Контекст: открыт «$fileName». ")
         } else {
-            append("Опишите программу. Можно попросить калькулятор на «Понятном» или на Java.\n\n")
+            append("Опишите программу. ")
         }
+        if (projectContext.isNotBlank()) {
+            history.add(AiMessage("user", projectContext))
+            append("ИИ получил текстовый контекст проекта (несколько файлов). ")
+        }
+        append("Напишите, что изменить или создать. Для применения кода сейчас используется кнопка «Применить» для основного файла.\n\n")
         send.setOnClickListener { turn() }
         applyBtn.setOnClickListener { applyCode() }
         bar.setOnMenuItemClickListener { item ->
@@ -128,6 +134,7 @@ class AiChatActivity : AppCompatActivity() {
         const val EXTRA_CODE = "code"
         const val EXTRA_NAME = "name"
         const val EXTRA_LANG = "lang"
+        const val EXTRA_PROJECT_CONTEXT = "project_context"
     }
 }
 
