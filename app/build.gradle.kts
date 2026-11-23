@@ -116,7 +116,7 @@ dependencies {
     implementation("com.alphacephei:vosk-android:0.3.75")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.13.5.202508271544-r")
     implementation("com.android.tools.build:apksig:8.7.3")
-    implementation("org.eclipse.jdt:ecj:3.21.0")
+    // ECJ 3.18.0 is the Android-compatible batch compiler line (Termux pins Eclipse 4.12).\n    // Later ECJ FileSystem versions eagerly link javax.lang.model.SourceVersion from\n    // java.compiler during class initialization; that module is absent on Android ART.\n    // JavaCompile deliberately emits Java 8 bytecode, which ECJ 3.18.0 supports.\n    implementation("org.eclipse.jdt:ecj:3.18.0")
     implementation("com.android.tools:r8:8.7.18")
     testImplementation("junit:junit:4.13.2")
     // Use a real JVM JSON implementation in local unit tests instead of the
