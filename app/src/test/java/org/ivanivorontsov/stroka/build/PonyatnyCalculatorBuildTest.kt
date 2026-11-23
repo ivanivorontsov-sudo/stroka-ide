@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import java.util.zip.ZipFile
 
 class PonyatnyCalculatorBuildTest {
     @Test
@@ -49,6 +50,17 @@ class PonyatnyCalculatorBuildTest {
             err = "aapt2 dump не прочитал Java APK."
         )
         assertTrue(dump.contains("application-label:'Калькулятор'"))
+        assertTrue(
+            "Android launcher must point at the source Activity package",
+            dump.contains("launchable-activity: name='org.stroka.app.jcalc.Main'")
+        )
+        val dexBytes = ZipFile(apk).use { zip ->
+            val entry = zip.getEntry("classes.dex") ?: error("Java APK has no classes.dex")
+            zip.getInputStream(entry).use { it.readBytes() }
+        }
+        val dexText = String(dexBytes, Charsets.ISO_8859_1)
+        assertTrue("Main Activity must be present in DEX", dexText.contains("Lorg/stroka/app/jcalc/Main;"))
+        assertTrue("Desugared lambda click listener must be present in DEX", dexText.contains("Lorg/stroka/app/jcalc/Main\$\$ExternalSyntheticLambda"))
         copyEvidence(root, apk, "Калькулятор-java.apk")
     }
 
@@ -72,6 +84,25 @@ class PonyatnyCalculatorBuildTest {
         val magic = "STRQJS01".toByteArray(Charsets.US_ASCII)
         assertTrue(buf.copyOfRange(buf.size - 16, buf.size - 8).contentEquals(magic))
         copyEvidence(root, exe, "Калькулятор.exe")
+    }
+
+    @Test
+    fun ponyatnySystemCallsAreRecognizedAsBuiltins() {
+        val root = locateRoot()
+        val yadro = File(root, "app/src/main/assets/ponyatny/yadro.js").readText(Charsets.UTF_8)
+        val src = """
+            уведомление("Готово")
+            вибрация(80)
+            открой_ссылку("https://example.com")
+            скопируй_в_буфер("текст")
+            пусть буфер = прочитай_буфер()
+            пусть устройство = из_json(информация_устройства())
+            пиши заряд_батареи()
+            пиши сеть_доступна()
+            открой_настройки()
+        """.trimIndent()
+        val js = PonyatnyJs.compile(src, yadro)
+        assertTrue("Ponyatny Android API calls should compile", js.isNotBlank())
     }
 
     @Test

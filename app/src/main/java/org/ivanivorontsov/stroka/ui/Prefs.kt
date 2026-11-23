@@ -38,6 +38,7 @@ class Prefs(ctx: Context) {
         get() = sp.getString("ai_model", "deepseek-chat") ?: "deepseek-chat"
         set(v) = sp.edit().putString("ai_model", v).apply()
     val aiAutofix: Boolean get() = sp.getBoolean("ai_autofix", true)
+    val aiInterfaceAssist: Boolean get() = sp.getBoolean("ai_interface_assist", true)
     val gitUser: String get() = sp.getString("git_user", "") ?: ""
     val gitName: String get() = sp.getString("git_name", "") ?: ""
     val gitEmail: String get() = sp.getString("git_email", "") ?: ""
@@ -60,6 +61,26 @@ class Prefs(ctx: Context) {
     var buildOutput: String
         get() = sp.getString("build_output_uri", "") ?: ""
         set(v) = sp.edit().putString("build_output_uri", v).apply()
+
+    var buildAppName: String
+        get() = sp.getString("build_app_name", "") ?: ""
+        set(v) = sp.edit().putString("build_app_name", v).apply()
+
+    var buildVersionName: String
+        get() = sp.getString("build_version_name", "1.0.0") ?: "1.0.0"
+        set(v) = sp.edit().putString("build_version_name", v).apply()
+
+    var buildVersionCode: Int
+        get() = sp.getInt("build_version_code", 1)
+        set(v) = sp.edit().putInt("build_version_code", v.coerceAtLeast(1)).apply()
+
+    var buildIconUri: String
+        get() = sp.getString("build_icon_uri", "") ?: ""
+        set(v) = sp.edit().putString("build_icon_uri", v).apply()
+
+    var buildIconEmoji: String
+        get() = sp.getString("build_icon_emoji", "") ?: ""
+        set(v) = sp.edit().putString("build_icon_emoji", v).apply()
 
     var expanded: Set<String>
         get() = sp.getStringSet("tree_expanded", emptySet()) ?: emptySet()

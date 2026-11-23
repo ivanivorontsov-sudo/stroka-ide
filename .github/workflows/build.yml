@@ -2,7 +2,7 @@ name: Build signed APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/ide-toolchain-upgrade]
   workflow_dispatch:
 
 permissions:
@@ -46,6 +46,15 @@ jobs:
           print(f"Unit tests: {t}, failed: {f}")
           open("test-summary.txt", "w").write(f"Unit tests: {t}, failed: {f}\n")
           PY
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Stroka-signed-build-test-reports
+          path: app/build/test-results/testDebugUnitTest/*.xml
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Restore keystore
         env:

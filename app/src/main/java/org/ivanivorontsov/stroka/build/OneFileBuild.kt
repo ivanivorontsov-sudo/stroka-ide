@@ -13,7 +13,8 @@ class BuildAssets(
     val libDir: java.io.File? = null,
     val cacheDir: java.io.File? = null,
     val setupStub: ByteArray = ByteArray(0),
-    val qjsLinuxAmd64: ByteArray = ByteArray(0)
+    val qjsLinuxAmd64: ByteArray = ByteArray(0),
+    val kotlinStdlib: File? = null
 )
 
 object OneFileBuild {
@@ -25,7 +26,10 @@ object OneFileBuild {
         assets: BuildAssets,
         outApk: File,
         log: (String) -> Unit = {},
-        env: CompileEnv = CompileEnv()
+        env: CompileEnv = CompileEnv(),
+        versionName: String = "1.0",
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
     ): File {
         val err = assets.toolchain.check()
         if (err != null) throw BuildException(err)
@@ -33,12 +37,14 @@ object OneFileBuild {
         val lower = fileName.lowercase()
         return when {
             lower.endsWith(".py") || lower.endsWith(".pyw") ->
-                PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log)
+                PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log, versionName, versionCode, iconPng)
             lower.endsWith(".java") ->
-                buildJavaApk(source, fileName, label, work, assets, outApk, log)
-            lower.endsWith(".kt") || lower.endsWith(".kts") ->
-                throw BuildException("Сборка Kotlin в APK на телефоне пока требует исходник на Java (один файл Activity) или программу на «Понятном». Сохраните программу как .java или .pon.")
-            else -> buildWebApk(source, fileName, label, work, assets, outApk, log, env)
+                buildJavaApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode, iconPng)
+            lower.endsWith(".kt") ->
+                buildKotlinApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode, iconPng)
+            lower.endsWith(".kts") ->
+                throw BuildException("Файлы .kts — это Kotlin Script для Gradle/скриптов. Для Android APK используйте .kt с классом Activity.")
+            else -> buildWebApk(source, fileName, label, work, assets, outApk, log, env, versionName, versionCode, iconPng)
         }
     }
 
@@ -130,7 +136,10 @@ object OneFileBuild {
         assets: BuildAssets,
         outApk: File,
         log: (String) -> Unit = {},
-        env: CompileEnv = CompileEnv()
+        env: CompileEnv = CompileEnv(),
+        versionName: String = "1.0",
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
     ): File {
         log("Компилирую «Понятный»")
         val lower = fileName.lowercase()
@@ -156,14 +165,15 @@ object OneFileBuild {
             work = File(work, "apk"),
             label = label,
             pkg = pkg,
-            versionName = "1.0",
-            versionCode = 1,
+            versionName = versionName,
+            versionCode = versionCode,
             www = www,
             mainJava = java,
             toolchain = assets.toolchain,
             key = assets.userKey,
             outApk = outApk,
-            log = log
+            log = log,
+            iconPng = iconPng
         )
     }
 
@@ -174,7 +184,10 @@ object OneFileBuild {
         work: File,
         assets: BuildAssets,
         outApk: File,
-        log: (String) -> Unit = {}
+        log: (String) -> Unit = {},
+        versionName: String = "1.0",
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
     ): File {
         log("Собираю Java-приложение")
         val pkg = packageOf(source) ?: ApkPacker.packageName(label)
@@ -188,15 +201,64 @@ object OneFileBuild {
             work = File(work, "apk"),
             label = label,
             pkg = pkg,
-            versionName = "1.0",
-            versionCode = 1,
+            versionName = versionName,
+            versionCode = versionCode,
             www = emptyMap(),
             mainJava = java.replaceFirst(Regex("public\\s+class\\s+" + Regex.escape(className)), "public class Main"),
             toolchain = assets.toolchain,
             key = assets.userKey,
             outApk = outApk,
             log = log,
-            extraJars = jars
+            extraJars = jars,
+            iconPng = iconPng
+        )
+    }
+
+    fun buildKotlinApk(
+        source: String,
+        fileName: String,
+        label: String,
+        work: File,
+        assets: BuildAssets,
+        outApk: File,
+        log: (String) -> Unit = {},
+        versionName: String = "1.0",
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
+    ): File {
+        log("Собираю Kotlin/JVM Android-приложение")
+        val stdlib = assets.kotlinStdlib
+            ?: throw BuildException("Kotlin runtime не встроен в эту сборку. Обновите Строку и повторите.")
+        val pkg = Regex("""^\s*package\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)""", RegexOption.MULTILINE)
+            .find(source)?.groupValues?.get(1) ?: ApkPacker.packageName(label)
+        val classMatch = Regex("""\bclass\s+([A-Za-z_]\w*)\s*(?:\([^)]*\))?\s*:\s*(?:android\.app\.)?Activity\b""")
+            .find(source)
+            ?: throw BuildException("Для APK Kotlin-файл должен содержать класс Activity, например: class MainActivity : Activity().")
+        val activityClass = classMatch.groupValues[1]
+        val kotlinSource = if (Regex("""^\s*package\s+""", RegexOption.MULTILINE).containsMatchIn(source))
+            source else "package $pkg\n\n$source"
+        val srcDir = File(work, "kotlin-src/" + pkg.replace('.', '/'))
+        srcDir.mkdirs()
+        val kt = File(srcDir, "$activityClass.kt")
+        kt.writeText(kotlinSource, Charsets.UTF_8)
+        val jars = LibResolver.javaJars(LibResolver.javaImports(source), assets.libDir, assets.cacheDir, true, log)
+        return RealApkBuilder.build(
+            work = File(work, "apk"),
+            label = label,
+            pkg = pkg,
+            versionName = versionName,
+            versionCode = versionCode,
+            www = emptyMap(),
+            mainJava = "",
+            toolchain = assets.toolchain,
+            key = assets.userKey,
+            outApk = outApk,
+            log = log,
+            extraJars = jars,
+            kotlinSources = listOf(kt),
+            kotlinStdlib = stdlib,
+            activityClass = activityClass,
+            iconPng = iconPng
         )
     }
 

@@ -1282,6 +1282,10 @@
     "в_json": [1, 2], "из_json": [1, 1], "нумеруй": [1, 1], "попарно": [2, 2], "список_файлов": [1, 1], "удали_файл": [1, 1], "создай_папку": [1, 1],
     "тангенс": [1, 1], "арктангенс": [1, 2], "экспонента": [1, 1], "бесконечность": null,
     "аргументы": null, "argv": null, "размер": [1, 1], "sizeof": [1, 1], "формат": [1, 99], "printf": [1, 99], "открой": [1, 2],
+    "уведомление": [1, 1], "вибрация": [0, 1], "открой_ссылку": [1, 1],
+    "скопируй_в_буфер": [1, 1], "прочитай_буфер": [0, 0],
+    "информация_устройства": [0, 0], "заряд_батареи": [0, 0],
+    "сеть_доступна": [0, 0], "открой_настройки": [0, 0],
   };
   const BUILTIN_CLASSES = ["Ошибка"];
   const TYPES = ["число", "строка", "логическое", "список", "словарь", "функция", "ничего", "любое", "целое", "множество"];
@@ -2597,6 +2601,13 @@
       if (v && typeof v === "object") { const m = new Map(); for (const k of Object.keys(v)) m.set(k, fromJson(v[k])); return m; }
       return v;
     };
+    const systemCall = (name, ...args) => {
+      const api = io.system;
+      if (!api || typeof api[name] !== "function")
+        fail("Системный вызов «" + name + "» доступен только в Android-приложении или при запуске из Строки.");
+      try { return api[name](...args); }
+      catch (e) { fail("Системный вызов «" + name + "» завершился ошибкой: " + (e && e.message ? e.message : String(e))); }
+    };
     R.b = {
       "спроси": (q) => { const a = io.ask(q === undefined ? "" : show(q)); return a === null || a === undefined ? "" : String(a); },
       "число": toNum,
@@ -2660,6 +2671,15 @@
       "формат": (fmt, ...a) => R.printf(fmt, a),
       "printf": (fmt, ...a) => R.printf(fmt, a),
       "открой": (path, mode) => openFile(path, mode),
+      "уведомление": (message) => systemCall("toast", show(message)),
+      "вибрация": (duration) => systemCall("vibrate", duration === undefined ? 100 : needNum(duration, "длительность вибрации")),
+      "открой_ссылку": (url) => systemCall("openUrl", needStr(url, "ссылка")),
+      "скопируй_в_буфер": (value) => systemCall("copyText", show(value)),
+      "прочитай_буфер": () => systemCall("clipboardText"),
+      "информация_устройства": () => systemCall("deviceInfo"),
+      "заряд_батареи": () => systemCall("batteryPercent"),
+      "сеть_доступна": () => systemCall("networkAvailable"),
+      "открой_настройки": () => systemCall("openSettings"),
     };
     return R;
   }
@@ -2686,7 +2706,7 @@
     io = io || {};
     const lines = [];
     const js = compile(src, { file: io.file, resolve: io.resolve, guard: io.guard !== false, warn: io.warn });
-    execute(js, { write: (s) => { lines.push(s); if (io.write) io.write(s); }, writeErr: (s) => { if (io.writeErr) io.writeErr(s); else { lines.push(s); if (io.write) io.write(s); } }, ask: io.ask || (() => ""), fs: io.fs, maxSteps: io.maxSteps, args: io.args || [] });
+    execute(js, { write: (s) => { lines.push(s); if (io.write) io.write(s); }, writeErr: (s) => { if (io.writeErr) io.writeErr(s); else { lines.push(s); if (io.write) io.write(s); } }, ask: io.ask || (() => ""), fs: io.fs, system: io.system, maxSteps: io.maxSteps, args: io.args || [] });
     return lines;
   }
 

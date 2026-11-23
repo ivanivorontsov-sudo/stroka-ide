@@ -8,6 +8,8 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
+import android.view.View;
+import android.view.WindowInsets;
 import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
 import com.chaquo.python.android.AndroidPlatform;
@@ -36,9 +38,22 @@ public class Main extends Activity {
         s.setDomStorageEnabled(true);
         s.setDefaultTextEncodingName("utf-8");
         web.addJavascriptInterface(new Bridge(), "Stroka");
-        setContentView(web, new FrameLayout.LayoutParams(
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web, new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT));
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View view, WindowInsets insets) {
+                view.setPadding(
+                    insets.getSystemWindowInsetLeft(),
+                    insets.getSystemWindowInsetTop(),
+                    insets.getSystemWindowInsetRight(),
+                    insets.getSystemWindowInsetBottom());
+                return insets;
+            }
+        });
+        setContentView(root);
         web.loadDataWithBaseURL("https://stroka.local/", consolePage(String.valueOf(getTitle())), "text/html", "utf-8", null);
         final Main self = this;
         new Thread(new Runnable() {

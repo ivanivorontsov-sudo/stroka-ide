@@ -23,7 +23,9 @@ public class Main extends Activity {
         root.setPadding(p, p, p, p);
 
         TextView title = new TextView(this);
-        title.setText("Калькулятор");
+        title.setText("""
+            Калькулятор
+            """.trim());
         title.setTextSize(22);
         root.addView(title);
 
@@ -56,12 +58,7 @@ public class Main extends Activity {
     private Button opButton(String label, final int op) {
         Button b = new Button(this);
         b.setText(label);
-        b.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                apply(op);
-            }
-        });
+        b.setOnClickListener(v -> apply(op));
         return b;
     }
 

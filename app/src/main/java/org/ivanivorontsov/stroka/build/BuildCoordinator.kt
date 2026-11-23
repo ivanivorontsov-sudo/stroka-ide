@@ -32,7 +32,8 @@ object BuildCoordinator {
             "    writeErr: function(s){ console.error(String(s)); },\n" +
             "    ask: function(q){ var v = window.prompt(q || '\u0412\u0432\u043e\u0434', ''); return v == null ? '' : v; },\n" +
             "    maxSteps: 5000000,\n" +
-            "    args: []\n" +
+            "    args: [],\n" +
+            "    system: window.StrokaSystem || null\n" +
             "  });\n" +
             "  (0, eval)(js);\n" +
             "})();\n"
@@ -51,6 +52,12 @@ object BuildCoordinator {
         if (needCopy) {
             ctx.assets.open("toolchain/android.jar").use { inp ->
                 jar.outputStream().use { out -> inp.copyTo(out) }
+            }
+        }
+        val lambdaStubs = File(store, "core-lambda-stubs.jar")
+        if (!lambdaStubs.isFile) {
+            ctx.assets.open("toolchain/core-lambda-stubs.jar").use { inp ->
+                lambdaStubs.outputStream().use { out -> inp.copyTo(out) }
             }
         }
         val native = File(ctx.applicationInfo.nativeLibraryDir)
@@ -79,6 +86,7 @@ object BuildCoordinator {
             stdText = try { assetText(ctx, "ponyatny/std.js") } catch (_: Exception) { "" },
             libDir = libDir,
             cacheDir = File(ctx.filesDir, "lib-cache"),
+            kotlinStdlib = File(libDir, "kotlin/kotlin-stdlib-2.4.0.jar").takeIf { it.isFile },
             setupStub = try { assetBytes(ctx, "templates/stroka-setup-stub.exe") } catch (_: Exception) { ByteArray(0) },
             qjsLinuxAmd64 = try { assetBytes(ctx, "templates/qjs-linux-x86_64") } catch (_: Exception) { ByteArray(0) }
         )
@@ -107,6 +115,7 @@ object BuildCoordinator {
             stdText = File(root, "app/src/main/assets/ponyatny/std.js").readText(Charsets.UTF_8),
             libDir = File(root, "app/src/main/assets/libs"),
             cacheDir = File(root, "app/build/lib-cache"),
+            kotlinStdlib = File(root, "app/src/main/assets/libs/kotlin/kotlin-stdlib-2.4.0.jar").takeIf { it.isFile },
             setupStub = File(root, "app/src/main/assets/templates/stroka-setup-stub.exe").let { if (it.isFile) it.readBytes() else ByteArray(0) },
             qjsLinuxAmd64 = File(root, "app/src/main/assets/templates/qjs-linux-x86_64").let { if (it.isFile) it.readBytes() else ByteArray(0) }
         )

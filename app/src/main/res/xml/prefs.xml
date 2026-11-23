@@ -29,9 +29,15 @@
         <EditTextPreference app:key="git_name" app:title="Имя автора коммитов" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <EditTextPreference app:key="git_email" app:title="E-mail автора" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
     </PreferenceCategory>
+    <PreferenceCategory app:title="GitHub Actions" app:iconSpaceReserved="false">
+        <Preference app:key="github_actions" app:title="Управление GitHub Actions" app:summary="Смотреть workflow и запустить сборку выбранной ветки" app:iconSpaceReserved="false" />
+    </PreferenceCategory>
     <PreferenceCategory app:title="Сборка на телефоне" app:iconSpaceReserved="false">
         <Preference app:key="build_output" app:title="Папка для готовых APK и EXE" app:summary="Сюда сохраняются собранные программы" app:iconSpaceReserved="false" />
+        <Preference app:key="signing_key_export" app:title="Экспортировать ключ подписи APK" app:summary="Сохранить PKCS#12 в выбранное место. Ключ позволяет выпускать обновления ваших приложений." app:iconSpaceReserved="false" />
+        <Preference app:key="signing_key_import" app:title="Импортировать ключ подписи APK" app:summary="Восстановить ранее сохранённый PKCS#12. Новый ключ изменит подпись будущих APK." app:iconSpaceReserved="false" />
         <SwitchPreferenceCompat app:key="ai_autofix" app:title="ИИ: исправлять ошибки сборки" app:summary="После неудачной сборки отправить ошибку в тот же чат, до 5 попыток" app:defaultValue="true" app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat app:key="ai_interface_assist" app:title="ИИ: адаптивно распознавать интерфейс чатов" app:summary="Если локальное распознавание не нашло поле ввода, отправить модели только подписи и размеры элементов страницы (без текста переписки и введённых значений)" app:defaultValue="true" app:iconSpaceReserved="false" />
         <EditTextPreference app:key="ai_base" app:title="Адрес API ИИ" app:summary="Совместимый с OpenAI, например https://api.deepseek.com" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <EditTextPreference app:key="ai_model" app:title="Модель ИИ" app:defaultValue="deepseek-chat" app:useSimpleSummaryProvider="true" app:iconSpaceReserved="false" />
         <Preference app:key="ai_key" app:title="Ключ API ИИ" app:iconSpaceReserved="false" />
