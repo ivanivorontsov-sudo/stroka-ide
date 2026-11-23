@@ -63,7 +63,9 @@ object AiWebChat {
           var best=candidates[0];
           if(!best||best.score<2)return JSON.stringify({status:'NO_COMPOSER',candidates:candidates.slice(0,5).map(function(x){return x.label;})});
           var el=best.e;
-          window.__strokaBefore=window.__strokaSnapshot?window.__strokaSnapshot():{count:0,last:''};
+          var oldNodes=Array.from(document.querySelectorAll('[data-message-author-role=assistant],[data-author=assistant],[data-role=assistant],[role=article],[data-testid*=conversation-turn],main article,main [class*=message],main [class*=markdown]')).filter(visible);
+          var oldTexts=oldNodes.map(function(e){return (e.innerText||e.textContent||'').replace(/\\s+/g,' ').trim();}).filter(Boolean);
+          window.__strokaBefore={count:oldTexts.length,last:oldTexts.length?oldTexts[oldTexts.length-1]:''};
           window.__strokaPrompt=prompt;
           el.focus();
           if(el.tagName==='TEXTAREA'||el.tagName==='INPUT'){
@@ -146,7 +148,7 @@ object AiWebChat {
           var stop=Array.from(document.querySelectorAll('button,[role=button]')).some(function(e){if(!visible(e))return false;var t=(e.getAttribute('aria-label')||'')+' '+(e.innerText||'');return /stop generating|stop response|остановить генерацию|остановить/i.test(t);});
           var busy=stop||!!document.querySelector('[aria-busy=true],[data-is-streaming=true],[class*=typing-indicator],[class*=streaming]');
           var before=window.__strokaBefore||{count:0,last:''};
-          var fresh=!!last&&(count>before.count||last!==before.last)&&last!==norm(window.__strokaPrompt);
+          var fresh=!!last&&last!==before.last&&last!==norm(window.__strokaPrompt);
           var login=!!document.querySelector('input[type=password]')||(!composer()&&/sign in|log in|войти|создать аккаунт|continue with google/i.test((document.body.innerText||'').slice(0,2500)));
           return JSON.stringify({text:last,busy:busy,login:login,composer:composer(),count:count,before:before.count,fresh:fresh});
         })()"""
