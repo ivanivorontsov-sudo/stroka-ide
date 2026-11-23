@@ -123,7 +123,7 @@ class AiChatActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 pageLoaded = false
-                if (pageLatch == null) pageLatch = CountDownLatch(1)
+                if (pageLatch == null || pageLatch?.count == 0L) pageLatch = CountDownLatch(1)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                 pageLoaded = true
@@ -299,6 +299,7 @@ class AiChatActivity : AppCompatActivity() {
         if (firstTurn && !isWeb) thread.messages.add(0, AiMessage("system", initialContext))
         store.save(threads)
         io.execute {
+            var webPromptSubmitted = false
             try {
                 val raw = if (isWeb) {
                     val p = provider ?: AiWebChat.providers.first { it.id == thread.providerId }
@@ -307,7 +308,9 @@ class AiChatActivity : AppCompatActivity() {
                     val prompt = if (initialContext.isNotBlank()) initialContext + "\n\nЗАДАНИЕ ПОЛЬЗОВАТЕЛЯ:\n" + text else text + "\n\nВерни только JSON по ранее заданной схеме."
                     val inserted = evalJsBlocking(AiWebChat.injectScript(prompt))
                     if (inserted == "NO_INPUT") throw AiExceptionForLogin()
-                    evalJsBlocking(AiWebChat.sendScript())
+                    val sendResult = evalJsBlocking(AiWebChat.sendScript())
+                    if (sendResult == "NO_INPUT") throw AiExceptionForLogin()
+                    webPromptSubmitted = true
                     var last = ""
                     var stableSince = System.currentTimeMillis()
                     var answer = ""
@@ -355,7 +358,7 @@ class AiChatActivity : AppCompatActivity() {
                 }
             } catch (e: AiExceptionForLogin) {
                 main.post {
-                    if (thread.messages.lastOrNull()?.role == "user") thread.messages.removeAt(thread.messages.lastIndex)
+                    if (!webPromptSubmitted && thread.messages.lastOrNull()?.role == "user") thread.messages.removeAt(thread.messages.lastIndex)
                     store.save(threads)
                     setBusy(false)
                     append("Нужен вход в аккаунт ${provider?.name ?: "ИИ"}. Нажмите «Войти», завершите вход и повторите запрос.\n\n")
