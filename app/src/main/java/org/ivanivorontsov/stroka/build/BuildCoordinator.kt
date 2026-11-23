@@ -79,6 +79,7 @@ object BuildCoordinator {
             stdText = try { assetText(ctx, "ponyatny/std.js") } catch (_: Exception) { "" },
             libDir = libDir,
             cacheDir = File(ctx.filesDir, "lib-cache"),
+            kotlinStdlib = File(libDir, "kotlin/kotlin-stdlib-2.4.0.jar").takeIf { it.isFile },
             setupStub = try { assetBytes(ctx, "templates/stroka-setup-stub.exe") } catch (_: Exception) { ByteArray(0) },
             qjsLinuxAmd64 = try { assetBytes(ctx, "templates/qjs-linux-x86_64") } catch (_: Exception) { ByteArray(0) }
         )
@@ -107,6 +108,7 @@ object BuildCoordinator {
             stdText = File(root, "app/src/main/assets/ponyatny/std.js").readText(Charsets.UTF_8),
             libDir = File(root, "app/src/main/assets/libs"),
             cacheDir = File(root, "app/build/lib-cache"),
+            kotlinStdlib = File(root, "app/src/main/assets/libs/kotlin/kotlin-stdlib-2.4.0.jar").takeIf { it.isFile },
             setupStub = File(root, "app/src/main/assets/templates/stroka-setup-stub.exe").let { if (it.isFile) it.readBytes() else ByteArray(0) },
             qjsLinuxAmd64 = File(root, "app/src/main/assets/templates/qjs-linux-x86_64").let { if (it.isFile) it.readBytes() else ByteArray(0) }
         )
