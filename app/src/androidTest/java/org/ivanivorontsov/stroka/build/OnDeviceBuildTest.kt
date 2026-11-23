@@ -106,8 +106,8 @@ class OnDeviceBuildTest {
             }
 
             tap("7")
-            tap("5")
             tap("+")
+            tap("5")
             tap("=")
             assertTrue(
                 "Понятный calculator did not calculate 7 + 5",
