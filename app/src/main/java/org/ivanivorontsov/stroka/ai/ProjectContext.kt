@@ -46,7 +46,9 @@ object ProjectContext {
         walk(base)
         currentFile?.let { current ->
             val canonical = try { current.canonicalFile } catch (_: Exception) { null }
-            if (canonical != null && canonical.isFile && canonical.extension.lowercase() in allowed && files.none { it == canonical }) {
+            val lowerName = canonical?.name?.lowercase().orEmpty()
+            val sensitive = lowerName in excludedFiles || listOf("secret", "credential", "password", "token", "keystore").any { it in lowerName }
+            if (canonical != null && canonical.isFile && !sensitive && canonical.extension.lowercase() in allowed && files.none { it == canonical }) {
                 files.add(0, canonical)
             }
         }
