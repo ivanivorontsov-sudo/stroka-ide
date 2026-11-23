@@ -23,6 +23,7 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.ValueCallback;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.Toast;
@@ -34,6 +35,9 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 public class Main extends Activity {
+    private static final int FILE_CHOOSER_REQUEST = 4201;
+    private ValueCallback<Uri[]> filePathCallback;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,8 +46,25 @@ public class Main extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(true);
         web.addJavascriptInterface(new SystemBridge(this), "StrokaSystem");
         web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (filePathCallback != null) filePathCallback.onReceiveValue(null);
+                filePathCallback = callback;
+                try {
+                    Intent picker = params.createIntent();
+                    startActivityForResult(picker, FILE_CHOOSER_REQUEST);
+                    return true;
+                } catch (Exception error) {
+                    filePathCallback = null;
+                    callback.onReceiveValue(null);
+                    Toast.makeText(Main.this, "Не удалось открыть галерею", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+            }
+
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
                 new AlertDialog.Builder(Main.this)
@@ -117,6 +138,28 @@ public class Main extends Activity {
             }
         });
         setContentView(root);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FILE_CHOOSER_REQUEST) {
+            if (filePathCallback != null) {
+                Uri[] result = (resultCode == RESULT_OK && data != null && data.getData() != null)
+                        ? new Uri[] { data.getData() } : null;
+                filePathCallback.onReceiveValue(result);
+                filePathCallback = null;
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (filePathCallback != null) {
+            filePathCallback.onReceiveValue(null);
+            filePathCallback = null;
+        }
+        super.onDestroy();
     }
 
     /** Deliberately small, explicit Android API surface for programs written in Ponyatny. */
