@@ -11,6 +11,8 @@ class EcjWithoutJavaxCompilerTest {
         val root = PonyatnyCalculatorBuildTest.locateRoot()
         val boot = File(root, "app/src/main/assets/toolchain/android.jar")
         assertTrue("Нужен android.jar", boot.isFile)
+        val lambdaStubs = File(root, "app/src/main/assets/toolchain/core-lambda-stubs.jar")
+        assertTrue("Нужен core-lambda-stubs.jar", lambdaStubs.isFile)
         val work = File(root, "app/build/test-ecj-no-compiler")
         work.deleteRecursively()
         work.mkdirs()
@@ -47,7 +49,8 @@ class EcjWithoutJavaxCompilerTest {
             "org.ivanivorontsov.stroka.build.EcjLimitedCompileMain",
             src.absolutePath,
             boot.absolutePath,
-            out.absolutePath
+            out.absolutePath,
+            lambdaStubs.absolutePath
         )
         pb.redirectErrorStream(true)
         val proc = pb.start()
@@ -73,7 +76,7 @@ object EcjLimitedCompileMain {
         }
 
         try {
-            JavaCompile.compile(listOf(File(args[0])), File(args[1]), File(args[2]))
+            JavaCompile.compile(listOf(File(args[0])), File(args[1]), File(args[2]), lambdaStubs = File(args[3]))
             if (!File(args[2], "Hello.class").isFile) {
                 System.err.println("NO_CLASS")
                 kotlin.system.exitProcess(2)
