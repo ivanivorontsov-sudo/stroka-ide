@@ -66,6 +66,7 @@ class SettingsActivity : AppCompatActivity() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.prefs, rootKey)
             findPreference<Preference>("licenses")?.setOnPreferenceClickListener { showLicenses(); true }
+            findPreference<Preference>("github_actions")?.setOnPreferenceClickListener { startActivity(android.content.Intent(requireContext(), GitHubActionsActivity::class.java)); true }
             val prefs = Prefs(requireContext())
             findPreference<Preference>("theme")?.setOnPreferenceChangeListener { _, _ ->
                 view?.post { prefs.applyTheme() }
