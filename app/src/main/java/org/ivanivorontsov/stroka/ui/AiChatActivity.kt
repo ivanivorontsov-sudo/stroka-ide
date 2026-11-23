@@ -332,7 +332,11 @@ class AiChatActivity : AppCompatActivity() {
         val result = JSONObject(answer.substring(start, end + 1))
         val index = result.optInt("index", -1)
         val confidence = result.optDouble("confidence", 0.0)
-        return index.takeIf { it >= 0 && confidence >= 0.72 }
+        val candidates = try { JSONObject(candidatesJson).optJSONArray("candidates") } catch (_: Exception) { null } ?: return null
+        val selected = candidates.optJSONObject(index) ?: return null
+        val identity = (selected.optString("label") + " " + selected.optString("type") + " " + selected.optString("role")).lowercase()
+        if (Regex("search|поиск|email|e-mail|password|парол|login|войти|код подтверждения").containsMatchIn(identity)) return null
+        return index.takeIf { confidence >= 0.72 }
     }
 
     private fun turn() {
