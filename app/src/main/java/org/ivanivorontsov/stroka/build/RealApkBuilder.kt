@@ -18,7 +18,10 @@ object RealApkBuilder {
         log: (String) -> Unit = {},
         extraJars: List<File> = emptyList(),
         extras: Map<String, ByteArray> = emptyMap(),
-        extractNativeLibs: Boolean = false
+        extractNativeLibs: Boolean = false,
+        kotlinSources: List<File> = emptyList(),
+        kotlinStdlib: File? = null,
+        activityClass: String = "Main"
     ): File {
         val err = toolchain.check()
         if (err != null) throw BuildException(err)
@@ -35,7 +38,9 @@ object RealApkBuilder {
         log("Готовлю проект $pkg")
         val pkgDir = File(src, pkg.replace('.', '/'))
         pkgDir.mkdirs()
-        File(pkgDir, "Main.java").writeText(mainJava.replace("__PACKAGE__", pkg), Charsets.UTF_8)
+        if (mainJava.isNotBlank()) {
+            File(pkgDir, "Main.java").writeText(mainJava.replace("__PACKAGE__", pkg), Charsets.UTF_8)
+        }
         val values = File(res, "values")
         values.mkdirs()
         File(values, "strings.xml").writeText(
@@ -50,7 +55,7 @@ object RealApkBuilder {
         mip.mkdirs()
         File(mip, "ic_launcher.png").writeBytes(PngIcon.launcher())
         val manifest = File(work, "AndroidManifest.xml")
-        manifest.writeText(manifestXml(pkg, versionName, versionCode, extractNativeLibs), Charsets.UTF_8)
+        manifest.writeText(manifestXml(pkg, versionName, versionCode, extractNativeLibs, activityClass), Charsets.UTF_8)
         for ((name, data) in www) {
             val f = File(assets, name.replace('\\', '/'))
             f.parentFile?.mkdirs()
@@ -87,11 +92,17 @@ object RealApkBuilder {
 
         log("Компилирую Java")
         val sources = (gen.walkTopDown() + src.walkTopDown()).filter { it.isFile && it.name.endsWith(".java") }.toList()
-        JavaCompile.compile(sources, toolchain.androidJar, classes, extraJars)
+        if (sources.isNotEmpty()) JavaCompile.compile(sources, toolchain.androidJar, classes, extraJars)
+        if (kotlinSources.isNotEmpty()) {
+            val stdlib = kotlinStdlib ?: throw BuildException("Для Kotlin не найден kotlin-stdlib.")
+            log("Компилирую Kotlin/JVM")
+            KotlinCompile.compile(kotlinSources, toolchain.androidJar, stdlib, classes, listOf(classes) + extraJars)
+        }
 
         log("d8: DEX")
         val classFiles = classes.walkTopDown().filter { it.isFile && it.name.endsWith(".class") }.toList()
-        val dex = Dexer.toDex(classFiles, toolchain.androidJar, out, extraJars)
+        val dexJars = extraJars + listOfNotNull(kotlinStdlib)
+        val dex = Dexer.toDex(classFiles, toolchain.androidJar, out, dexJars)
 
         log("Добавляю classes.dex")
         val withDex = File(out, "with-dex.apk")
@@ -129,7 +140,7 @@ object RealApkBuilder {
         return outApk
     }
 
-    fun manifestXml(pkg: String, versionName: String, versionCode: Int, extractNativeLibs: Boolean = false): String = """
+    fun manifestXml(pkg: String, versionName: String, versionCode: Int, extractNativeLibs: Boolean = false, activityClass: String = "Main"): String = """
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="${escXml(pkg)}"
@@ -137,7 +148,7 @@ object RealApkBuilder {
     android:versionName="${escXml(versionName)}">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/>
     <application android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:allowBackup="false" android:usesCleartextTraffic="false" android:extractNativeLibs="${if (extractNativeLibs) "true" else "false"}">
-        <activity android:name=".Main" android:exported="true" android:theme="@android:style/Theme.DeviceDefault.NoActionBar" android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|density" android:windowSoftInputMode="adjustResize">
+        <activity android:name="${escXml(if (activityClass.contains('.')) activityClass else ".$activityClass")}" android:exported="true" android:theme="@android:style/Theme.DeviceDefault.NoActionBar" android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|density" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
