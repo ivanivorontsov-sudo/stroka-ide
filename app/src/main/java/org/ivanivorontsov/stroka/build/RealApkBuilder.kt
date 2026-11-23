@@ -151,6 +151,8 @@ object RealApkBuilder {
     package="${escXml(pkg)}"
     android:versionCode="$versionCode"
     android:versionName="${escXml(versionName)}">
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/>
     <application android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:allowBackup="false" android:usesCleartextTraffic="false" android:extractNativeLibs="${if (extractNativeLibs) "true" else "false"}">
         <activity android:name="${escXml(if (activityClass.contains('.')) activityClass else ".$activityClass")}" android:exported="true" android:theme="@android:style/Theme.DeviceDefault.NoActionBar" android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|density" android:windowSoftInputMode="adjustResize">
