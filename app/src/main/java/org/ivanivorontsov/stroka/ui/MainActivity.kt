@@ -337,9 +337,13 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             AiBridge.pendingFiles = null
             var activeChanged = false
             for (index in docs.indices) {
-                val localPath = (docs[index].ref as? DocRef.Local)?.let { File(it.path).canonicalPath }
-                if (localPath != null && changed.containsKey(localPath)) {
-                    val value = changed[localPath]
+                val ref = docs[index].ref
+                val key = when (ref) {
+                    is DocRef.Local -> try { File(ref.path).canonicalPath } catch (_: Exception) { null }
+                    is DocRef.Saf -> "saf:${ref.uri}"
+                }
+                if (key != null && changed.containsKey(key)) {
+                    val value = changed[key]
                     docs[index].text = value.orEmpty()
                     docs[index].dirty = false
                     if (index == current) activeChanged = true
@@ -1749,16 +1753,25 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             i.putExtra(AiChatActivity.EXTRA_CODE, d.text)
             i.putExtra(AiChatActivity.EXTRA_NAME, d.name)
             i.putExtra(AiChatActivity.EXTRA_LANG, d.lang.name)
-            val local = (d.ref as? DocRef.Local)?.let { File(it.path) }
-            if (local != null) {
-                val parent = local.parentFile
-                val root = parent?.let { dir ->
-                    generateSequence(dir) { it.parentFile }.firstOrNull { it.parentFile == projectsDir } ?: dir
+            when (val ref = d.ref) {
+                is DocRef.Local -> {
+                    val local = File(ref.path)
+                    val parent = local.parentFile
+                    val root = parent?.let { dir -> generateSequence(dir) { it.parentFile }.firstOrNull { it.parentFile == projectsDir } ?: dir }
+                    if (root != null) {
+                        i.putExtra(AiChatActivity.EXTRA_PROJECT_ROOT, root.canonicalPath)
+                        val snapshot = ProjectContext.collect(root, local)
+                        if (snapshot.isNotBlank()) i.putExtra(AiChatActivity.EXTRA_PROJECT_CONTEXT, snapshot)
+                    }
                 }
-                if (root != null) {
-                    i.putExtra(AiChatActivity.EXTRA_PROJECT_ROOT, root.canonicalPath)
-                    val snapshot = ProjectContext.collect(root, local)
-                    if (snapshot.isNotBlank()) i.putExtra(AiChatActivity.EXTRA_PROJECT_CONTEXT, snapshot)
+                is DocRef.Saf -> {
+                    val tree = ref.treeUri
+                    if (!tree.isNullOrBlank()) {
+                        val treeUri = Uri.parse(tree)
+                        i.putExtra(AiChatActivity.EXTRA_PROJECT_SAF_URI, tree)
+                        val snapshot = ProjectContext.collectSaf(this, treeUri, Uri.parse(ref.uri))
+                        if (snapshot.isNotBlank()) i.putExtra(AiChatActivity.EXTRA_PROJECT_CONTEXT, snapshot)
+                    }
                 }
             }
         }
