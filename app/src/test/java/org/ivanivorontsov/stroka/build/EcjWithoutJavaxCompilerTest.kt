@@ -38,7 +38,7 @@ class EcjWithoutJavaxCompilerTest {
 
         val pb = ProcessBuilder(
             java.absolutePath,
-            "--limit-modules", "java.base,jdk.unsupported,java.logging",
+            "--limit-modules", "java.base,jdk.unsupported,java.logging,java.xml,java.desktop",
             "-cp", cp,
             "org.ivanivorontsov.stroka.build.EcjLimitedCompileMain",
             src.absolutePath,
@@ -50,7 +50,7 @@ class EcjWithoutJavaxCompilerTest {
         val output = proc.inputStream.bufferedReader().use { it.readText() }
         val code = proc.waitFor()
         assertTrue(
-            "ECJ без модуля java.compiler (как на ART), exit=$code:\n$output",
+            "ECJ без модуля java.compiler (как на ART), exit=$code:\n$output\nclasspath=$cp",
             code == 0 && output.contains("OK")
         )
         assertTrue(File(out, "Hello.class").isFile)
