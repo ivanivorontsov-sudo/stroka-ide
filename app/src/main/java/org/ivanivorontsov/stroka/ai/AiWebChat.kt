@@ -31,7 +31,11 @@ object AiWebChat {
         AiChatProvider("alice", "Алиса", "https://alice.yandex.ru/"),
         AiChatProvider("you", "You.com", "https://you.com/"),
         AiChatProvider("duck", "Duck.ai", "https://duck.ai/"),
-        AiChatProvider("pi", "Pi", "https://pi.ai/")
+        AiChatProvider("pi", "Pi", "https://pi.ai/"),
+        AiChatProvider("huggingchat", "HuggingChat", "https://huggingface.co/chat/"),
+        AiChatProvider("openrouter", "OpenRouter", "https://openrouter.ai/chat"),
+        AiChatProvider("manus", "Manus", "https://manus.im/"),
+        AiChatProvider("notebook", "Gemini Notebook", "https://notebooklm.google.com/")
     )
 
     /** A live semantic inventory, useful for adaptation and actionable diagnostics. */
