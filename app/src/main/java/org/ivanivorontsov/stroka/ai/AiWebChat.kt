@@ -26,7 +26,6 @@ object AiWebChat {
         AiChatProvider("perplexity", "Perplexity", "https://www.perplexity.ai/"),
         AiChatProvider("poe", "Poe", "https://poe.com/"),
         AiChatProvider("mistral", "Le Chat (Mistral)", "https://chat.mistral.ai/"),
-        AiChatProvider("meta", "Meta AI", "https://www.meta.ai/"),
         AiChatProvider("copilot", "Copilot", "https://copilot.microsoft.com/"),
         AiChatProvider("alice", "Алиса", "https://alice.yandex.ru/"),
         AiChatProvider("you", "You.com", "https://you.com/"),
@@ -61,7 +60,6 @@ object AiWebChat {
         "perplexity" -> "[class*=prose],[class*=answer]"
         "poe" -> "[class*=Message_message],[class*=ChatMessage]"
         "mistral" -> "[class*=markdown],[class*=message-content]"
-        "meta" -> "[class*=message],[class*=markdown]"
         "alice" -> "[class*=markdown],[class*=message_assistant]"
         "copilot" -> "[class*=markdown],[class*=response]"
         else -> ""
@@ -156,7 +154,6 @@ object AiWebChat {
             "perplexity" -> "[class*=prose],[class*=answer]"
             "poe" -> "[class*=Message_message],[class*=ChatMessage]"
             "mistral" -> "[class*=markdown],[class*=message-content]"
-            "meta" -> "[class*=message],[class*=markdown]"
             "alice" -> "[class*=markdown],[class*=message_assistant]"
             "copilot" -> "[class*=markdown],[class*=response]"
             else -> ""
