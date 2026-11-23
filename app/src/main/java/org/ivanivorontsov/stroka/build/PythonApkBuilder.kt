@@ -16,7 +16,8 @@ object PythonApkBuilder {
         outApk: File,
         log: (String) -> Unit = {},
         versionName: String = "1.0",
-        versionCode: Int = 1
+        versionCode: Int = 1,
+        iconPng: ByteArray? = null
     ): File {
         log("Собираю Python-приложение")
         val runtime = findRuntimeApk(assets)
@@ -77,7 +78,8 @@ object PythonApkBuilder {
             log = log,
             extraJars = jars,
             extras = extras,
-            extractNativeLibs = true
+            extractNativeLibs = true,
+            iconPng = iconPng
         )
     }
 
