@@ -67,7 +67,7 @@ class JsRunner(private val ctx: Context) {
                 try {
                     val vibrator = if (Build.VERSION.SDK_INT >= 31)
                         ctx.getSystemService(VibratorManager::class.java).defaultVibrator
-                    else @Suppress("DEPRECATION") (ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
+                    else (ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
                     if (vibrator.hasVibrator()) vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
                 } catch (_: Exception) { }
             }
@@ -118,13 +118,15 @@ class JsRunner(private val ctx: Context) {
         } catch (_: Exception) { -1 }
 
         @JavascriptInterface
-        fun networkAvailable(): Boolean = try {
-            val manager = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            val network = manager.activeNetwork ?: return false
-            val caps = manager.getNetworkCapabilities(network) ?: return false
-            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-        } catch (_: Exception) { false }
+        fun networkAvailable(): Boolean {
+            return try {
+                val manager = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val network = manager.activeNetwork ?: return false
+                val caps = manager.getNetworkCapabilities(network) ?: return false
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            } catch (_: Exception) { false }
+        }
 
         @JavascriptInterface
         fun openSettings(): Boolean {
