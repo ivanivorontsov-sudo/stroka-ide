@@ -20,9 +20,7 @@ class EcjWithoutJavaxCompilerTest {
                 "    public static String hi() {\n" +
                 "        Runnable task = () -> {};\n" +
                 "        task.run();\n" +
-                "        return \"\"\"\n" +
-                "            ok\n" +
-                "            \"\"\";\n" +
+                "        return \"ok\";\n" +
                 "    }\n" +
                 "}\n"
         )
