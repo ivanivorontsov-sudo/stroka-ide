@@ -2,7 +2,7 @@ name: Build signed APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/ide-toolchain-upgrade]
   workflow_dispatch:
 
 permissions:
