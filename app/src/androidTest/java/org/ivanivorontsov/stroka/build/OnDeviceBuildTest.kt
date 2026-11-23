@@ -68,7 +68,6 @@ class OnDeviceBuildTest {
             val secondField = second ?: error("Second input field missing")
             firstField.setText("7")
             secondField.setText("5")
-            device.pressBack()
 
             fun tapAndExpect(button: String, expected: String) {
                 val target = device.wait(Until.findObject(By.text(button)), 5_000)
@@ -82,7 +81,6 @@ class OnDeviceBuildTest {
             tapAndExpect("Умножить", "35")
             tapAndExpect("Разделить", "1.4")
             secondField.setText("0")
-            device.pressBack()
             tapAndExpect("Разделить", "Деление на ноль")
         } finally {
             runCatching { device.executeShellCommand("am force-stop $packageName") }
