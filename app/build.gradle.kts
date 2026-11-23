@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -137,9 +139,9 @@ val stageAndroidLambdaStubs by tasks.registering {
     doLast {
         val sdkPath = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
             ?: throw GradleException("ANDROID_HOME/ANDROID_SDK_ROOT is required to stage core-lambda-stubs.jar")
-        val buildTools = java.io.File(sdkPath, "build-tools")
+        val buildTools = File(sdkPath, "build-tools")
         val source = buildTools.listFiles()
-            ?.map { java.io.File(it, "core-lambda-stubs.jar") }
+            ?.map { File(it, "core-lambda-stubs.jar") }
             ?.filter { it.isFile }
             ?.maxByOrNull { it.parentFile.name }
             ?: throw GradleException("Android SDK build-tools does not contain core-lambda-stubs.jar")
