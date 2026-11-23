@@ -11,7 +11,8 @@
       writeErr: function (s) { log(String(s), true); },
       ask: function (q) { return window.prompt(q || "Ввод", "") || ""; },
       maxSteps: 5000000,
-      args: []
+      args: [],
+      system: window.StrokaSystem || null
     };
   }
   root.StrokaRuntime = { showErr: showErr, makeIo: makeIo };
