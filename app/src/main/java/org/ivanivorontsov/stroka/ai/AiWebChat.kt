@@ -84,6 +84,7 @@ object AiWebChat {
         return """(function(){
       function deepAll(sel){var out=[];function walk(root){Array.from(root.querySelectorAll('*')).forEach(function(e){if(e.matches(sel))out.push(e);if(e.shadowRoot)walk(e.shadowRoot);});}walk(document);return out;}
           var prompt=$p;
+          var forcedIndex=$forced;
           function visible(e){if(!e)return false;var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>8&&r.height>8&&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.02;}
           function label(e){var a=[e.getAttribute('aria-label'),e.getAttribute('placeholder'),e.getAttribute('data-placeholder'),e.getAttribute('title'),e.getAttribute('name')];if(e.labels)Array.from(e.labels).forEach(function(l){a.push(l.innerText);});var p=e.parentElement;if(p)a.push(p.getAttribute('aria-label'),p.innerText);return a.filter(Boolean).join(' ').toLowerCase();}
           var candidates=Array.from(deepAll('textarea,input:not([type=password]),[contenteditable=true],[role=textbox]')).filter(visible).map(function(e,index){
