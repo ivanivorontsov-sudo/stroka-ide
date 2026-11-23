@@ -1634,6 +1634,11 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     private fun startBuild(kind: String) {
         if (kind != "apk") { performBuild(kind); return }
+        val appName = EditText(this).apply {
+            setSingleLine(true)
+            hint = "Например Мой калькулятор"
+            setText(prefs.buildAppName)
+        }
         val version = EditText(this).apply {
             setSingleLine(true)
             hint = "Например 1.2.0"
@@ -1658,6 +1663,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(8), dp(24), 0)
+            addView(TextView(this@MainActivity).apply { text = "Название приложения" })
+            addView(appName)
             addView(TextView(this@MainActivity).apply { text = "Версия приложения" })
             addView(version)
             addView(TextView(this@MainActivity).apply { text = "Version code (увеличивайте при обновлении)" })
@@ -1671,12 +1678,15 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             .setTitle("Параметры сборки APK")
             .setView(content)
             .setPositiveButton("Собрать") { _, _ ->
+                val name = appName.text.toString().trim()
                 val v = version.text.toString().trim()
                 val n = code.text.toString().toIntOrNull()
-                if (!v.matches(Regex("[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}")) || n == null || n < 1) {
-                    toast("Проверьте версию и положительный version code")
+                if (name.isBlank() || name.length > 60 || name.any { it == '/' || it == 92.toChar() || it.isISOControl() } ||
+                    !v.matches(Regex("[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}")) || n == null || n < 1) {
+                    toast("Укажите название до 60 символов без разделителей пути, корректную версию и version code")
                     return@setPositiveButton
                 }
+                prefs.buildAppName = name
                 prefs.buildVersionName = v
                 prefs.buildVersionCode = n
                 performBuild(kind)
@@ -1684,6 +1694,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             .setNegativeButton("Отмена", null)
             .create()
         photo.setOnClickListener {
+            prefs.buildAppName = appName.text.toString().trim().ifBlank { prefs.buildAppName }
             prefs.buildVersionName = version.text.toString().trim().ifBlank { prefs.buildVersionName }
             prefs.buildVersionCode = code.text.toString().toIntOrNull() ?: prefs.buildVersionCode
             iconOptionsKind = kind
@@ -1730,7 +1741,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val source = d.text
         val fileName = if (d.lang.exts.isEmpty() || d.lang.exts.any { d.name.lowercase().endsWith(".$it") }) d.name
             else d.name.substringBeforeLast('.') + "." + d.lang.exts.first()
-        val label = d.name.substringBeforeLast('.').ifBlank { "Программа" }
+        val label = prefs.buildAppName.trim().ifBlank { d.name.substringBeforeLast('.').ifBlank { "Программа" } }
+        val safeFileLabel = label.map { if (it == '/' || it == 92.toChar() || it == ':' || it == '*' || it == '?' || it == '"' || it == '<' || it == '>' || it == '|') '_' else it }.joinToString("").trim().take(60).ifBlank { "Программа" }
         val t0 = System.nanoTime()
         io.execute {
             try {
@@ -1740,7 +1752,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 work.mkdirs()
                 val env = compileEnvFor(d)
                 if (kind == "apk") {
-                    val tmp = File(work, "$label-${prefs.buildVersionName}.apk")
+                    val tmp = File(work, safeFileLabel + "-" + prefs.buildVersionName + ".apk")
                     val iconPng = when {
                         prefs.buildIconUri.isNotBlank() -> IconComposer.fromUri(this@MainActivity, Uri.parse(prefs.buildIconUri))
                         prefs.buildIconEmoji.isNotBlank() -> IconComposer.emojiPng(prefs.buildIconEmoji)
@@ -1758,7 +1770,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                         try { BuildCoordinator.mimeOpen(this@MainActivity, uri) } catch (_: Exception) {}
                     }
                 } else {
-                    val tmp = File(work, "$label.exe")
+                    val tmp = File(work, safeFileLabel + ".exe")
                     val exe = OneFileBuild.buildExe(source, fileName, label, work, assets, tmp, { msg ->
                         main.post { appendConsole(msg + "\n", Kind.INFO) }
                     }, env)
