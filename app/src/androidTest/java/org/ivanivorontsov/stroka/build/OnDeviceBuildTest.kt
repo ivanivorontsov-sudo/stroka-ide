@@ -49,6 +49,7 @@ class OnDeviceBuildTest {
         // Install the exact Java APK produced by the on-device builder and exercise its
         // real Activity callbacks, rather than only checking that DEX files exist.
         verifyJavaCalculatorCallbacks(inst, javaApk)
+        verifyPonyatnyCalculatorCallbacks(inst, ponApk)
     }
 
     private fun verifyJavaCalculatorCallbacks(inst: android.app.Instrumentation, apk: File) {
@@ -87,4 +88,35 @@ class OnDeviceBuildTest {
             runCatching { device.executeShellCommand("pm uninstall $packageName") }
         }
     }
+    private fun verifyPonyatnyCalculatorCallbacks(inst: android.app.Instrumentation, apk: File) {
+        val device = UiDevice.getInstance(inst)
+        val packageName = ApkPacker.packageName("Калькулятор")
+        runCatching { device.executeShellCommand("pm uninstall $packageName") }
+        val install = device.executeShellCommand("pm install -r \"\${apk.absolutePath}\"")
+        assertTrue("Generated Понятный APK did not install: $install", install.contains("Success"))
+        try {
+            val launch = device.executeShellCommand("am start -n $packageName/.Main")
+            assertTrue("Generated Понятный Activity did not start: $launch", launch.contains("Starting"))
+            assertTrue("Понятный calculator screen did not appear", device.wait(Until.hasObject(By.text("Калькулятор")), 10_000))
+
+            fun tap(label: String) {
+                val target = device.wait(Until.findObject(By.text(label)), 5_000)
+                assertTrue("Понятный calculator button '$label' missing", target != null)
+                target!!.click()
+            }
+
+            tap("7")
+            tap("5")
+            tap("+")
+            tap("=")
+            assertTrue(
+                "Понятный calculator did not calculate 7 + 5",
+                device.wait(Until.hasObject(By.text("12")), 5_000)
+            )
+        } finally {
+            runCatching { device.executeShellCommand("am force-stop $packageName") }
+            runCatching { device.executeShellCommand("pm uninstall $packageName") }
+        }
+    }
+
 }
