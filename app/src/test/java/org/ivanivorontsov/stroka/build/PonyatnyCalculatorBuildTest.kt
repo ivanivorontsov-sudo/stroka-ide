@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import java.util.zip.ZipFile
 
 class PonyatnyCalculatorBuildTest {
     @Test
@@ -49,6 +50,17 @@ class PonyatnyCalculatorBuildTest {
             err = "aapt2 dump не прочитал Java APK."
         )
         assertTrue(dump.contains("application-label:'Калькулятор'"))
+        assertTrue(
+            "Android launcher must point at the source Activity package",
+            dump.contains("launchable-activity: name='org.stroka.app.jcalc.Main'")
+        )
+        val dexBytes = ZipFile(apk).use { zip ->
+            val entry = zip.getEntry("classes.dex") ?: error("Java APK has no classes.dex")
+            zip.getInputStream(entry).use { it.readBytes() }
+        }
+        val dexText = String(dexBytes, Charsets.ISO_8859_1)
+        assertTrue("Main Activity must be present in DEX", dexText.contains("Lorg/stroka/app/jcalc/Main;"))
+        assertTrue("Anonymous click listener must be present in DEX", dexText.contains("Lorg/stroka/app/jcalc/Main$1;"))
         copyEvidence(root, apk, "Калькулятор-java.apk")
     }
 
