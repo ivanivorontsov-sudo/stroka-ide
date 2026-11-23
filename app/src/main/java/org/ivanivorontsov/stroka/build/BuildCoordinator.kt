@@ -32,7 +32,8 @@ object BuildCoordinator {
             "    writeErr: function(s){ console.error(String(s)); },\n" +
             "    ask: function(q){ var v = window.prompt(q || '\u0412\u0432\u043e\u0434', ''); return v == null ? '' : v; },\n" +
             "    maxSteps: 5000000,\n" +
-            "    args: []\n" +
+            "    args: [],\n" +
+            "    system: window.StrokaSystem || null\n" +
             "  });\n" +
             "  (0, eval)(js);\n" +
             "})();\n"
