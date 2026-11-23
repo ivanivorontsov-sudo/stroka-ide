@@ -29,6 +29,7 @@ import android.widget.Toast;
 import android.view.View;
 import android.view.WindowInsets;
 import org.json.JSONObject;
+import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
@@ -127,18 +128,24 @@ public class Main extends Activity {
 
         @JavascriptInterface
         public void toast(String message) {
-            main.post(() -> Toast.makeText(activity, message == null ? "" : message, Toast.LENGTH_SHORT).show());
+            main.post(new Runnable() {
+                @Override public void run() {
+                    Toast.makeText(activity, message == null ? "" : message, Toast.LENGTH_SHORT).show();
+                }
+            });
         }
 
         @JavascriptInterface
         public boolean vibrate(long durationMs) {
             final long duration = Math.max(1L, Math.min(1000L, durationMs));
-            main.post(() -> {
-                try {
-                    Vibrator vibrator = (Vibrator) activity.getSystemService(Activity.VIBRATOR_SERVICE);
-                    if (vibrator != null && vibrator.hasVibrator())
-                        vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
-                } catch (Exception ignored) { }
+            main.post(new Runnable() {
+                @Override public void run() {
+                    try {
+                        Vibrator vibrator = (Vibrator) activity.getSystemService(Activity.VIBRATOR_SERVICE);
+                        if (vibrator != null && vibrator.hasVibrator())
+                            vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
+                    } catch (Exception ignored) { }
+                }
             });
             return true;
         }
@@ -149,9 +156,11 @@ public class Main extends Activity {
                 Uri uri = Uri.parse(value == null ? "" : value.trim());
                 String scheme = uri.getScheme();
                 if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) return false;
-                main.post(() -> {
-                    try { activity.startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
-                    catch (Exception e) { toast("Не удалось открыть ссылку"); }
+                main.post(new Runnable() {
+                    @Override public void run() {
+                        try { activity.startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
+                        catch (Exception e) { toast("Не удалось открыть ссылку"); }
+                    }
                 });
                 return true;
             } catch (Exception e) { return false; }
@@ -159,22 +168,26 @@ public class Main extends Activity {
 
         @JavascriptInterface
         public boolean copyText(String value) {
-            main.post(() -> {
-                try {
-                    ClipboardManager clipboard = (ClipboardManager) activity.getSystemService(Activity.CLIPBOARD_SERVICE);
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Строка", value == null ? "" : value));
-                } catch (Exception ignored) { }
+            main.post(new Runnable() {
+                @Override public void run() {
+                    try {
+                        ClipboardManager clipboard = (ClipboardManager) activity.getSystemService(Activity.CLIPBOARD_SERVICE);
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Строка", value == null ? "" : value));
+                    } catch (Exception ignored) { }
+                }
             });
             return true;
         }
 
         @JavascriptInterface
         public String clipboardText() {
-            FutureTask<String> task = new FutureTask<>(() -> {
-                ClipboardManager clipboard = (ClipboardManager) activity.getSystemService(Activity.CLIPBOARD_SERVICE);
-                if (clipboard == null || clipboard.getPrimaryClip() == null || clipboard.getPrimaryClip().getItemCount() == 0) return "";
-                CharSequence text = clipboard.getPrimaryClip().getItemAt(0).coerceToText(activity);
-                return text == null ? "" : text.toString();
+            FutureTask<String> task = new FutureTask<>(new Callable<String>() {
+                @Override public String call() {
+                    ClipboardManager clipboard = (ClipboardManager) activity.getSystemService(Activity.CLIPBOARD_SERVICE);
+                    if (clipboard == null || clipboard.getPrimaryClip() == null || clipboard.getPrimaryClip().getItemCount() == 0) return "";
+                    CharSequence text = clipboard.getPrimaryClip().getItemAt(0).coerceToText(activity);
+                    return text == null ? "" : text.toString();
+                }
             });
             main.post(task);
             try { return task.get(2, TimeUnit.SECONDS); }
@@ -214,9 +227,11 @@ public class Main extends Activity {
 
         @JavascriptInterface
         public boolean openSettings() {
-            main.post(() -> {
-                try { activity.startActivity(new Intent(Settings.ACTION_SETTINGS)); }
-                catch (Exception ignored) { }
+            main.post(new Runnable() {
+                @Override public void run() {
+                    try { activity.startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+                    catch (Exception ignored) { }
+                }
             });
             return true;
         }
