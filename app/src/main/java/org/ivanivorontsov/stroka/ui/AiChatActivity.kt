@@ -276,9 +276,11 @@ class AiChatActivity : AppCompatActivity() {
         if (thread.title == "Новый чат") thread.title = text.take(48)
         thread.messages += AiMessage("user", text)
         thread.updatedAt = System.currentTimeMillis()
-        store.save(threads)
         val isWeb = thread.providerId != "api"
-        val initialContext = if (thread.messages.count { it.role == "user" } == 1) buildInitialContext() else ""
+        val firstTurn = thread.messages.count { it.role == "user" } == 1
+        val initialContext = if (firstTurn) buildInitialContext() else ""
+        if (firstTurn && !isWeb) thread.messages.add(0, AiMessage("system", initialContext))
+        store.save(threads)
         io.execute {
             try {
                 val raw = if (isWeb) {
@@ -298,7 +300,7 @@ class AiChatActivity : AppCompatActivity() {
                         val poll = evalJsBlocking(AiWebChat.pollScript(p.id))
                         val obj = try { JSONObject(poll) } catch (_: Exception) { JSONObject() }
                         if (obj.optBoolean("login")) throw AiExceptionForLogin()
-                        val current = obj.optString("text")
+                        val current = if (obj.optBoolean("fresh")) obj.optString("text") else ""
                         val busy = obj.optBoolean("busy")
                         if (current.isNotBlank() && current != last) {
                             last = current
@@ -314,8 +316,6 @@ class AiChatActivity : AppCompatActivity() {
                     val prefs = Prefs(this)
                     val key = SecureStore(this).get("ai_key").orEmpty()
                     val messages = ArrayList<AiMessage>()
-                    if (thread.messages.count { it.role == "user" } == 1) messages += AiMessage("system", initialContext)
-                    else messages += AiMessage("system", structuredSystemPrompt())
                     messages += thread.messages
                     AiClient.chatStructured(prefs.aiBase, prefs.aiModel, key, messages)
                 }
