@@ -97,7 +97,7 @@ object RealApkBuilder {
 
         log("Компилирую Java")
         val sources = (gen.walkTopDown() + src.walkTopDown()).filter { it.isFile && it.name.endsWith(".java") }.toList()
-        if (sources.isNotEmpty()) JavaCompile.compile(sources, toolchain.androidJar, classes, extraJars)
+        if (sources.isNotEmpty()) JavaCompile.compile(sources, toolchain.androidJar, classes, extraJars, toolchain.coreLambdaStubs)
         if (kotlinSources.isNotEmpty()) {
             val stdlib = kotlinStdlib ?: throw BuildException("Для Kotlin не найден kotlin-stdlib.")
             log("Компилирую Kotlin/JVM")
