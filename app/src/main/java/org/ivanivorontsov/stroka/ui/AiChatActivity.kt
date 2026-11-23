@@ -355,13 +355,15 @@ class AiChatActivity : AppCompatActivity() {
                 }
             } catch (e: AiExceptionForLogin) {
                 main.post {
-                    send.isEnabled = true
+                    if (thread.messages.lastOrNull()?.role == "user") thread.messages.removeAt(thread.messages.lastIndex)
+                    store.save(threads)
+                    setBusy(false)
                     append("Нужен вход в аккаунт ${provider?.name ?: "ИИ"}. Нажмите «Войти», завершите вход и повторите запрос.\n\n")
                     openBrowserForLogin()
                 }
             } catch (e: Exception) {
                 main.post {
-                    send.isEnabled = true
+                    setBusy(false)
                     append("Ошибка: ${e.message}\n\n")
                     Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
                     scrollDown()
