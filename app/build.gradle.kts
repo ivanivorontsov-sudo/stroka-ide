@@ -118,7 +118,7 @@ dependencies {
     implementation("com.android.tools.build:apksig:8.7.3")
     // Android-compatible ECJ batch compiler. The dependency is needed both at
     // compile time (JavaCompile imports Main) and runtime (the app invokes ECJ).
-    implementation("org.eclipse.jdt:ecj:3.18.0")
+    implementation("org.eclipse.jdt:ecj:3.40.0")
     implementation("com.android.tools:r8:8.7.18")
     testImplementation("junit:junit:4.13.2")
     // Use a real JVM JSON implementation in local unit tests instead of the
@@ -142,9 +142,9 @@ val verifyEcjCompileDependency by tasks.registering {
     doLast {
         val compileClasspath = configurations.getByName("debugCompileClasspath")
         val ecjJar = compileClasspath.files.firstOrNull {
-            it.name == "ecj-3.18.0.jar" || it.name.startsWith("ecj-")
+            it.name == "ecj-3.40.0.jar" || it.name.startsWith("ecj-")
         } ?: throw GradleException(
-            "ECJ is missing from debugCompileClasspath. Resolved files: " +
+            "ECJ 3.40.0 is missing from debugCompileClasspath. Resolved files: " +
                 compileClasspath.files.joinToString { it.name }
         )
         val mainClass = zipTree(ecjJar).matching {
