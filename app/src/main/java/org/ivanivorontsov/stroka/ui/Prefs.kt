@@ -69,6 +69,14 @@ class Prefs(ctx: Context) {
         get() = sp.getInt("build_version_code", 1)
         set(v) = sp.edit().putInt("build_version_code", v.coerceAtLeast(1)).apply()
 
+    var buildIconUri: String
+        get() = sp.getString("build_icon_uri", "") ?: ""
+        set(v) = sp.edit().putString("build_icon_uri", v).apply()
+
+    var buildIconEmoji: String
+        get() = sp.getString("build_icon_emoji", "") ?: ""
+        set(v) = sp.edit().putString("build_icon_emoji", v).apply()
+
     var expanded: Set<String>
         get() = sp.getStringSet("tree_expanded", emptySet()) ?: emptySet()
         set(v) = sp.edit().putStringSet("tree_expanded", HashSet(v)).apply()
