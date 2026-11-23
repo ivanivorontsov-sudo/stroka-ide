@@ -33,7 +33,7 @@ object Templates {
         ),
         Template(
             "kotlin", "Kotlin: файл", mapOf(
-                "Main.kt" to "fun main() {\n    val names = listOf(\"Аня\", \"Борис\", \"Вика\")\n    for (name in names) {\n        println(\"Привет, \$name!\")\n    }\n}\n"
+                "Main.kt" to "import android.app.Activity\nimport android.os.Bundle\nimport android.widget.Button\nimport android.widget.LinearLayout\nimport android.widget.TextView\n\nclass Main : Activity() {\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        val root = LinearLayout(this)\n        root.orientation = LinearLayout.VERTICAL\n        val pad = (16 * resources.displayMetrics.density).toInt()\n        root.setPadding(pad, pad, pad, pad)\n\n        val message = TextView(this)\n        message.text = \"Привет из Kotlin!\"\n        message.textSize = 24f\n        root.addView(message)\n\n        val button = Button(this)\n        button.text = \"Нажми меня\"\n        button.setOnClickListener { message.text = \"Kotlin работает! Кнопка нажата.\" }\n        root.addView(button)\n        setContentView(root)\n    }\n}\n
             ), "Main.kt"
         ),
         Template(
@@ -48,7 +48,7 @@ object Templates {
         ),
         Template(
             "atari", "Atari 2600: 6502 asm", mapOf(
-                "game.asm" to "    processor 6502\n    include \"vcs.h\"\n\n    seg code\n    org \$F000\n\nReset:\n    sei\n    cld\n    ldx #\$FF\n    txs\n    lda #0\nClear:\n    sta 0,x\n    dex\n    bne Clear\n\nFrame:\n    lda #2\n    sta VSYNC\n    sta WSYNC\n    sta WSYNC\n    sta WSYNC\n    lda #0\n    sta VSYNC\n    ldx #37\nVBlank:\n    sta WSYNC\n    dex\n    bne VBlank\n    lda #0\n    sta VBLANK\n    ldx #192\nKernel:\n    stx COLUBK\n    sta WSYNC\n    dex\n    bne Kernel\n    lda #2\n    sta VBLANK\n    ldx #30\nOverscan:\n    sta WSYNC\n    dex\n    bne Overscan\n    jmp Frame\n\n    org \$FFFC\n    .word Reset\n    .word Reset\n"
+                "game.asm" to "    processor 6502\n\nVSYNC = \$00\nVBLANK = \$01\nWSYNC = \$02\nCOLUBK = \$09\n\n    seg code\n    org \$F000\n\nReset:\n    sei\n    cld\n    ldx #\$FF\n    txs\n    lda #0\nClear:\n    sta 0,x\n    dex\n    bne Clear\n\nFrame:\n    lda #2\n    sta VSYNC\n    sta WSYNC\n    sta WSYNC\n    sta WSYNC\n    lda #0\n    sta VSYNC\n    ldx #37\nVBlank:\n    sta WSYNC\n    dex\n    bne VBlank\n    lda #0\n    sta VBLANK\n    ldx #192\nKernel:\n    stx COLUBK\n    sta WSYNC\n    dex\n    bne Kernel\n    lda #2\n    sta VBLANK\n    ldx #30\nOverscan:\n    sta WSYNC\n    dex\n    bne Overscan\n    jmp Frame\n\n    org \$FFFC\n    .word Reset\n    .word Reset\n"
             ), "game.asm"
         ),
         Template(
