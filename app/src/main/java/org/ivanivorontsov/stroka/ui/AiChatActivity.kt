@@ -240,11 +240,17 @@ class AiChatActivity : AppCompatActivity() {
         chatControls.visibility = View.VISIBLE
         chatScroll.visibility = View.VISIBLE
         inputRow.visibility = View.VISIBLE
+        applyBtn.visibility = if (pendingPlan?.operations?.isNotEmpty() == true) View.VISIBLE else View.GONE
         updateControls()
         store.save(threads)
     }
 
     private fun loadWebPage(url: String) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            pageLoaded = false
+            webView.loadUrl(url)
+            return
+        }
         val latch = CountDownLatch(1)
         pageLatch = latch
         pageLoaded = false
