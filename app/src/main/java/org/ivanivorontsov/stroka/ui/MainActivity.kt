@@ -79,6 +79,7 @@ import org.ivanivorontsov.stroka.git.GitOps
 import org.ivanivorontsov.stroka.run.JsRunner
 import org.ivanivorontsov.stroka.run.PythonRunner
 import org.ivanivorontsov.stroka.voice.VoiceInput
+import org.ivanivorontsov.stroka.ai.ProjectContext
 import org.ivanivorontsov.stroka.build.BuildCoordinator
 import org.ivanivorontsov.stroka.build.CompileEnv
 import org.ivanivorontsov.stroka.build.BuildException
@@ -1615,6 +1616,15 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             i.putExtra(AiChatActivity.EXTRA_CODE, d.text)
             i.putExtra(AiChatActivity.EXTRA_NAME, d.name)
             i.putExtra(AiChatActivity.EXTRA_LANG, d.lang.name)
+            val local = (d.ref as? DocRef.Local)?.let { File(it.path) }
+            if (local != null) {
+                val parent = local.parentFile
+                val root = parent?.let { dir ->
+                    generateSequence(dir) { it.parentFile }.firstOrNull { it.parentFile == projectsDir } ?: dir
+                }
+                val snapshot = root?.let { ProjectContext.collect(it, local) }.orEmpty()
+                if (snapshot.isNotBlank()) i.putExtra(AiChatActivity.EXTRA_PROJECT_CONTEXT, snapshot)
+            }
         }
         startActivity(i)
     }
