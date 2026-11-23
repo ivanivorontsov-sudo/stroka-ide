@@ -1545,6 +1545,44 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     private fun startBuild(kind: String) {
+        val version = EditText(this).apply {
+            setSingleLine(true)
+            hint = "Например 1.2.0"
+            setText(prefs.buildVersionName)
+        }
+        val code = EditText(this).apply {
+            setSingleLine(true)
+            hint = "Положительное целое число"
+            setText(prefs.buildVersionCode.toString())
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), 0)
+            addView(TextView(this@MainActivity).apply { text = "Версия приложения" })
+            addView(version)
+            addView(TextView(this@MainActivity).apply { text = "Version code (должен расти при обновлении)" })
+            addView(code)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Параметры сборки APK")
+            .setView(content)
+            .setPositiveButton("Собрать") { _, _ ->
+                val v = version.text.toString().trim()
+                val n = code.text.toString().toIntOrNull()
+                if (!v.matches(Regex("[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}")) || n == null || n < 1) {
+                    toast("Проверьте версию и положительный version code")
+                    return@setPositiveButton
+                }
+                prefs.buildVersionName = v
+                prefs.buildVersionCode = n
+                performBuild(kind)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun performBuild(kind: String) {
         val d = docs.getOrNull(current) ?: run { toast("Откройте файл программы"); return }
         captureEditor(d)
         if (prefs.autosave) saveAllDirty()
