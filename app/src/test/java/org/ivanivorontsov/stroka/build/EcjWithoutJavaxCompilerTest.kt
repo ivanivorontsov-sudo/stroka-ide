@@ -1,5 +1,6 @@
 package org.ivanivorontsov.stroka.build
 
+import org.eclipse.jdt.internal.compiler.batch.Main
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -21,7 +22,20 @@ class EcjWithoutJavaxCompilerTest {
         )
         val out = File(work, "classes")
         val java = File(System.getProperty("java.home"), "bin/java")
-        val cp = System.getProperty("java.class.path")
+
+        // Gradle runs tests in an isolated worker. java.class.path contains only
+        // the worker bootstrap JAR there, not the test runtime dependencies.
+        // Build the child classpath from the actual locations of the classes
+        // needed by this small compiler probe.
+        val cp = listOf(
+            EcjLimitedCompileMain::class.java,
+            JavaCompile::class.java,
+            Main::class.java,
+            kotlin.Unit::class.java
+        ).mapNotNull { type ->
+            type.protectionDomain.codeSource?.location?.toURI()?.let(::File)?.absolutePath
+        }.distinct().joinToString(File.pathSeparator)
+
         val pb = ProcessBuilder(
             java.absolutePath,
             "--limit-modules", "java.base,jdk.unsupported,java.logging",
@@ -33,9 +47,12 @@ class EcjWithoutJavaxCompilerTest {
         )
         pb.redirectErrorStream(true)
         val proc = pb.start()
-        val text = proc.inputStream.bufferedReader().use { it.readText() }
+        val output = proc.inputStream.bufferedReader().use { it.readText() }
         val code = proc.waitFor()
-        assertTrue("ECJ без модуля java.compiler (как на ART):\n$text", code == 0 && text.contains("OK"))
+        assertTrue(
+            "ECJ без модуля java.compiler (как на ART), exit=$code:\n$output",
+            code == 0 && output.contains("OK")
+        )
         assertTrue(File(out, "Hello.class").isFile)
     }
 }
