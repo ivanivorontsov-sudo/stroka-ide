@@ -16,7 +16,12 @@ object PonyatnyJs {
     fun wrap(js: String, title: String, mode: String): String {
         val t = json(title)
         val m = json(mode)
-        return "window.__STROKA__={title:$t,mode:$m};\nwindow.__strokaMain=function(__R){\n$js\n};\n"
+        val exports = Regex("""(?m)^function (\\$[A-Za-z_$][A-Za-z0-9_$]*)\\s*\\(""")
+            .findAll(js)
+            .map { it.groupValues[1] }
+            .distinct()
+            .joinToString("\\n") { "window[" + json(it) + "] = " + it + ";" }
+        return "window.__STROKA__={title:$t,mode:$m};\\nwindow.__strokaMain=function(__R){\\n$js\\n$exports\\n};\\n"
     }
 
     fun compile(source: String, yadroSource: String, env: CompileEnv = CompileEnv()): String {
