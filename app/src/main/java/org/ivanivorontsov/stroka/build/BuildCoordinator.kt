@@ -54,6 +54,12 @@ object BuildCoordinator {
                 jar.outputStream().use { out -> inp.copyTo(out) }
             }
         }
+        val lambdaStubs = File(store, "core-lambda-stubs.jar")
+        if (!lambdaStubs.isFile) {
+            ctx.assets.open("toolchain/core-lambda-stubs.jar").use { inp ->
+                lambdaStubs.outputStream().use { out -> inp.copyTo(out) }
+            }
+        }
         val native = File(ctx.applicationInfo.nativeLibraryDir)
         val tc = Toolchain.fromNativeAndJar(native, jar)
             ?: throw BuildException(
