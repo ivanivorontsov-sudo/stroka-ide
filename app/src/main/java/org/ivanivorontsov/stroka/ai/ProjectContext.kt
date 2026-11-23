@@ -22,7 +22,7 @@ object ProjectContext {
         "secrets.properties", "credentials.json", "id_rsa", "id_ed25519"
     )
 
-    fun collect(root: File, currentFile: File? = null, maxFiles: Int = 80, maxChars: Int = 90_000): String {
+    fun collect(root: File, currentFile: File? = null, maxFiles: Int = 500, maxChars: Int = 300_000): String {
         if (!root.isDirectory) return ""
         val base = try { root.canonicalFile } catch (_: Exception) { return "" }
         val files = ArrayList<File>()
@@ -39,7 +39,7 @@ object ProjectContext {
                     val lowerName = child.name.lowercase()
                     if (lowerName in excludedFiles || listOf("secret", "credential", "password", "token", "keystore").any { it in lowerName }) continue
                     val ext = child.name.substringAfterLast('.', "").lowercase()
-                    if (ext in allowed && child.length() in 1..48_000L) files += child
+                    if (ext in allowed && child.length() in 1..200_000L) files += child
                 }
             }
         }
@@ -70,7 +70,10 @@ object ProjectContext {
             count++
         }
         if (count == 0) return ""
-        out.append("\nВ контекст включено файлов: $count. Это ограниченный текстовый снимок; бинарные файлы, сборочные каталоги и зависимости пропущены.")
+        val omitted = (files.size - count).coerceAtLeast(0)
+        out.append("\nВ контекст включено файлов: $count.")
+        if (omitted > 0) out.append(" Не вошло из-за общего лимита контекста: $omitted файлов.")
+        out.append(" Бинарные файлы, сборочные каталоги, зависимости и секреты намеренно исключены.")
         return out.toString()
     }
 }
