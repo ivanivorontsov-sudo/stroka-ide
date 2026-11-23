@@ -14,8 +14,8 @@ object JavaCompile {
         val main = Main(PrintWriter(out, true), PrintWriter(err, true), false, null, null)
         val args = ArrayList<String>()
         args.addAll(listOf(
-            "-source", "1.8",
-            "-target", "1.8",
+            "-source", "17",
+            "-target", "17",
             "-encoding", "UTF-8",
             "-bootclasspath", bootclasspath.absolutePath,
             "-d", outDir.absolutePath,
