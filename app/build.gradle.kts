@@ -118,7 +118,7 @@ dependencies {
     implementation("com.android.tools.build:apksig:8.7.3")
     // Android-compatible ECJ batch compiler. The dependency is needed both at
     // compile time (JavaCompile imports Main) and runtime (the app invokes ECJ).
-    implementation("org.eclipse.jdt:ecj:3.40.0")
+    implementation("org.eclipse.jdt:ecj:3.18.0")
     implementation("com.android.tools:r8:8.7.18")
     testImplementation("junit:junit:4.13.2")
     // Use a real JVM JSON implementation in local unit tests instead of the
@@ -130,8 +130,27 @@ dependencies {
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }
 
+val stageAndroidLambdaStubs by tasks.registering {
+    val output = layout.projectDirectory.file("src/main/assets/toolchain/core-lambda-stubs.jar")
+    outputs.file(output)
+    outputs.upToDateWhen { false }
+    doLast {
+        val sdkPath = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+            ?: throw GradleException("ANDROID_HOME/ANDROID_SDK_ROOT is required to stage core-lambda-stubs.jar")
+        val buildTools = file("$sdkPath/build-tools")
+        val source = buildTools.listFiles()
+            ?.map { file(it, "core-lambda-stubs.jar") }
+            ?.filter { it.isFile }
+            ?.maxByOrNull { it.parentFile.name }
+            ?: throw GradleException("Android SDK build-tools does not contain core-lambda-stubs.jar")
+        output.asFile.parentFile.mkdirs()
+        source.copyTo(output.asFile, overwrite = true)
+        logger.lifecycle("Staged Android lambda stubs: $source")
+    }
+}
+
 tasks.named("preBuild").configure {
-    dependsOn(stageKotlinRuntime, filteredKotlinCompiler)
+    dependsOn(stageKotlinRuntime, filteredKotlinCompiler, stageAndroidLambdaStubs)
 }
 
 
@@ -142,9 +161,9 @@ val verifyEcjCompileDependency by tasks.registering {
     doLast {
         val compileClasspath = configurations.getByName("debugCompileClasspath")
         val ecjJar = compileClasspath.files.firstOrNull {
-            it.name == "ecj-3.40.0.jar" || it.name.startsWith("ecj-")
+            it.name == "ecj-3.18.0.jar" || it.name.startsWith("ecj-")
         } ?: throw GradleException(
-            "ECJ 3.40.0 is missing from debugCompileClasspath. Resolved files: " +
+            "Android-compatible ECJ 3.18.0 is missing from debugCompileClasspath. Resolved files: "
                 compileClasspath.files.joinToString { it.name }
         )
         val mainClass = zipTree(ecjJar).matching {
@@ -153,7 +172,7 @@ val verifyEcjCompileDependency by tasks.registering {
         check(mainClass.isNotEmpty()) {
             "Resolved ECJ artifact does not contain org/eclipse/jdt/internal/compiler/batch/Main.class: $ecjJar"
         }
-        logger.lifecycle("ECJ compile dependency verified: $ecjJar")
+        logger.lifecycle("Android-compatible ECJ compile dependency verified: $ecjJar")
     }
 }
 
