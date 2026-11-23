@@ -332,6 +332,24 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             editor.setText(pending)
             toast("Код из чата ИИ вставлен в файл")
         }
+        val changed = AiBridge.pendingFiles
+        if (changed != null) {
+            AiBridge.pendingFiles = null
+            var activeChanged = false
+            for (index in docs.indices) {
+                val localPath = (docs[index].ref as? DocRef.Local)?.let { File(it.path).canonicalPath }
+                if (localPath != null && changed.containsKey(localPath)) {
+                    val value = changed[localPath]
+                    if (value != null) {
+                        docs[index].text = value
+                        docs[index].dirty = false
+                        if (index == current) activeChanged = true
+                    }
+                }
+            }
+            if (activeChanged && current in docs.indices) editor.setText(docs[current].text)
+            toast("Проект обновлён ИИ: ${changed.size} файлов")
+        }
 
         super.onResume()
         applyPrefs()
@@ -1739,8 +1757,11 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 val root = parent?.let { dir ->
                     generateSequence(dir) { it.parentFile }.firstOrNull { it.parentFile == projectsDir } ?: dir
                 }
-                val snapshot = root?.let { ProjectContext.collect(it, local) }.orEmpty()
-                if (snapshot.isNotBlank()) i.putExtra(AiChatActivity.EXTRA_PROJECT_CONTEXT, snapshot)
+                if (root != null) {
+                    i.putExtra(AiChatActivity.EXTRA_PROJECT_ROOT, root.canonicalPath)
+                    val snapshot = ProjectContext.collect(root, local)
+                    if (snapshot.isNotBlank()) i.putExtra(AiChatActivity.EXTRA_PROJECT_CONTEXT, snapshot)
+                }
             }
         }
         startActivity(i)
