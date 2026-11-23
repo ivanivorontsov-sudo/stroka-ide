@@ -1178,7 +1178,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         consoleBox.visibility = View.GONE
         previewBox.visibility = View.VISIBLE
         if (target == null) {
-            panelStatus.text = "Откройте HTML-файл"
+            val currentDoc = docs.getOrNull(current)
+            if (currentDoc != null) showUniversalSourcePreview(currentDoc)
+            else panelStatus.text = "Откройте файл для предпросмотра"
             return
         }
         previewDoc = target
