@@ -85,7 +85,7 @@ android {
         checkReleaseBuilds = false
     }
 }
- 
+
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -119,11 +119,13 @@ dependencies {
     implementation("org.eclipse.jdt:ecj:3.21.0")
     implementation("com.android.tools:r8:8.7.18")
     testImplementation("junit:junit:4.13.2")
+    // Use a real JVM JSON implementation in local unit tests instead of the
+    // Android framework stubs, whose methods return null in this test setup.
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
 }
-
 
 tasks.named("preBuild").configure {
     dependsOn(stageKotlinRuntime, filteredKotlinCompiler)
