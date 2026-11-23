@@ -16,6 +16,7 @@ object JavaCompile {
         args.addAll(listOf(
             "-source", "17",
             "-target", "17",
+            "--system", "none",
             "-encoding", "UTF-8",
             "-d", outDir.absolutePath,
             "-proc:none",
