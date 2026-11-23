@@ -139,7 +139,7 @@ val stageAndroidLambdaStubs by tasks.registering {
             ?: throw GradleException("ANDROID_HOME/ANDROID_SDK_ROOT is required to stage core-lambda-stubs.jar")
         val buildTools = file("$sdkPath/build-tools")
         val source = buildTools.listFiles()
-            ?.map { file(it, "core-lambda-stubs.jar") }
+            ?.map { java.io.File(it, "core-lambda-stubs.jar") }
             ?.filter { it.isFile }
             ?.maxByOrNull { it.parentFile.name }
             ?: throw GradleException("Android SDK build-tools does not contain core-lambda-stubs.jar")
