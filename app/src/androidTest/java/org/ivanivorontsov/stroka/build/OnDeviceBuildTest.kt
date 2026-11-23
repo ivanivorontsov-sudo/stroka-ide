@@ -64,10 +64,10 @@ class OnDeviceBuildTest {
 
             val first = device.wait(Until.findObject(By.clazz("android.widget.EditText").instance(0)), 5_000)
             val second = device.wait(Until.findObject(By.clazz("android.widget.EditText").instance(1)), 5_000)
-            assertTrue("First input field missing", first != null)
-            assertTrue("Second input field missing", second != null)
-            first!!.setText("7")
-            second!!.setText("5")
+            val firstField = first ?: error("First input field missing")
+            val secondField = second ?: error("Second input field missing")
+            firstField.setText("7")
+            secondField.setText("5")
             device.pressBack()
 
             fun tapAndExpect(button: String, expected: String) {
@@ -81,7 +81,7 @@ class OnDeviceBuildTest {
             tapAndExpect("Вычесть", "2")
             tapAndExpect("Умножить", "35")
             tapAndExpect("Разделить", "1.4")
-            second.setText("0")
+            secondField.setText("0")
             device.pressBack()
             tapAndExpect("Разделить", "Деление на ноль")
         } finally {
