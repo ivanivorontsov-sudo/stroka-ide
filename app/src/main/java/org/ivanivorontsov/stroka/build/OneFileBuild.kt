@@ -39,12 +39,12 @@ object OneFileBuild {
             lower.endsWith(".py") || lower.endsWith(".pyw") ->
                 PythonApkBuilder.build(source, fileName, label, work, assets, outApk, log, versionName, versionCode, iconPng)
             lower.endsWith(".java") ->
-                buildJavaApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode)
+                buildJavaApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode, iconPng)
             lower.endsWith(".kt") ->
-                buildKotlinApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode)
+                buildKotlinApk(source, fileName, label, work, assets, outApk, log, versionName, versionCode, iconPng)
             lower.endsWith(".kts") ->
                 throw BuildException("Файлы .kts — это Kotlin Script для Gradle/скриптов. Для Android APK используйте .kt с классом Activity.")
-            else -> buildWebApk(source, fileName, label, work, assets, outApk, log, env, versionName, versionCode)
+            else -> buildWebApk(source, fileName, label, work, assets, outApk, log, env, versionName, versionCode, iconPng)
         }
     }
 
