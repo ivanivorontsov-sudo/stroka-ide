@@ -28,7 +28,7 @@
   try {
     if (typeof window.__strokaMain === "function") window.__strokaMain(R);
   } catch (e) {
-    log(window.StrokaRuntime.showErr(e, R), true);
+    var __m = window.StrokaRuntime.showErr(e, R); if (__m) log(__m, true);
   }
   if (meta.mode === "calc" || (meta.mode === "auto" && hasCalc())) {
     calc.hidden = false;
@@ -75,7 +75,7 @@
           acc = num(); op = k; fresh = true;
         }
       } catch (e) {
-        log(window.StrokaRuntime.showErr(e, R), true);
+        var __m = window.StrokaRuntime.showErr(e, R); if (__m) log(__m, true);
         put("Ошибка");
         fresh = true;
       }

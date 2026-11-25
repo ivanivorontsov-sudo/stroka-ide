@@ -9,6 +9,11 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.result.contract.ActivityResultContracts
+import org.ivanivorontsov.stroka.build.BuildCoordinator
+import org.ivanivorontsov.stroka.build.UserKey
+import java.io.File
+import java.security.KeyStore
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -42,10 +47,26 @@ class SettingsActivity : AppCompatActivity() {
 
     class Fragment : PreferenceFragmentCompat() {
         private var downloading: Thread? = null
+        private val exportKey = registerForActivityResult(ActivityResultContracts.CreateDocument("application/x-pkcs12")) { uri ->
+            if (uri != null) {
+                try {
+                    val source = File(requireContext().filesDir, "toolchain/user-apps.p12")
+                    requireContext().contentResolver.openOutputStream(uri, "w")?.use { out -> source.inputStream().use { it.copyTo(out) } }
+                        ?: throw IllegalStateException("Не удалось открыть файл назначения")
+                    Toast.makeText(requireContext(), "Ключ подписи экспортирован. Пароль: stroka-user", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Ошибка экспорта: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        private val importKey = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) askSigningKeyPassword(uri)
+        }
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.prefs, rootKey)
             findPreference<Preference>("licenses")?.setOnPreferenceClickListener { showLicenses(); true }
+            findPreference<Preference>("github_actions")?.setOnPreferenceClickListener { startActivity(android.content.Intent(requireContext(), GitHubActionsActivity::class.java)); true }
             val prefs = Prefs(requireContext())
             findPreference<Preference>("theme")?.setOnPreferenceChangeListener { _, _ ->
                 view?.post { prefs.applyTheme() }
@@ -69,6 +90,64 @@ class SettingsActivity : AppCompatActivity() {
             val aiPref = findPreference<Preference>("ai_key")
             updateAiSummary(aiPref)
             aiPref?.setOnPreferenceClickListener { askAiKey(it); true }
+            findPreference<Preference>("signing_key_export")?.setOnPreferenceClickListener { exportSigningKey(); true }
+            findPreference<Preference>("signing_key_import")?.setOnPreferenceClickListener { importKey.launch(arrayOf("application/x-pkcs12", "application/octet-stream", "*/*")); true }
+        }
+
+        private fun signingKeyFile(): File = File(requireContext().filesDir, "toolchain/user-apps.p12")
+
+        private fun exportSigningKey() {
+            try {
+                BuildCoordinator.prepare(requireContext())
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Экспорт ключа подписи")
+                    .setMessage("Экспортируется закрытый ключ PKCS#12. Он позволяет подписывать приложения и выпускать обновления с той же подписью. Не отправляйте файл другим людям и не кладите его в Git. Пароль текущего встроенного хранилища: stroka-user.")
+                    .setPositiveButton("Экспортировать") { _, _ -> exportKey.launch("stroka-user-apps.p12") }
+                    .setNegativeButton("Отмена", null).show()
+            } catch (e: Exception) { Toast.makeText(requireContext(), "Ключ не найден: ${e.message}", Toast.LENGTH_LONG).show() }
+        }
+
+        private fun askSigningKeyPassword(uri: android.net.Uri) {
+            val password = EditText(requireContext()).apply {
+                hint = "Пароль PKCS#12"
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                setSingleLine(true)
+            }
+            MaterialAlertDialogBuilder(requireContext()).setTitle("Импорт ключа подписи")
+                .setMessage("Импорт заменит ключ, которым Строка подписывает новые APK. Приложения, собранные прежним ключом, нельзя будет обновить APK с новой подписью.")
+                .setView(password)
+                .setPositiveButton("Проверить и импортировать") { _, _ ->
+                    try {
+                        val ctx = requireContext()
+                        val incoming = File(ctx.cacheDir, "signing-import.p12")
+                        ctx.contentResolver.openInputStream(uri)?.use { input -> incoming.outputStream().use { input.copyTo(it) } }
+                            ?: throw IllegalStateException("Не удалось прочитать выбранный файл")
+                        val supplied = password.text.toString().toCharArray()
+                        val sourceStore = KeyStore.getInstance("PKCS12")
+                        incoming.inputStream().use { sourceStore.load(it, supplied) }
+                        val alias = sourceStore.aliases().toList().firstOrNull { sourceStore.isKeyEntry(it) }
+                            ?: throw IllegalStateException("В PKCS#12 нет закрытого ключа")
+                        val privateKey = sourceStore.getKey(alias, supplied) ?: throw IllegalStateException("Не удалось прочитать закрытый ключ")
+                        val chain = sourceStore.getCertificateChain(alias) ?: throw IllegalStateException("Не найдена цепочка сертификатов")
+                        val normalized = KeyStore.getInstance("PKCS12")
+                        normalized.load(null, UserKey.DEFAULT_PASSWORD.toCharArray())
+                        normalized.setKeyEntry(UserKey.DEFAULT_ALIAS, privateKey, UserKey.DEFAULT_PASSWORD.toCharArray(), chain)
+                        val target = signingKeyFile()
+                        target.parentFile?.mkdirs()
+                        val temp = File(target.parentFile, target.name + ".new")
+                        temp.outputStream().use { normalized.store(it, UserKey.DEFAULT_PASSWORD.toCharArray()) }
+                        UserKey.load(temp)
+                        val backup = File(target.parentFile, target.name + ".backup")
+                        if (target.exists()) target.copyTo(backup, overwrite = true)
+                        if (target.exists() && !target.delete()) throw IllegalStateException("Не удалось заменить старый ключ")
+                        if (!temp.renameTo(target)) {
+                            if (backup.exists()) backup.copyTo(target, overwrite = true)
+                            throw IllegalStateException("Не удалось установить новый ключ")
+                        }
+                        incoming.delete()
+                        Toast.makeText(ctx, "Ключ импортирован. Резервная копия старого ключа сохранена внутри приложения.", Toast.LENGTH_LONG).show()
+                    } catch (e: Exception) { Toast.makeText(requireContext(), "Импорт не выполнен: ${e.message}", Toast.LENGTH_LONG).show() }
+                }.setNegativeButton("Отмена", null).show()
         }
 
         private fun showLicenses() {
@@ -111,7 +190,7 @@ class SettingsActivity : AppCompatActivity() {
             }
             MaterialAlertDialogBuilder(ctx)
                 .setTitle("Токен GitHub")
-                .setMessage("Создайте fine-grained токен на github.com → Settings → Developer settings с правом Contents: Read and write. Токен хранится только на этом телефоне в зашифрованном виде.")
+                .setMessage("Создайте fine-grained токен на github.com → Settings → Developer settings с правами Contents: Read and write и Actions: Read and write для управления workflow. Токен хранится только на этом телефоне в зашифрованном виде.")
                 .setView(box)
                 .setPositiveButton("Сохранить") { _, _ ->
                     val v = input.text.toString().trim()

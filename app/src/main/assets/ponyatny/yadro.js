@@ -37,6 +37,8 @@
     "асинхронная": "асинхронная", "асинхронный": "асинхронная", "асинхронно": "асинхронная",
     "с": "с", "используя": "с", "взяв": "с",
     "из": "из",
+    "памятник": "константа",
+    "птичку_жалко": "стоп",
   };
   const NO_ARG_WORDS = new Set(["стоп", "дальше", "попробуй", "делай", "конец", "верни"]);
   const PHRASES = [
@@ -191,6 +193,11 @@
       const start = i;
       if (BIDI.test(c)) err("в программе есть невидимый символ направления текста " + hex4(c) + ". Из-за него код может выглядеть не так, как работает (атака Trojan Source, CVE-2021-42574). Удалите его; если он нужен внутри строки, напишите \\u{" + c.codePointAt(0).toString(16).toUpperCase() + "}");
       if (INVISIBLE.test(c) && !(c === "\uFEFF" && i === 0)) err("в программе есть невидимый символ " + hex4(c) + ". Удалите его; если он нужен внутри строки, напишите \\u{" + c.codePointAt(0).toString(16).toUpperCase() + "}");
+      if (c === "\\") {
+        let j = i + 1;
+        while (src[j] === " " || src[j] === "\t" || src[j] === "\r") j++;
+        if (j >= src.length || src[j] === "\n") { i = j + 1; line++; lineStart = i; continue; }
+      }
       if (c === "\n") { push("nl", undefined, i); line++; i++; lineStart = i; continue; }
       if (c === " " || c === "\t" || c === "\r" || c === "\uFEFF") { i++; continue; }
       if (c === "#" || (c === "/" && src[i + 1] === "/")) { while (i < src.length && src[i] !== "\n") i++; continue; }
@@ -290,7 +297,24 @@
     }
     push("nl", undefined, i);
     push("eof", undefined, i);
-    return tokens;
+    return joinContinuations(tokens);
+  }
+
+  const CONT_OPS = new Set([".", "?.", "?.[", "|>", "+", "/", "%", "^", "==", "!=", "<=", ">=", "<", ">", "::", "=>"]);
+  const CONT_KW = new Set(["и", "или", "то"]);
+  function joinContinuations(tokens) {
+    const out = [];
+    for (let k = 0; k < tokens.length; k++) {
+      const t = tokens[k];
+      if (t.t === "nl" && out.length && out[out.length - 1].t !== "nl") {
+        let m = k + 1;
+        while (tokens[m] && tokens[m].t === "nl") m++;
+        const n = tokens[m];
+        if (n && ((n.t === "op" && CONT_OPS.has(n.v)) || (n.t === "kw" && CONT_KW.has(n.v)))) { k = m - 1; continue; }
+      }
+      out.push(t);
+    }
+    return out;
   }
 
   function parse(src, file, warn) {
@@ -430,6 +454,36 @@
       }
       const tok = peek();
       const P = pos(tok);
+      if (is("id") && !tok.aliased) {
+        const w = normWord(tok.v), nx = peek(1), eol = nx.t === "nl" || nx.t === "eof";
+        const BLOCKS = { "авось_сработает": "avos", "сделать_вид_что_так_и_задумано": "feature", "чтоб_никто_не_догадался": "quiet" };
+        if (nx.t === "nl" && Object.prototype.hasOwnProperty.call(BLOCKS, w)) {
+          next(); endLine();
+          const body = block(["конец"], tok);
+          closeEnd();
+          return { k: BLOCKS[w], body, ...P };
+        }
+        if (eol && w === "ы") { next(); endLine(); return { k: "pass", ...P }; }
+        if (w === "интеграл" && nx.t === "id" && isW("от", 2)) {
+          next();
+          const nameTok = expectName("имя переменной");
+          expectW("от");
+          const from = expr();
+          expectW("до");
+          const to = expr();
+          let steps = null, step = null;
+          if (is("id") && normWord(peek().v) === "шагов") { next(); steps = expr(); }
+          else if (acceptW("шаг")) step = expr();
+          let target = "площадь";
+          if (acceptW("как")) target = expectName("имя переменной для площади").v;
+          endLine();
+          const body = block(["конец"], tok);
+          closeEnd();
+          const last = body[body.length - 1];
+          if (last && last.k === "expr") body[body.length - 1] = { k: "return", value: last.expr, line: last.line, col: last.col, file: last.file };
+          return { k: "integral", fn: { k: "lambda", params: [{ name: nameTok.v, type: null, def: null, ...pos(nameTok) }], body, ...P }, from, to, steps, step, target, ...P };
+        }
+      }
       if (accept("kw", "пусть") || accept("kw", "константа")) {
         let kind = tok.v === "константа" ? "const" : "let";
         if (kind === "let" && accept("kw", "навсегда")) kind = "forever";
@@ -1282,6 +1336,17 @@
     "в_json": [1, 2], "из_json": [1, 1], "нумеруй": [1, 1], "попарно": [2, 2], "список_файлов": [1, 1], "удали_файл": [1, 1], "создай_папку": [1, 1],
     "тангенс": [1, 1], "арктангенс": [1, 2], "экспонента": [1, 1], "бесконечность": null,
     "аргументы": null, "argv": null, "размер": [1, 1], "sizeof": [1, 1], "формат": [1, 99], "printf": [1, 99], "открой": [1, 2],
+    "приложить_подорожник": [1, 1], "сделать_вид_что_так_и_задумано": [0, 1], "интеграл": [3, 4],
+    "короче_склифосовский": [1, 2], "брюки_превращаются": [1, 1], "цигель_цигель": [0, 0], "миелофон": [1, 1], "замуровали_демоны": [0, 1],
+    "смутные_сомнения": [1, 1], "крылатые_качели": [1, 1], "электроник": [1, 99], "ну_погоди": [0, 1], "рэсси": [2, 2],
+    "окно": [0, 3], "залей": [0, 1], "прямоугольник": [4, 6], "круг": [3, 5], "линия": [4, 6], "рисуй_текст": [3, 5], "картинка": [3, 5],
+    "каждый_кадр": [1, 1], "клавиша": [1, 1], "мышь": [0, 0], "при_клике": [1, 1], "при_клавише": [1, 1], "стоп_игра": [0, 0],
+    "кнопка": [2, 2], "надпись": [0, 1], "поле_ввода": [0, 1], "значение_поля": [1, 1], "задай_текст": [2, 2], "пищи": [0, 2],
+    "ширина_экрана": [0, 0], "высота_экрана": [0, 0], "пересекаются": [8, 8],
+    "уведомление": [1, 1], "вибрация": [0, 1], "открой_ссылку": [1, 1],
+    "скопируй_в_буфер": [1, 1], "прочитай_буфер": [0, 0],
+    "информация_устройства": [0, 0], "заряд_батареи": [0, 0],
+    "сеть_доступна": [0, 0], "открой_настройки": [0, 0],
   };
   const BUILTIN_CLASSES = ["Ошибка"];
   const TYPES = ["число", "строка", "логическое", "список", "словарь", "функция", "ничего", "любое", "целое", "множество"];
@@ -1397,6 +1462,19 @@
           return;
         }
         case "print": s.items.forEach(expr); return;
+        case "avos": s.inFn = !!ctx.fn; blockScope(s.body); return;
+        case "feature": case "quiet": blockScope(s.body); return;
+        case "pass": return;
+        case "integral": {
+          expr(s.from); expr(s.to);
+          if (s.steps) expr(s.steps);
+          if (s.step) expr(s.step);
+          expr(s.fn);
+          const ti = lookup(s.target);
+          if (ti && ti.kind !== "let") err("«" + s.target + "» нельзя перезаписать результатом интеграла: это не обычная переменная", s);
+          if (!ti) { declare(s.target, { kind: "let" }, s); s.declare = true; }
+          return;
+        }
         case "expr": expr(s.expr); return;
         case "if": expr(s.cond); blockScope(s.then); if (s.otherwise) blockScope(s.otherwise); return;
         case "while": expr(s.cond); loop(() => blockScope(s.body)); return;
@@ -1458,6 +1536,7 @@
           blockScope(s.body);
           for (const h of s.handlers || []) {
             if (h.type && h.type !== "ничего") {
+              if (!TYPES.includes(h.type) && !lookup(h.type)) { const alt = caseAlt(h.type); if (alt) h.type = alt; }
               const ti = lookup(h.type);
               if (!TYPES.includes(h.type) && !(ti && (ti.kind === "class" || ti.kind === "iface"))) err("неизвестный тип ошибки «" + h.type + "»." + suggest(h.type, TYPES.concat(classNames())), h);
               markBuiltin(h.type, ti);
@@ -1528,7 +1607,18 @@
       else return;
       if (count < mn || count > mx) err("функция «" + name + "» ждёт " + (mn === mx ? mn + " " + argWord(mn) : "от " + mn + " до " + mx + " значений") + ", а получила " + count, n);
     }
+    function caseAlt(name) {
+      const s = String(name);
+      const vars = [s[0].toLowerCase() + s.slice(1), s[0].toUpperCase() + s.slice(1), s.toLowerCase(), s.toUpperCase()];
+      for (const c of vars) {
+        if (c === s) continue;
+        const info = lookup(c);
+        if (info && (info.kind === "builtin" || info.kind === "class" || info.kind === "iface")) return c;
+      }
+      return null;
+    }
     function resolve(n) {
+      if (!lookup(n.name)) { const alt = caseAlt(n.name); if (alt) n.name = alt; }
       const info = lookup(n.name);
       if (info) { n.ref = info.kind === "class" ? "class" : info.kind === "builtin" ? "builtin" : "user"; if (info.kind === "lazy") n.lazy = true; markBuiltin(n.name, info); return info; }
       err("не знаю, что такое «" + n.name + "»." + (suggest(n.name, allNames().concat(ALL_WORDS)) || " Если это новая переменная, объяви её: пусть " + n.name + " = …"), n);
@@ -1564,6 +1654,7 @@
           expr(e.left);
           e.args.forEach(expr);
           if (e.fn) { expr(e.fn); return; }
+          if (!lookup(e.name)) { const alt = caseAlt(e.name); if (alt) e.name = alt; }
           const info = lookup(e.name);
           if (info) { e.mode = info.kind === "class" ? "class" : info.kind === "builtin" ? "builtin" : "user"; if (info.kind === "lazy") e.lazy = true; markBuiltin(e.name, info); checkArity(info, e, e.args.length + 1, e.name); return; }
           e.mode = "method";
@@ -1859,6 +1950,29 @@
         }
         case "print": emit(L(s) + (s.err ? "__R.eprint([" + args(s.items) + "], " + jsStr(s.err) + ");" : "__R.print([" + args(s.items) + "]);")); return;
         case "expr": emit(L(s) + expr(s.expr) + ";"); return;
+        case "pass": emit(L(s) + ";"); return;
+        case "avos": {
+          const e = "__e" + (++uid);
+          emit(L(s) + "try {");
+          blockOf(s.body);
+          emit("} catch (" + e + ") { __R.rethrowFatal(" + e + "); __R.avosMsg();" + (s.inFn ? " return 42;" : "") + " }");
+          return;
+        }
+        case "feature": {
+          const e = "__e" + (++uid);
+          emit(L(s) + "try {");
+          blockOf(s.body);
+          emit("} catch (" + e + ") { __R.rethrowFatal(" + e + "); __R.featureShow(" + e + "); }");
+          return;
+        }
+        case "quiet":
+          emit(L(s) + "__R.mute++; try {");
+          blockOf(s.body);
+          emit("} finally { __R.mute--; }");
+          return;
+        case "integral":
+          emit(L(s) + (s.declare && !gotoCtx ? "let " : "") + vname(s.target) + " = __R.integral(" + expr(s.fn) + ", " + expr(s.from) + ", " + expr(s.to) + ", " + (s.steps ? expr(s.steps) : "null") + ", " + (s.step ? expr(s.step) : "null") + ");");
+          return;
         case "if":
           emit(L(s) + "if (__R.truth(" + expr(s.cond) + ")) {");
           blockOf(s.then);
@@ -2043,6 +2157,7 @@
         case "call":
           if (e.thisCtor || e.fn.k === "this") return "this[" + jsStr("создать") + "](" + args(e.args) + ")";
           if (e.fn.k === "name" && e.fn.ref === "class") return "new " + vname(e.fn.name) + "(" + args(e.args) + ")";
+          if (e.fn.k === "name" && e.fn.ref === "builtin" && e.fn.name === "приложить_подорожник" && e.args.length === 1) return "__R.plantain(() => (" + expr(e.args[0]) + "))";
           if (e.fn.k === "name" && e.fn.ref === "builtin") return "__R.b[" + jsStr(e.fn.name) + "](" + args(e.args) + ")";
           if (e.fn.k === "name") return "__R.fn(" + vname(e.fn.name) + (e.fn.lazy ? "()" : "") + ", " + jsStr(e.fn.name) + ")(" + args(e.args) + ")";
           if (e.safe) return "__R.sapply(" + expr(e.fn) + ", [" + args(e.args) + "])";
@@ -2183,7 +2298,8 @@
     };
     R.show = show;
     R.typeName = typeName;
-    R.print = (items) => io.write(items.map((x) => show(x)).join(" "));
+    R.mute = 0;
+    R.print = (items) => { if (!R.mute) io.write(items.map((x) => show(x)).join(" ")); };
     R.eprint = (items, kind) => {
       const text = (kind === "debug" ? "[отладка] " : "") + items.map((x) => show(x)).join(" ");
       if (io.writeErr) io.writeErr(text); else io.write((kind === "debug" ? "" : "⚠ ") + text);
@@ -2409,6 +2525,7 @@
     };
     R.pairs = (v) => {
       if (v instanceof Map) return [...v];
+      if (Array.isArray(v) && v.__pairs) return v;
       if (Array.isArray(v) || typeof v === "string") return [...v].map((x, i) => [i, x]);
       fail("перебирать пары можно у словаря, списка или строки, а не у «" + typeName(v) + "»");
     };
@@ -2583,6 +2700,7 @@
     const fsMod = () => { if (!io.fs) fail("работа с файлами доступна только в программе на компьютере, а не в песочнице"); return io.fs; };
     const fileOp = (what, p, f) => { needStr(p, "путь к файлу"); try { return f(fsMod()); } catch (e) { if (e.isPon) throw e; fail("не удалось " + what + " файл «" + p + "»"); } };
     const pick = (a) => (a.length === 1 && Array.isArray(a[0]) ? a[0] : a);
+    const pairList = (l) => { Object.defineProperty(l, "__pairs", { value: true }); return l; };
     const bitInt = (v) => { needNum(v, "число"); if (!Number.isInteger(v)) fail("побитовые операции работают только с целыми числами, а получено: " + show(v)); return v; };
     const toJson = (v) => {
       if (v === null || v === undefined) return null;
@@ -2598,7 +2716,14 @@
       return v;
     };
     R.b = {
-      "спроси": (q) => { const a = io.ask(q === undefined ? "" : show(q)); return a === null || a === undefined ? "" : String(a); },
+      "спроси": (q) => {
+        const a = io.ask(q === undefined ? "" : show(q));
+        if (a === null || a === undefined) {
+          if (io.writeErr) io.writeErr("Ввод закончился — программа завершена.");
+          const e = new PonError("ввод закончился"); e.fatal = true; e.isExit = true; e.code = 0; e.eof = true; throw e;
+        }
+        return String(a);
+      },
       "число": toNum,
       "строка": (v) => show(v),
       "логическое": (v) => R.truth(v),
@@ -2621,7 +2746,7 @@
       "степень": (a, b) => R.pow(a, b),
       "время": () => Date.now() / 1000,
       "дата_сейчас": () => { const d = new Date(); return new Map([["год", d.getFullYear()], ["месяц", d.getMonth() + 1], ["день", d.getDate()], ["час", d.getHours()], ["минута", d.getMinutes()], ["секунда", d.getSeconds()], ["день_недели", d.getDay() === 0 ? 7 : d.getDay()]]); },
-      "пауза": (ms) => { needNum(ms, "пауза в миллисекундах"); if (ms < 0 || ms > 60000) fail("пауза должна быть от 0 до 60000 миллисекунд"); if (typeof SharedArrayBuffer !== "undefined" && typeof Atomics !== "undefined") { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } else { const e = Date.now() + ms; while (Date.now() < e) {} } return null; },
+      "пауза": (ms) => { needNum(ms, "пауза в миллисекундах"); if (ms < 0 || ms > 60000) fail("пауза должна быть от 0 до 60000 миллисекунд"); if (R.fast) return null; if (typeof SharedArrayBuffer !== "undefined" && typeof Atomics !== "undefined") { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } else { const e = Date.now() + ms; while (Date.now() < e) {} } return null; },
       "формат_числа": (v, k) => { needNum(v, "число"); const n = k === undefined ? 2 : needNum(k, "знаков после запятой"); if (n < 0 || n > 10) fail("знаков после запятой — от 0 до 10"); const s = Math.abs(v).toFixed(n).split("."); return (v < 0 && Number(s.join(".")) !== 0 ? "-" : "") + s[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ") + (s[1] ? "," + s[1] : ""); },
       "синус": (v) => Math.sin(needNum(v, "угол в радианах")),
       "косинус": (v) => Math.cos(needNum(v, "угол в радианах")),
@@ -2645,8 +2770,8 @@
       "сдвиг_влево": (a, b) => bitInt(a) << bitInt(b), "сдвиг_вправо": (a, b) => bitInt(a) >> bitInt(b), "сдвиг_вправо_без_знака": (a, b) => bitInt(a) >>> bitInt(b),
       "в_json": (v, ind) => JSON.stringify(toJson(v), null, ind === undefined ? undefined : needNum(ind, "отступ")),
       "из_json": (t) => { needStr(t, "текст JSON"); let v; try { v = JSON.parse(t); } catch (e) { fail("текст не похож на JSON: " + e.message); } return fromJson(v); },
-      "нумеруй": (l) => R.iter(l).map((x, i) => [i, x]),
-      "попарно": (a, b) => { const x = R.iter(a), y = R.iter(b); return x.slice(0, Math.min(x.length, y.length)).map((v, i) => [v, y[i]]); },
+      "нумеруй": (l) => pairList(R.iter(l).map((x, i) => [i, x])),
+      "попарно": (a, b) => { const x = R.iter(a), y = R.iter(b); return pairList(x.slice(0, Math.min(x.length, y.length)).map((v, i) => [v, y[i]])); },
       "список_файлов": (p) => fileOp("прочитать папку", p, (fs) => fs.readdirSync(p).sort()),
       "удали_файл": (p) => fileOp("удалить", p, (fs) => { fs.unlinkSync(p); return null; }),
       "создай_папку": (p) => fileOp("создать папку", p, (fs) => { fs.mkdirSync(p, { recursive: true }); return null; }),
@@ -2661,6 +2786,116 @@
       "printf": (fmt, ...a) => R.printf(fmt, a),
       "открой": (path, mode) => openFile(path, mode),
     };
+    const MAYBE_OK = "Да вроде работает";
+    const plantainOk = (v) => v === null || v === undefined || (typeof v === "number" && !Number.isFinite(v));
+    R.plantain = (thunk) => { let v; try { v = thunk(); } catch (e) { if (e && e.fatal) throw e; return MAYBE_OK; } return plantainOk(v) ? MAYBE_OK : v; };
+    R.b["приложить_подорожник"] = (v) => (plantainOk(v) ? MAYBE_OK : v);
+    R.avosMsg = () => { if (!R.mute) io.write("Штатный режим, расходимся"); };
+    R.feature = false;
+    const errText = (e) => (e && e.isPon ? e.message : R.explain(e));
+    R.featureShow = (e) => {
+      const t = (R.L ? "Строка " + R.L + ": " : "") + errText(e) + " — Фича активирована";
+      if (io.feature) io.feature(t);
+      else io.write(io.color ? "\x1b[32m" + t + "\x1b[0m" : "✔ " + t);
+    };
+    R.featureCatch = (e) => { if (!R.feature || !e || e.fatal) return false; R.featureShow(e); return true; };
+    R.b["сделать_вид_что_так_и_задумано"] = (f) => {
+      if (f === undefined) { R.feature = true; return null; }
+      if (typeof f !== "function") fail("в «сделать_вид_что_так_и_задумано» можно передать функцию или ничего");
+      try { return f(); } catch (e) { if (e && e.fatal) throw e; R.featureShow(e); return null; }
+    };
+    R.integral = (f, a, b, n, h) => {
+      if (typeof f !== "function") fail("интегрировать можно только функцию");
+      needNum(a, "начало отрезка"); needNum(b, "конец отрезка");
+      let N = 1000;
+      if (n !== null && n !== undefined) N = Math.round(needNum(n, "число шагов"));
+      else if (h !== null && h !== undefined) { needNum(h, "шаг"); if (h <= 0) fail("шаг интеграла должен быть больше нуля"); N = Math.round(Math.abs(b - a) / h); }
+      if (N < 2) N = 2;
+      if (N % 2) N++;
+      if (N > 1e7) fail("слишком много шагов в интеграле (больше 10 000 000)");
+      const dx = (b - a) / N;
+      let sum = 0;
+      for (let i = 0; i <= N; i++) {
+        const y = f(a + i * dx);
+        if (typeof y !== "number") fail("под интегралом должно получаться число, а получено: " + show(y));
+        sum += i === 0 || i === N ? y : i % 2 ? 4 * y : 2 * y;
+      }
+      const r = (sum * dx) / 3;
+      return Number.isFinite(r) ? Number(r.toPrecision(12)) : r;
+    };
+    R.b["интеграл"] = (f, a, b, n) => R.integral(f, a, b, n, null);
+    const say = (s) => { if (!R.mute) io.write(s); };
+    R.fast = false;
+    Object.assign(R.b, {
+      "короче_склифосовский": (t, n) => { const s = show(t); const k = n === undefined ? 40 : Math.max(1, Math.floor(needNum(n, "длина"))); return s.length <= k ? s : s.slice(0, Math.max(1, k - 1)) + "…"; },
+      "брюки_превращаются": (v) => {
+        if (v === null || v === undefined) return "элегантные шорты";
+        if (typeof v === "number") return show(v);
+        if (typeof v === "boolean") return v ? 1 : 0;
+        if (typeof v === "string") { const t = v.trim().replace(",", "."); if (t !== "" && !Number.isNaN(Number(t))) return Number(t); return [...v]; }
+        if (Array.isArray(v)) return v.map((x) => show(x)).join("");
+        return show(v);
+      },
+      "цигель_цигель": () => { R.fast = true; return null; },
+      "миелофон": (v) => {
+        const m = new Map();
+        if (v instanceof Map) for (const [k, x] of v) m.set(k, x);
+        else if (isObj(v)) for (const k of Object.keys(v)) { if (!k.startsWith("__") && typeof v[k] !== "function") m.set(k, v[k]); }
+        else m.set("значение", v);
+        say("Миелофон читает мысли («" + typeName(v) + "»):");
+        for (const [k, x] of m) say("  " + show(k) + " = " + show(x, true));
+        return m;
+      },
+      "замуровали_демоны": (msg) => { throw R.userError("Замуровали, демоны!" + (msg === undefined ? "" : " " + show(msg))); },
+      "смутные_сомнения": (v) => { const t = "Меня терзают смутные сомнения: " + show(v, true) + " (" + typeName(v) + ")"; if (io.writeErr) io.writeErr(t); else say(t); return v; },
+      "крылатые_качели": (l) => { const a = typeof l === "string" ? [...l] : R.iter(l).slice(); return a.concat(a.slice(0, -1).reverse()); },
+      "электроник": (f, ...a) => {
+        if (typeof f !== "function") fail("Электронику нужно поручить функцию");
+        const r = f(...a);
+        say("Электроник сделал всё за Сыроежкина");
+        return r;
+      },
+      "ну_погоди": (ms) => R.b["пауза"](ms === undefined ? 1000 : ms),
+      "рэсси": (l, x) => { const a = R.iter(l); for (let i = 0; i < a.length; i++) if (eq(a[i], x)) return i; return -1; },
+      "пересекаются": (x1, y1, w1, h1, x2, y2, w2, h2) => { for (const v of [x1, y1, w1, h1, x2, y2, w2, h2]) needNum(v, "координата"); return x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1; },
+      "уведомление": (message) => systemCall("toast", show(message)),
+      "вибрация": (duration) => systemCall("vibrate", duration === undefined ? 100 : needNum(duration, "длительность вибрации")),
+      "открой_ссылку": (url) => systemCall("openUrl", needStr(url, "ссылка")),
+      "скопируй_в_буфер": (value) => systemCall("copyText", show(value)),
+      "прочитай_буфер": () => systemCall("clipboardText"),
+      "информация_устройства": () => systemCall("deviceInfo"),
+      "заряд_батареи": () => systemCall("batteryPercent"),
+      "сеть_доступна": () => systemCall("networkAvailable"),
+      "открой_настройки": () => systemCall("openSettings"),
+    });
+    const systemCall = (name, ...args) => {
+      const api = io.system;
+      if (!api || typeof api[name] !== "function") fail("Системный вызов «" + name + "» доступен только в Android-приложении или при запуске из Строки.");
+      try { return api[name](...args); }
+      catch (e) { fail("Системный вызов «" + name + "» завершился ошибкой: " + (e && e.message ? e.message : String(e))); }
+    };
+    const gfx = () => { if (!io.gfx) fail("окна, графика и игры работают в песочнице «Понятного», в «Строке» (APK) и в сборке для iOS; в консоли их нет"); return io.gfx; };
+    const toPon = (v) => {
+      if (Array.isArray(v)) return v.map(toPon);
+      if (v && typeof v === "object" && !(v instanceof Map) && !(v instanceof Set) && !v.__cls) { const m = new Map(); for (const k of Object.keys(v)) m.set(k, toPon(v[k])); return m; }
+      return v === undefined ? null : v;
+    };
+    R.callback = (f, args) => {
+      R.steps = 0;
+      try { return f(...(args || [])); }
+      catch (e) {
+        if (e && e.isExit) throw e;
+        if (R.featureCatch(e)) return null;
+        throw e;
+      }
+    };
+    R.errorText = (e) => (R.L ? "Строка " + R.L + ": " : "") + errText(e);
+    for (const name of ["окно", "залей", "прямоугольник", "круг", "линия", "рисуй_текст", "картинка", "каждый_кадр", "клавиша", "мышь", "при_клике", "при_клавише", "стоп_игра", "кнопка", "надпись", "поле_ввода", "значение_поля", "задай_текст", "пищи", "ширина_экрана", "высота_экрана"]) {
+      R.b[name] = (...a) => {
+        for (const x of a) if (typeof x === "number" && !Number.isFinite(x)) fail("в «" + name + "» передано не число: " + show(x));
+        return toPon(gfx().call(name, a, R));
+      };
+    }
     return R;
   }
 
@@ -2670,6 +2905,7 @@
       new Function("__R", "\"use strict\";\n" + js)(R);
     } catch (e) {
       if (e && e.isExit) return e.code;
+      if (R.featureCatch(e)) return 0;
       let msg;
       if (e && e.isPon) msg = e.message;
       else if (e instanceof RangeError) msg = R.explain(e);
@@ -2686,7 +2922,7 @@
     io = io || {};
     const lines = [];
     const js = compile(src, { file: io.file, resolve: io.resolve, guard: io.guard !== false, warn: io.warn });
-    execute(js, { write: (s) => { lines.push(s); if (io.write) io.write(s); }, writeErr: (s) => { if (io.writeErr) io.writeErr(s); else { lines.push(s); if (io.write) io.write(s); } }, ask: io.ask || (() => ""), fs: io.fs, maxSteps: io.maxSteps, args: io.args || [] });
+    execute(js, { write: (s) => { lines.push(s); if (io.write) io.write(s); }, writeErr: (s) => { if (io.writeErr) io.writeErr(s); else { lines.push(s); if (io.write) io.write(s); } }, ask: io.ask || (() => ""), fs: io.fs, system: io.system, maxSteps: io.maxSteps, args: io.args || [], gfx: io.gfx, feature: io.feature ? (t) => { lines.push(t); io.feature(t); } : undefined });
     return lines;
   }
 
@@ -2697,6 +2933,7 @@
     for (;;) {
       let n = 0;
       try { n = fs.readSync(0, buf, 0, 1, null); } catch (e) { if (e.code === "EAGAIN") continue; if (e.code === "EOF") break; throw e; }
+      if (n === 0 && !bytes.length) return null;
       if (n === 0 || buf[0] === 10) break;
       bytes.push(buf[0]);
     }
@@ -2710,14 +2947,14 @@
       "const __fs = require(\"fs\");\n" +
       "if (process.platform === \"win32\") { try { require(\"child_process\").execFileSync(require(\"path\").join(process.env.SystemRoot || \"C:\\\\Windows\", \"System32\", \"chcp.com\"), [\"65001\"], { stdio: \"ignore\", windowsHide: true }); } catch (e) {} }\n" +
       "const __args = (function (argv) { const a = argv.slice(); if (a.length) a.shift(); if (a[0] && /\\.(js|cjs|mjs)$/i.test(a[0])) a.shift(); if (a[0] && /^(запустить|run|выполнить)$/i.test(a[0])) { a.shift(); if (a[0]) a.shift(); return a; } if (a[0] && /\\.pon$/i.test(a[0])) a.shift(); return a; })(process.argv);\n" +
-      "const __R = __makeRuntime({ write: (s) => process.stdout.write(s + \"\\n\"), writeErr: (s) => process.stderr.write(s + \"\\n\"), ask: (q) => __ask(__fs, q), fs: __fs, maxSteps: Infinity, args: __args });\n" +
+      "const __R = __makeRuntime({ write: (s) => process.stdout.write(s + \"\\n\"), writeErr: (s) => process.stderr.write(s + \"\\n\"), ask: (q) => __ask(__fs, q), fs: __fs, maxSteps: Infinity, args: __args, color: !!(process.stdout && process.stdout.isTTY) });\n" +
       "try {\n" + js + "\n} catch (e) {\n" +
-      "  if (e && e.isExit) { process.exitCode = e.code; } else {\n" +
+      "  if (e && e.isExit) { process.exitCode = e.code; } else if (__R.featureCatch(e)) { process.exitCode = 0; } else {\n" +
       "  const m = e && e.isPon ? e.message : __R.explain(e);\n" +
       "  process.stderr.write(\"Ошибка. \" + (__R.L ? \"Строка \" + __R.L + \": \" : \"\") + m + \"\\n\");\n" +
       "  process.exitCode = 1;\n" +
       "}}\n";
   }
 
-  return { transliterate, makeRenamer, jsIdent, nearest, autoKeyword, mixedScript, MAX_DEPTH, tokenize, parse, analyze, generate, frontend, compile, run, execute, standalone, makeRuntime, nodeAsk, resolveImports, CompileError, suggest, levenshtein, KEYWORDS: ALL_WORDS.concat(Object.keys(ALIASES)), ALIASES, RESERVED, BUILTINS, TYPES };
+  return { VERSION: "2.7.0", transliterate, makeRenamer, jsIdent, nearest, autoKeyword, mixedScript, MAX_DEPTH, tokenize, parse, analyze, generate, frontend, compile, run, execute, standalone, makeRuntime, nodeAsk, resolveImports, CompileError, suggest, levenshtein, KEYWORDS: ALL_WORDS.concat(Object.keys(ALIASES)), ALIASES, RESERVED, BUILTINS, TYPES };
 });

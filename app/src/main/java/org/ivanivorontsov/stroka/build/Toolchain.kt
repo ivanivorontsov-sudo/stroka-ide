@@ -6,7 +6,8 @@ import java.security.MessageDigest
 class Toolchain(
     val aapt2: File,
     val zipalign: File,
-    val androidJar: File
+    val androidJar: File,
+    val coreLambdaStubs: File? = null
 ) {
     fun check(): String? {
         if (!aapt2.isFile) return "Не найден aapt2: ${aapt2.absolutePath}"
@@ -18,39 +19,46 @@ class Toolchain(
             return "Нет права на запуск zipalign: ${zipalign.absolutePath}"
         }
         if (!androidJar.isFile) return "Не найден android.jar: ${androidJar.absolutePath}"
+        if (coreLambdaStubs == null || !coreLambdaStubs.isFile) {
+            return "Не найден core-lambda-stubs.jar из Android SDK. Переустановите Строку или обновите набор сборки."
+        }
         return null
     }
 
     companion object {
-        fun fromFiles(aapt2: File, zipalign: File, androidJar: File): Toolchain {
+        fun fromFiles(aapt2: File, zipalign: File, androidJar: File, coreLambdaStubs: File? = null): Toolchain {
             aapt2.setExecutable(true, false)
             zipalign.setExecutable(true, false)
-            return Toolchain(aapt2, zipalign, androidJar)
+            return Toolchain(aapt2, zipalign, androidJar, coreLambdaStubs)
         }
 
         fun fromProject(root: File): Toolchain? {
             val abi = hostAbi()
             val aapt2 = File(root, "app/src/main/jniLibs/$abi/libaapt2.so")
             val zipalign = File(root, "app/src/main/jniLibs/$abi/libzipalign.so")
-            val jar = File(root, "app/src/main/assets/toolchain/android.jar")
-            if (aapt2.isFile && zipalign.isFile && jar.isFile) return fromFiles(aapt2, zipalign, jar)
+            val platformDir = File(root, "app/src/main/assets/toolchain")
+            val jar = File(platformDir, "android.jar")
+            val lambda = File(platformDir, "core-lambda-stubs.jar")
+            if (aapt2.isFile && zipalign.isFile && jar.isFile) return fromFiles(aapt2, zipalign, jar, lambda)
             return fromSdk(defaultSdk() ?: return null)
         }
 
         fun fromNativeAndJar(nativeLibDir: File, androidJar: File): Toolchain? {
             val aapt2 = File(nativeLibDir, "libaapt2.so")
             val zipalign = File(nativeLibDir, "libzipalign.so")
+            val lambda = File(androidJar.parentFile, "core-lambda-stubs.jar")
             if (!aapt2.isFile || !zipalign.isFile || !androidJar.isFile) return null
-            return fromFiles(aapt2, zipalign, androidJar)
+            return fromFiles(aapt2, zipalign, androidJar, lambda)
         }
 
         fun fromSdk(sdk: File): Toolchain? {
             val bt = newestBuildTools(sdk) ?: return null
             val platform = newestAndroidJar(sdk) ?: return null
+            val lambda = newestCoreLambdaStubs(sdk) ?: return null
             val aapt2 = File(bt, "aapt2")
             val zipalign = File(bt, "zipalign")
             if (!aapt2.isFile || !zipalign.isFile) return null
-            return fromFiles(aapt2, zipalign, platform)
+            return fromFiles(aapt2, zipalign, platform, lambda)
         }
 
         fun defaultSdk(): File? {
@@ -87,6 +95,15 @@ class Toolchain(
             val dir = File(sdk, "build-tools")
             if (!dir.isDirectory) return null
             return dir.listFiles()?.filter { File(it, "aapt2").isFile }?.maxByOrNull { it.name }
+        }
+
+        private fun newestCoreLambdaStubs(sdk: File): File? {
+            val dir = File(sdk, "build-tools")
+            if (!dir.isDirectory) return null
+            return dir.listFiles()
+                ?.map { File(it, "core-lambda-stubs.jar") }
+                ?.filter { it.isFile }
+                ?.maxByOrNull { it.parentFile?.name ?: "" }
         }
 
         private fun newestAndroidJar(sdk: File): File? {

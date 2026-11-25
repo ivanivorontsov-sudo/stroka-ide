@@ -43,6 +43,13 @@ class CompleterTest {
     }
 
     @Test
+    fun ponyatnySuggestsAndroidSystemCalls() {
+        assertTrue(Completer.suggest("ув", 2, Lang.PONYATNY).contains("уведомление"))
+        assertTrue(Completer.suggest("открой_", 7, Lang.PONYATNY).contains("открой_ссылку"))
+        assertTrue(Completer.suggest("заряд_", 6, Lang.PONYATNY).contains("заряд_батареи"))
+    }
+
+    @Test
     fun cyrillicWords() {
         val t = "привет приветствие\nпри"
         assertTrue(Completer.suggest(t, t.length, Lang.MARKDOWN).containsAll(listOf("привет", "приветствие")))

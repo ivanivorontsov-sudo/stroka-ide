@@ -1,0 +1,16 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>DeepSeek (мок)</title>
+<style>body{font-family:sans-serif;margin:0;height:100vh;display:flex;flex-direction:column}main{flex:1;overflow:auto;padding:12px}#bar{padding:12px;display:flex;gap:8px}textarea{flex:1;height:60px}.btn{width:40px;height:40px;background:#4d6bfe;border-radius:20px}</style></head>
+<body><main id="log"><div class="ds-markdown">Привет! Я DeepSeek. Чем помочь?</div></main>
+<div id="bar"><textarea id="chat-input" placeholder="Message DeepSeek"></textarea><div class="btn" role="button" aria-disabled="true" id="send"></div></div>
+<script>
+// Как на настоящем сайте: значение берётся из React-подобного состояния, обновляемого событием input
+let state=""; const ta=document.getElementById("chat-input"), send=document.getElementById("send");
+ta.addEventListener("input",()=>{state=ta.value;send.setAttribute("aria-disabled",state?"false":"true");});
+ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();go();}});
+send.addEventListener("click",()=>{if(send.getAttribute("aria-disabled")!=="true")go();});
+function go(){const q=state;if(!q)return;state="";ta.value="";const u=document.createElement("div");u.className="user-msg";u.textContent=q;log.appendChild(u);
+ const a=document.createElement("div");a.className="ds-markdown";log.appendChild(a);
+ const stop=document.createElement("button");stop.textContent="Stop generating";document.body.appendChild(stop);
+ const full='```json\n{"summary":"Калькулятор DeepSeek","operations":[]}\n```';let i=0;
+ const t=setInterval(()=>{i+=8;a.innerText="json\nCopy\n"+full.slice(8,i);if(i>=full.length){clearInterval(t);a.innerText='json\nCopy\n{"summary":"Калькулятор DeepSeek","operations":[]}';stop.remove();}},60);}
+</script></body></html>

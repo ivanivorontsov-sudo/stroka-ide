@@ -1,0 +1,13 @@
+/* Оформление страницы: шрифт, отступы, цвета */
+body {
+    font-family: sans-serif;
+    margin: 24px;
+    background: #f4f6fb;
+    color: #222;
+}
+
+button {
+    padding: 12px 20px;
+    font-size: 18px;
+    border-radius: 10px;
+}

@@ -15,14 +15,14 @@ sealed class DocRef {
         override val name: String get() = File(path).name
     }
 
-    data class Saf(val uri: String, val displayName: String) : DocRef() {
+    data class Saf(val uri: String, val displayName: String, val treeUri: String? = null) : DocRef() {
         override val key get() = "saf:$uri"
         override val name: String get() = displayName
     }
 
     fun encode(): String = when (this) {
         is Local -> "L\u0001$path"
-        is Saf -> "S\u0001$uri\u0001$displayName"
+        is Saf -> "S\u0001$uri\u0001$displayName\u0001${treeUri.orEmpty()}"
     }
 
     companion object {
@@ -30,7 +30,7 @@ sealed class DocRef {
             val p = s.split('\u0001')
             return when (p.firstOrNull()) {
                 "L" -> if (p.size >= 2) Local(p[1]) else null
-                "S" -> if (p.size >= 3) Saf(p[1], p[2]) else null
+                "S" -> if (p.size >= 3) Saf(p[1], p[2], p.getOrNull(3)?.takeIf { it.isNotBlank() }) else null
                 else -> null
             }
         }
@@ -86,19 +86,19 @@ class SafNode(private val ctx: Context, val doc: DocumentFile, private val label
     override fun children(): List<FNode> = doc.listFiles()
         .filter { it.name != ".git" }
         .sortedWith(compareBy<DocumentFile>({ !it.isDirectory }, { (it.name ?: "").lowercase() }))
-        .map { SafNode(ctx, it) }
+        .map { SafNode(ctx, it, treeUri = treeUri) }
 
     override fun createFile(name: String): FNode? {
         val existing = doc.findFile(name)
-        if (existing != null) return SafNode(ctx, existing)
+        if (existing != null) return SafNode(ctx, existing, treeUri = treeUri)
         val created = doc.createFile(mimeFor(name), name) ?: return null
-        return SafNode(ctx, created)
+        return SafNode(ctx, created, treeUri = treeUri)
     }
 
-    override fun createDir(name: String): FNode? = (doc.findFile(name) ?: doc.createDirectory(name))?.let { SafNode(ctx, it) }
+    override fun createDir(name: String): FNode? = (doc.findFile(name) ?: doc.createDirectory(name))?.let { SafNode(ctx, it, treeUri = treeUri) }
     override fun rename(newName: String): Boolean = doc.renameTo(newName)
     override fun delete(): Boolean = doc.delete()
-    override fun ref(): DocRef? = if (doc.isFile) DocRef.Saf(doc.uri.toString(), doc.name ?: "файл") else null
+    override fun ref(): DocRef? = if (doc.isFile) DocRef.Saf(doc.uri.toString(), doc.name ?: "файл", treeUri?.toString()) else null
 
     companion object {
         fun mimeFor(name: String): String {

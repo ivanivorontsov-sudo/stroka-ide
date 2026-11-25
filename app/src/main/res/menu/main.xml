@@ -6,6 +6,7 @@
     <item android:id="@+id/action_run" android:icon="@drawable/ic_play" android:title="@string/run" app:showAsAction="always" />
     <item android:id="@+id/action_build_apk" android:title="@string/build_apk" app:showAsAction="never" />
     <item android:id="@+id/action_build_exe" android:title="@string/build_exe" app:showAsAction="never" />
+    <item android:id="@+id/action_build_setup" android:title="@string/build_setup" app:showAsAction="never" />
     <item android:id="@+id/action_build_folder" android:title="@string/build_folder" app:showAsAction="never" />
     <item android:id="@+id/action_ai" android:title="@string/ai_chat" app:showAsAction="never" />
     <item android:id="@+id/action_ponyatny_help" android:title="@string/ponyatny_help" app:showAsAction="never" />

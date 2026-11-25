@@ -56,12 +56,7 @@ public class Main extends Activity {
     private Button opButton(String label, final int op) {
         Button b = new Button(this);
         b.setText(label);
-        b.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                apply(op);
-            }
-        });
+        b.setOnClickListener(v -> apply(op));
         return b;
     }
 

@@ -1,0 +1,3 @@
+id=gdscript
+title=Godot: скрипт игрока (GDScript)
+main=player.gd

@@ -2,17 +2,42 @@ package __PACKAGE__;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.net.Uri;
+import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.provider.Settings;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.ValueCallback;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.Toast;
+import android.view.View;
+import android.view.WindowInsets;
+import org.json.JSONObject;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 
 public class Main extends Activity {
+    private static final int FILE_CHOOSER_REQUEST = 4201;
+    private ValueCallback<Uri[]> filePathCallback;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -21,7 +46,25 @@ public class Main extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(true);
+        web.addJavascriptInterface(new SystemBridge(this), "StrokaSystem");
         web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (filePathCallback != null) filePathCallback.onReceiveValue(null);
+                filePathCallback = callback;
+                try {
+                    Intent picker = params.createIntent();
+                    startActivityForResult(picker, FILE_CHOOSER_REQUEST);
+                    return true;
+                } catch (Exception error) {
+                    filePathCallback = null;
+                    callback.onReceiveValue(null);
+                    Toast.makeText(Main.this, "Не удалось открыть галерею", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+            }
+
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
                 new AlertDialog.Builder(Main.this)
@@ -76,6 +119,164 @@ public class Main extends Activity {
             }
         });
         web.loadUrl("file:///android_asset/www/index.html");
-        setContentView(web);
+
+        // Android 15 enforces edge-to-edge for targetSdk 35. Keep generated
+        // app content below the status bar and above the navigation area.
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View view, WindowInsets insets) {
+                view.setPadding(
+                        insets.getSystemWindowInsetLeft(),
+                        insets.getSystemWindowInsetTop(),
+                        insets.getSystemWindowInsetRight(),
+                        insets.getSystemWindowInsetBottom());
+                return insets;
+            }
+        });
+        setContentView(root);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FILE_CHOOSER_REQUEST) {
+            if (filePathCallback != null) {
+                Uri[] result = (resultCode == RESULT_OK && data != null && data.getData() != null)
+                        ? new Uri[] { data.getData() } : null;
+                filePathCallback.onReceiveValue(result);
+                filePathCallback = null;
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (filePathCallback != null) {
+            filePathCallback.onReceiveValue(null);
+            filePathCallback = null;
+        }
+        super.onDestroy();
+    }
+
+    /** Deliberately small, explicit Android API surface for programs written in Ponyatny. */
+    public static final class SystemBridge {
+        private final Activity activity;
+        private final Handler main = new Handler(Looper.getMainLooper());
+
+        public SystemBridge(Activity activity) { this.activity = activity; }
+
+        @JavascriptInterface
+        public void toast(String message) {
+            main.post(new Runnable() {
+                @Override public void run() {
+                    Toast.makeText(activity, message == null ? "" : message, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean vibrate(long durationMs) {
+            final long duration = Math.max(1L, Math.min(1000L, durationMs));
+            main.post(new Runnable() {
+                @Override public void run() {
+                    try {
+                        Vibrator vibrator = (Vibrator) activity.getSystemService(Activity.VIBRATOR_SERVICE);
+                        if (vibrator != null && vibrator.hasVibrator())
+                            vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
+                    } catch (Exception ignored) { }
+                }
+            });
+            return true;
+        }
+
+        @JavascriptInterface
+        public boolean openUrl(String value) {
+            try {
+                Uri uri = Uri.parse(value == null ? "" : value.trim());
+                String scheme = uri.getScheme();
+                if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) return false;
+                main.post(new Runnable() {
+                    @Override public void run() {
+                        try { activity.startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
+                        catch (Exception e) { toast("Не удалось открыть ссылку"); }
+                    }
+                });
+                return true;
+            } catch (Exception e) { return false; }
+        }
+
+        @JavascriptInterface
+        public boolean copyText(String value) {
+            main.post(new Runnable() {
+                @Override public void run() {
+                    try {
+                        ClipboardManager clipboard = (ClipboardManager) activity.getSystemService(Activity.CLIPBOARD_SERVICE);
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Строка", value == null ? "" : value));
+                    } catch (Exception ignored) { }
+                }
+            });
+            return true;
+        }
+
+        @JavascriptInterface
+        public String clipboardText() {
+            FutureTask<String> task = new FutureTask<>(new Callable<String>() {
+                @Override public String call() {
+                    ClipboardManager clipboard = (ClipboardManager) activity.getSystemService(Activity.CLIPBOARD_SERVICE);
+                    if (clipboard == null || clipboard.getPrimaryClip() == null || clipboard.getPrimaryClip().getItemCount() == 0) return "";
+                    CharSequence text = clipboard.getPrimaryClip().getItemAt(0).coerceToText(activity);
+                    return text == null ? "" : text.toString();
+                }
+            });
+            main.post(task);
+            try { return task.get(2, TimeUnit.SECONDS); }
+            catch (Exception e) { return ""; }
+        }
+
+        @JavascriptInterface
+        public String deviceInfo() {
+            try {
+                return new JSONObject()
+                        .put("manufacturer", Build.MANUFACTURER)
+                        .put("model", Build.MODEL)
+                        .put("android", Build.VERSION.RELEASE)
+                        .put("sdk", Build.VERSION.SDK_INT)
+                        .toString();
+            } catch (Exception e) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public int batteryPercent() {
+            try {
+                BatteryManager manager = activity.getSystemService(BatteryManager.class);
+                return manager == null ? -1 : manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            } catch (Exception e) { return -1; }
+        }
+
+        @JavascriptInterface
+        public boolean networkAvailable() {
+            try {
+                ConnectivityManager manager = (ConnectivityManager) activity.getSystemService(Activity.CONNECTIVITY_SERVICE);
+                if (manager == null || manager.getActiveNetwork() == null) return false;
+                NetworkCapabilities caps = manager.getNetworkCapabilities(manager.getActiveNetwork());
+                return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+            } catch (Exception e) { return false; }
+        }
+
+        @JavascriptInterface
+        public boolean openSettings() {
+            main.post(new Runnable() {
+                @Override public void run() {
+                    try { activity.startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+                    catch (Exception ignored) { }
+                }
+            });
+            return true;
+        }
     }
 }

@@ -75,10 +75,14 @@ import org.ivanivorontsov.stroka.files.FNode
 import org.ivanivorontsov.stroka.files.FileIO
 import org.ivanivorontsov.stroka.files.LocalNode
 import org.ivanivorontsov.stroka.files.SafNode
+import org.ivanivorontsov.stroka.git.GitHubApi
 import org.ivanivorontsov.stroka.git.GitOps
 import org.ivanivorontsov.stroka.run.JsRunner
 import org.ivanivorontsov.stroka.run.PythonRunner
 import org.ivanivorontsov.stroka.voice.VoiceInput
+import org.ivanivorontsov.stroka.ai.ProjectContext
+import org.ivanivorontsov.stroka.build.IconComposer
+import org.ivanivorontsov.stroka.build.SetupOptions
 import org.ivanivorontsov.stroka.build.BuildCoordinator
 import org.ivanivorontsov.stroka.build.CompileEnv
 import org.ivanivorontsov.stroka.build.BuildException
@@ -115,7 +119,10 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     private lateinit var panelStatus: TextView
     private lateinit var panelTabs: MaterialButtonToggleGroup
     private lateinit var consoleBox: View
+    private lateinit var panelContent: View
     private lateinit var previewBox: FrameLayout
+    private var panelCollapsed = false
+    private var panelExpandedHeight = 0
     private lateinit var voicePanel: View
     private lateinit var voiceStatus: TextView
     private lateinit var voicePartial: TextView
@@ -147,6 +154,20 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     private val openTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) addSafRoot(uri) }
     private var pendingBuild: String? = null
+    private var iconOptionsKind: String? = null
+    private val openBuildIcon = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                prefs.buildIconUri = uri.toString()
+                prefs.buildIconEmoji = ""
+                iconOptionsKind?.let { startBuild(it) }
+            } catch (e: Exception) {
+                toast("Не удалось сохранить доступ к фото: ${e.message}")
+            }
+        }
+        iconOptionsKind = null
+    }
     private val openBuildFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
@@ -209,6 +230,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         panelStatus = findViewById(R.id.panelStatus)
         panelTabs = findViewById(R.id.panelTabs)
         consoleBox = findViewById(R.id.consoleBox)
+        panelContent = findViewById(R.id.panelContent)
         previewBox = findViewById(R.id.previewBox)
         voicePanel = findViewById(R.id.voicePanel)
         voiceStatus = findViewById(R.id.voiceStatus)
@@ -272,6 +294,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             R.id.action_tutor -> startActivity(Intent(this, SelfTutorActivity::class.java))
             R.id.action_build_apk -> requestBuild("apk")
             R.id.action_build_exe -> requestBuild("exe")
+            R.id.action_build_setup -> requestBuild("setup")
             R.id.action_build_folder -> pickBuildFolder()
             R.id.action_ai -> openAiChat()
             R.id.action_ponyatny_help -> showPonyatnyHelp()
@@ -315,6 +338,26 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             docs[current].dirty = true
             editor.setText(pending)
             toast("Код из чата ИИ вставлен в файл")
+        }
+        val changed = AiBridge.pendingFiles
+        if (changed != null) {
+            AiBridge.pendingFiles = null
+            var activeChanged = false
+            for (index in docs.indices) {
+                val ref = docs[index].ref
+                val key = when (ref) {
+                    is DocRef.Local -> try { File(ref.path).canonicalPath } catch (_: Exception) { null }
+                    is DocRef.Saf -> "saf:${ref.uri}"
+                }
+                if (key != null && changed.containsKey(key)) {
+                    val value = changed[key]
+                    docs[index].text = value.orEmpty()
+                    docs[index].dirty = false
+                    if (index == current) activeChanged = true
+                }
+            }
+            if (activeChanged && current in docs.indices) editor.setText(docs[current].text)
+            toast("Проект обновлён ИИ: ${changed.size} файлов")
         }
 
         super.onResume()
@@ -919,6 +962,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupPanel() {
+        val collapseButton = findViewById<TextView>(R.id.panelCollapse)
+        collapseButton.setOnClickListener { togglePanelCollapsed() }
+        panelExpandedHeight = prefs.panelHeight.takeIf { it > dp(58) } ?: dp(280)
         findViewById<ImageButton>(R.id.panelClose).setOnClickListener { hidePanel() }
         findViewById<ImageButton>(R.id.panelClear).setOnClickListener {
             if (previewBox.visibility == View.VISIBLE) refreshPreview() else { consoleBuf.clear(); consoleText.text = "" }
@@ -931,6 +977,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         consoleInput.setOnEditorActionListener { _, a, _ -> if (a == EditorInfo.IME_ACTION_SEND || a == EditorInfo.IME_ACTION_DONE) { sendInput(); true } else false }
         panelTabs.addOnButtonCheckedListener { _, id, checked ->
             if (!checked) return@addOnButtonCheckedListener
+            if (panelCollapsed) expandPanel()
             if (id == R.id.tabPreview) {
                 consoleBox.visibility = View.GONE
                 previewBox.visibility = View.VISIBLE
@@ -945,22 +992,65 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         var startH = 0
         handle.setOnTouchListener { _, e ->
             when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> { startY = e.rawY; startH = panel.height; true }
+                MotionEvent.ACTION_DOWN -> {
+                    val wasCollapsed = panelCollapsed
+                    if (wasCollapsed) expandPanel()
+                    startY = e.rawY
+                    startH = if (wasCollapsed) panelExpandedHeight else panel.height
+                    true
+                }
                 MotionEvent.ACTION_MOVE -> {
                     val host = findViewById<View>(R.id.main).height
                     val h = (startH + (startY - e.rawY)).toInt().coerceIn(dp(110), (host * 0.8f).toInt())
                     panel.layoutParams = panel.layoutParams.apply { height = h }
+                    panelExpandedHeight = h
                     true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { prefs.panelHeight = panel.height; true }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (!panelCollapsed) {
+                        panelExpandedHeight = panel.height
+                        prefs.panelHeight = panelExpandedHeight
+                    }
+                    true
+                }
                 else -> true
             }
         }
-        if (prefs.panelHeight > 0) panel.layoutParams = panel.layoutParams.apply { height = prefs.panelHeight }
+        if (prefs.panelHeight > 0) {
+            panelExpandedHeight = prefs.panelHeight
+            panel.layoutParams = panel.layoutParams.apply { height = panelExpandedHeight }
+        }
+    }
+
+    private fun togglePanelCollapsed() {
+        if (panelCollapsed) {
+            expandPanel()
+        } else {
+            if (panel.height > dp(58)) panelExpandedHeight = panel.height
+            panelCollapsed = true
+            panelContent.visibility = View.GONE
+            panel.layoutParams = panel.layoutParams.apply { height = dp(58) }
+            findViewById<TextView>(R.id.panelCollapse).apply {
+                text = "▴"
+                contentDescription = "Развернуть консоль"
+            }
+        }
+    }
+
+    private fun expandPanel() {
+        if (!panelCollapsed) return
+        panelCollapsed = false
+        panelContent.visibility = View.VISIBLE
+        panel.layoutParams = panel.layoutParams.apply { height = panelExpandedHeight.coerceAtLeast(dp(120)) }
+        findViewById<TextView>(R.id.panelCollapse).apply {
+            text = "▾"
+            contentDescription = "Свернуть консоль"
+        }
     }
 
     private fun showPanel(preview: Boolean) {
         panel.visibility = View.VISIBLE
+        if (panelCollapsed) expandPanel()
         panelTabs.check(if (preview) R.id.tabPreview else R.id.tabConsole)
         if (!preview) {
             consoleBox.visibility = View.VISIBLE
@@ -1016,11 +1106,35 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             Lang.JAVASCRIPT -> runJs(code, d.name)
             Lang.PONYATNY -> runPonyatny(code, d.name)
             Lang.HTML, Lang.CSS, Lang.MARKDOWN -> openPreview()
-            else -> {
-                showPanel(false)
-                appendConsole("Запуск ${d.lang.title} прямо на телефоне не поддерживается. Запускаются Python, JavaScript, «Понятный», HTML и Markdown (просмотр).\n", Kind.INFO)
-            }
+            else -> showUniversalSourcePreview(d)
         }
+    }
+
+    private fun showUniversalSourcePreview(doc: Doc) {
+        showPanel(true)
+        consoleBox.visibility = View.GONE
+        previewBox.visibility = View.VISIBLE
+        val escaped = doc.text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        val html = """
+            <!doctype html>
+            <html><head><meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body{margin:0;padding:16px;background:#111827;color:#e5e7eb;font:14px sans-serif}
+              .tag{color:#93c5fd;font-weight:600;margin-bottom:12px}
+              pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1220;padding:14px;border-radius:12px;line-height:1.5}
+              .note{color:#9ca3af;font-size:12px;margin:10px 0}
+            </style></head><body>
+            <div class="tag">${doc.lang.title} · ${doc.name}</div>
+            <div class="note">Универсальный предпросмотр исходного кода. Для языков без встроенного исполнителя показан исходник, а не имитация запуска.</div>
+            <pre>$escaped</pre>
+            </body></html>
+        """.trimIndent()
+        ensurePreview().loadDataWithBaseURL("https://stroka.local/", html, "text/html", "utf-8", null)
+        panelStatus.text = "Предпросмотр исходника: ${doc.name}"
     }
 
     private fun runPython(code: String, name: String, cwd: String) {
@@ -1138,7 +1252,9 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         consoleBox.visibility = View.GONE
         previewBox.visibility = View.VISIBLE
         if (target == null) {
-            panelStatus.text = "Откройте HTML-файл"
+            val currentDoc = docs.getOrNull(current)
+            if (currentDoc != null) showUniversalSourcePreview(currentDoc)
+            else panelStatus.text = "Откройте файл для предпросмотра"
             return
         }
         previewDoc = target
@@ -1179,6 +1295,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             items.add("Коммит всех изменений…" to { askCommit(repo, push = false) })
             items.add("Коммит и отправить (push)…" to { askCommit(repo, push = true) })
             items.add("Отправить (push)" to { gitTask("push") { git.push(repo, creds()) } })
+            items.add("Ветки…" to { showBranches(repo) })
+            items.add("Создать pull request…" to { askPullRequest(repo) })
         } else if (start != null && start.absolutePath.startsWith(projectsDir.absolutePath + "/")) {
             val projectRoot = generateSequence(start) { it.parentFile }.first { it.parentFile == projectsDir }
             items.add("Создать репозиторий в «${projectRoot.name}»…" to { askInit(projectRoot) })
@@ -1220,6 +1338,43 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             gitTask(if (push) "commit + push" else "commit") {
                 git.commit(repo, msg, creds())
                 if (push) git.push(repo, creds())
+            }
+        }
+    }
+
+    private fun showBranches(repo: File) {
+        gitIo.execute {
+            val list = try { git.branches(repo) } catch (e: Exception) { main.post { toast(e.message ?: "Ошибка Git") }; return@execute }
+            main.post {
+                val names = listOf("+ Новая ветка…") + list.mapIndexed { i, b -> if (i == 0) "● $b (текущая)" else b }
+                MaterialAlertDialogBuilder(this).setTitle("Ветки")
+                    .setItems(names.toTypedArray()) { _, i ->
+                        when {
+                            i == 0 -> askName("Имя новой ветки", "", "feature/имя") { n -> gitTask("branch") { git.createBranch(repo, n.trim()) } }
+                            i > 1 -> gitTask("checkout") { git.checkout(repo, list[i - 1]) }
+                        }
+                    }.setNegativeButton("Закрыть", null).show()
+            }
+        }
+    }
+
+    private fun askPullRequest(repo: File) {
+        val token = SecureStore(this).get("github_token").orEmpty()
+        val slug = GitHubApi.repoFromRemote(git.remoteUrl(repo))
+        if (slug == null) { toast("origin не указывает на репозиторий GitHub"); return }
+        if (token.isBlank()) { toast("Сначала сохраните GitHub-токен в Настройки → Git и GitHub"); return }
+        val branch = git.currentBranch(repo)
+        askName("Заголовок pull request ($branch → основная ветка)", "", "Что сделано") { title ->
+            gitTask("pull request") {
+                val api = GitHubApi(token)
+                git.push(repo, creds())
+                val base = api.defaultBranch(slug)
+                if (base == branch) throw IllegalStateException("Вы в основной ветке $base. Создайте отдельную ветку (Git → Ветки) и сделайте в ней коммит.")
+                val url = api.createPullRequest(slug, branch, base, title.trim())
+                main.post {
+                    appendConsole("Pull request создан: $url\n", Kind.INFO)
+                    try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (_: Exception) {}
+                }
             }
         }
     }
@@ -1502,7 +1657,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 panelStatus.text = "Завершено: код $code, $millis мс"
                 appendConsole("■ код выхода $code ($millis мс)\n", if (code == 0) Kind.INFO else Kind.ERR)
             }
-        })
+        }, enableSystemApi = true)
     }
 
     private fun pickBuildFolder() {
@@ -1520,6 +1675,121 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     private fun startBuild(kind: String) {
+        if (kind != "apk" && kind != "setup") { performBuild(kind); return }
+        val setup = kind == "setup"
+        val appName = EditText(this).apply {
+            setSingleLine(true)
+            hint = "Например Мой калькулятор"
+            setText(prefs.buildAppName)
+        }
+        val version = EditText(this).apply {
+            setSingleLine(true)
+            hint = "Например 1.2.0"
+            setText(prefs.buildVersionName)
+        }
+        val code = EditText(this).apply {
+            setSingleLine(true)
+            hint = "Положительное целое число"
+            setText(prefs.buildVersionCode.toString())
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        val publisher = EditText(this).apply {
+            setSingleLine(true)
+            hint = "Например Иван Воронцов"
+            setText(prefs.buildPublisher)
+        }
+        val desktop = CheckBox(this).apply { text = "Ярлык на рабочем столе"; isChecked = prefs.setupDesktop }
+        val startMenu = CheckBox(this).apply { text = "Ярлык в меню «Пуск»"; isChecked = prefs.setupStartMenu }
+        val runAfter = CheckBox(this).apply { text = "Запустить программу после установки"; isChecked = prefs.setupRunAfter }
+        val license = EditText(this).apply {
+            hint = "Текст лицензии (необязательно) — установщик попросит принять"
+            minLines = 2
+            maxLines = 5
+            setText(prefs.setupLicense)
+        }
+        val iconStatus = TextView(this).apply {
+            text = when {
+                prefs.buildIconUri.isNotBlank() -> "Иконка: фото из галереи"
+                prefs.buildIconEmoji.isNotBlank() -> "Иконка: ${prefs.buildIconEmoji}"
+                else -> "Иконка: стандартная"
+            }
+        }
+        val photo = Button(this).apply { text = "Выбрать фото из галереи" }
+        val emoji = Button(this).apply { text = "Случайный эмодзи" }
+        val reset = Button(this).apply { text = "Стандартная иконка" }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), 0)
+            addView(TextView(this@MainActivity).apply { text = "Название приложения" })
+            addView(appName)
+            addView(TextView(this@MainActivity).apply { text = "Версия приложения" })
+            addView(version)
+            if (setup) {
+                addView(TextView(this@MainActivity).apply { text = "Издатель" })
+                addView(publisher)
+                addView(desktop)
+                addView(startMenu)
+                addView(runAfter)
+                addView(license)
+            } else {
+                addView(TextView(this@MainActivity).apply { text = "Version code (увеличивайте при обновлении)" })
+                addView(code)
+            }
+            addView(iconStatus)
+            addView(photo)
+            addView(emoji)
+            addView(reset)
+        }
+        val saveSetup = {
+            prefs.buildPublisher = publisher.text.toString().trim()
+            prefs.setupDesktop = desktop.isChecked
+            prefs.setupStartMenu = startMenu.isChecked
+            prefs.setupRunAfter = runAfter.isChecked
+            prefs.setupLicense = license.text.toString().trim()
+        }
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(if (setup) "Установщик Windows" else "Параметры сборки APK")
+            .setView(ScrollView(this).apply { addView(content) })
+            .setPositiveButton("Собрать") { _, _ ->
+                val name = appName.text.toString().trim()
+                val v = version.text.toString().trim()
+                val n = code.text.toString().toIntOrNull()
+                if (name.isBlank() || name.length > 60 || name.any { it == '/' || it == 92.toChar() || it.isISOControl() } ||
+                    !v.matches(Regex("[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}")) || n == null || n < 1) {
+                    toast("Укажите название до 60 символов без разделителей пути, корректную версию и version code")
+                    return@setPositiveButton
+                }
+                prefs.buildAppName = name
+                prefs.buildVersionName = v
+                prefs.buildVersionCode = n
+                if (setup) saveSetup()
+                performBuild(kind)
+            }
+            .setNegativeButton("Отмена", null)
+            .create()
+        photo.setOnClickListener {
+            prefs.buildAppName = appName.text.toString().trim().ifBlank { prefs.buildAppName }
+            prefs.buildVersionName = version.text.toString().trim().ifBlank { prefs.buildVersionName }
+            prefs.buildVersionCode = code.text.toString().toIntOrNull() ?: prefs.buildVersionCode
+            if (setup) saveSetup()
+            iconOptionsKind = kind
+            dialog.dismiss()
+            openBuildIcon.launch(arrayOf("image/png", "image/jpeg", "image/webp"))
+        }
+        emoji.setOnClickListener {
+            prefs.buildIconEmoji = IconComposer.randomEmoji()
+            prefs.buildIconUri = ""
+            iconStatus.text = "Иконка: ${prefs.buildIconEmoji}"
+        }
+        reset.setOnClickListener {
+            prefs.buildIconEmoji = ""
+            prefs.buildIconUri = ""
+            iconStatus.text = "Иконка: стандартная"
+        }
+        dialog.show()
+    }
+
+    private fun performBuild(kind: String) {
         val d = docs.getOrNull(current) ?: run { toast("Откройте файл программы"); return }
         captureEditor(d)
         if (prefs.autosave) saveAllDirty()
@@ -1531,7 +1801,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 .setPositiveButton("ОК", null).show()
             return
         }
-        if (kind == "exe" && d.lang != Lang.PONYATNY && d.lang != Lang.JAVASCRIPT) {
+        if ((kind == "exe" || kind == "setup") && d.lang != Lang.PONYATNY && d.lang != Lang.JAVASCRIPT) {
             MaterialAlertDialogBuilder(this)
                 .setTitle("Сборка EXE")
                 .setMessage("Windows EXE на телефоне собирается из программы на «Понятном» или JavaScript (встроенный QuickJS). Для Java и Python соберите APK.")
@@ -1546,7 +1816,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
         val source = d.text
         val fileName = if (d.lang.exts.isEmpty() || d.lang.exts.any { d.name.lowercase().endsWith(".$it") }) d.name
             else d.name.substringBeforeLast('.') + "." + d.lang.exts.first()
-        val label = d.name.substringBeforeLast('.').ifBlank { "Программа" }
+        val label = prefs.buildAppName.trim().ifBlank { d.name.substringBeforeLast('.').ifBlank { "Программа" } }
+        val safeFileLabel = label.map { if (it == '/' || it == 92.toChar() || it == ':' || it == '*' || it == '?' || it == '"' || it == '<' || it == '>' || it == '|') '_' else it }.joinToString("").trim().take(60).ifBlank { "Программа" }
         val t0 = System.nanoTime()
         io.execute {
             try {
@@ -1556,10 +1827,15 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 work.mkdirs()
                 val env = compileEnvFor(d)
                 if (kind == "apk") {
-                    val tmp = File(work, "$label.apk")
+                    val tmp = File(work, safeFileLabel + "-" + prefs.buildVersionName + ".apk")
+                    val iconPng = when {
+                        prefs.buildIconUri.isNotBlank() -> IconComposer.fromUri(this@MainActivity, Uri.parse(prefs.buildIconUri))
+                        prefs.buildIconEmoji.isNotBlank() -> IconComposer.emojiPng(prefs.buildIconEmoji)
+                        else -> null
+                    }
                     val apk = OneFileBuild.buildApk(source, fileName, label, work, assets, tmp, { msg ->
                         main.post { appendConsole(msg + "\n", Kind.INFO) }
-                    }, env)
+                    }, env, prefs.buildVersionName, prefs.buildVersionCode, iconPng)
                     val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, apk.name, apk.readBytes())
                     val ms = (System.nanoTime() - t0) / 1_000_000L
                     main.post {
@@ -1568,8 +1844,30 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                         toast("APK готов")
                         try { BuildCoordinator.mimeOpen(this@MainActivity, uri) } catch (_: Exception) {}
                     }
+                } else if (kind == "setup") {
+                    val iconPng = when {
+                        prefs.buildIconUri.isNotBlank() -> IconComposer.fromUri(this@MainActivity, Uri.parse(prefs.buildIconUri))
+                        prefs.buildIconEmoji.isNotBlank() -> IconComposer.emojiPng(prefs.buildIconEmoji)
+                        else -> null
+                    }
+                    val opts = SetupOptions(
+                        title = label, version = prefs.buildVersionName, publisher = prefs.buildPublisher,
+                        desktopShortcut = prefs.setupDesktop, startMenu = prefs.setupStartMenu, runAfter = prefs.setupRunAfter,
+                        license = prefs.setupLicense, icon = iconPng?.let { IconComposer.pixels(it) }
+                    )
+                    val tmp = File(work, safeFileLabel + "-" + prefs.buildVersionName + "-Setup.exe")
+                    val setupExe = OneFileBuild.buildSetup(source, fileName, label, work, assets, tmp, { msg ->
+                        main.post { appendConsole(msg + "\n", Kind.INFO) }
+                    }, env, opts)
+                    val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, setupExe.name, setupExe.readBytes())
+                    val ms = (System.nanoTime() - t0) / 1_000_000L
+                    main.post {
+                        appendConsole("Готово за $ms мс: ${setupExe.name} (${setupExe.length()} байт) записан в выбранную папку. Перенесите его на компьютер с Windows и запустите.\n", Kind.INFO)
+                        panelStatus.text = "Сборка готова"
+                        toast("Установщик готов")
+                    }
                 } else {
-                    val tmp = File(work, "$label.exe")
+                    val tmp = File(work, safeFileLabel + ".exe")
                     val exe = OneFileBuild.buildExe(source, fileName, label, work, assets, tmp, { msg ->
                         main.post { appendConsole(msg + "\n", Kind.INFO) }
                     }, env)
@@ -1615,6 +1913,27 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             i.putExtra(AiChatActivity.EXTRA_CODE, d.text)
             i.putExtra(AiChatActivity.EXTRA_NAME, d.name)
             i.putExtra(AiChatActivity.EXTRA_LANG, d.lang.name)
+            when (val ref = d.ref) {
+                is DocRef.Local -> {
+                    val local = File(ref.path)
+                    val parent = local.parentFile
+                    val root = parent?.let { dir -> generateSequence(dir) { it.parentFile }.firstOrNull { it.parentFile == projectsDir } ?: dir }
+                    if (root != null) {
+                        i.putExtra(AiChatActivity.EXTRA_PROJECT_ROOT, root.canonicalPath)
+                        val snapshot = ProjectContext.collect(root, local)
+                        if (snapshot.isNotBlank()) i.putExtra(AiChatActivity.EXTRA_PROJECT_CONTEXT, snapshot)
+                    }
+                }
+                is DocRef.Saf -> {
+                    val tree = ref.treeUri
+                    if (!tree.isNullOrBlank()) {
+                        val treeUri = Uri.parse(tree)
+                        i.putExtra(AiChatActivity.EXTRA_PROJECT_SAF_URI, tree)
+                        val snapshot = ProjectContext.collectSaf(this, treeUri, Uri.parse(ref.uri))
+                        if (snapshot.isNotBlank()) i.putExtra(AiChatActivity.EXTRA_PROJECT_CONTEXT, snapshot)
+                    }
+                }
+            }
         }
         startActivity(i)
     }

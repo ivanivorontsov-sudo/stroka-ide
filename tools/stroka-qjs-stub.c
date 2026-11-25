@@ -89,12 +89,12 @@ static JSValue js_ask(JSContext *ctx, JSValueConst this_val, int argc, JSValueCo
     (void)this_val;
     if (!console_mode) {
         if (q) JS_FreeCString(ctx, q);
-        return JS_NewString(ctx, "");
+        return JS_NULL;
     }
     if (q && q[0]) { fputs(q, stdout); fputc(' ', stdout); }
     fflush(stdout);
     if (q) JS_FreeCString(ctx, q);
-    if (!fgets(buf, sizeof(buf), stdin)) return JS_NewString(ctx, "");
+    if (!fgets(buf, sizeof(buf), stdin)) return JS_NULL;
     n = strlen(buf);
     while (n && (buf[n - 1] == '\n' || buf[n - 1] == '\r')) buf[--n] = 0;
     return JS_NewString(ctx, buf);

@@ -13,6 +13,50 @@
         app:title="Чат с ИИ"
         app:menu="@menu/ai_chat" />
 
+    <FrameLayout
+        android:id="@+id/aiWebPanel"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+
+        <WebView
+            android:id="@+id/aiWebView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:background="#CC202020"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="6dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/aiWebUse"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Использовать этот чат" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/aiDiagnose"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Диагностика" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/aiWebDone"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Готово" />
+        </LinearLayout>
+    </FrameLayout>
+
     <ScrollView
         android:id="@+id/aiScroll"
         android:layout_width="match_parent"
@@ -35,10 +79,11 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
-        android:text="Вставить код в файл"
+        android:text="Проверить и применить изменения"
         android:visibility="gone" />
 
     <LinearLayout
+        android:id="@+id/aiInputRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -49,7 +94,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Сообщение…"
+            android:hint="Напишите, что нужно сделать с проектом…"
             android:inputType="textCapSentences|textMultiLine"
             android:minHeight="48dp" />
 

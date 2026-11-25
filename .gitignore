@@ -11,3 +11,7 @@ screens/raw/
 screens/raw*.png
 .kotlin/
 __pycache__/
+
+# Генерируются Gradle из зависимостей и Android SDK
+app/src/main/assets/libs/kotlin/
+app/src/main/assets/toolchain/core-lambda-stubs.jar

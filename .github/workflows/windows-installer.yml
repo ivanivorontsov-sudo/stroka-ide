@@ -1,0 +1,122 @@
+name: Build Windows installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: Application name shown by Setup
+        required: true
+        type: string
+      version:
+        description: Application version (for example 1.0.0)
+        required: true
+        type: string
+      exe_download_url:
+        description: GitHub Releases download URL of the portable EXE produced by Stroka
+        required: true
+        type: string
+      exe_sha256:
+        description: Expected SHA-256 of that EXE
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate inputs and download portable EXE
+        shell: pwsh
+        env:
+          APP_NAME: ${{ inputs.app_name }}
+          APP_VERSION: ${{ inputs.version }}
+          EXE_URL: ${{ inputs.exe_download_url }}
+          EXE_SHA256: ${{ inputs.exe_sha256 }}
+        run: |
+          if ($env:EXE_URL -notmatch '^https://github\.com/') {
+            throw "Only GitHub Releases download URLs are accepted."
+          }
+          if ($env:EXE_SHA256 -notmatch '^[a-fA-F0-9]{64}$') {
+            throw "SHA-256 must contain exactly 64 hexadecimal characters."
+          }
+          if ($env:APP_NAME.Length -gt 60 -or $env:APP_NAME -match '[\\/:*?""<>|]') {
+            throw "Application name contains unsupported characters or is too long."
+          }
+          if ($env:APP_VERSION -notmatch '^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$') {
+            throw "Version contains unsupported characters."
+          }
+          New-Item -ItemType Directory -Force payload, output | Out-Null
+          Invoke-WebRequest -Uri $env:EXE_URL -OutFile payload\app.exe
+          $actual = (Get-FileHash payload\app.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $env:EXE_SHA256.ToLowerInvariant()) {
+            throw "SHA-256 mismatch. Downloaded file was not accepted."
+          }
+          "Verified EXE SHA-256: $actual" | Out-File output\SHA256SUMS.txt -Encoding utf8
+          "APP_NAME=$env:APP_NAME" >> $env:GITHUB_ENV
+          "APP_VERSION=$env:APP_VERSION" >> $env:GITHUB_ENV
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue)) {
+            choco install innosetup --yes --no-progress
+          }
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if (-not $iscc) {
+            $candidate = Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'
+            if (Test-Path $candidate) { "ISCC=$candidate" >> $env:GITHUB_ENV }
+            else { throw "Inno Setup compiler ISCC.exe was not found." }
+          } else {
+            "ISCC=$($iscc.Source)" >> $env:GITHUB_ENV
+          }
+
+      - name: Create installer script and compile Setup.exe
+        shell: pwsh
+        run: |
+          $safe = ($env:APP_NAME -replace '[^A-Za-z0-9_-]', '_')
+          $name = $env:APP_NAME.Replace('"', '""')
+          $idBytes = [System.Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($env:APP_NAME))
+          $guidBytes = $idBytes[0..15]
+          $appId = ([Guid]::new($guidBytes)).ToString()
+          $script = @"
+          [Setup]
+          AppId={{$appId}
+          AppName=$name
+          AppVersion=$env:APP_VERSION
+          AppPublisher=Built with Stroka
+          DefaultDirName={localappdata}\Programs\$safe
+          DefaultGroupName=$name
+          DisableProgramGroupPage=yes
+          PrivilegesRequired=lowest
+          ArchitecturesInstallIn64BitMode=x64compatible
+          OutputDir=output
+          OutputBaseFilename=$safe-$env:APP_VERSION-Setup
+          Compression=lzma2
+          SolidCompression=yes
+          WizardStyle=modern
+          UninstallDisplayIcon={app}\app.exe
+
+          [Files]
+          Source: "payload\app.exe"; DestDir: "{app}"; DestName: "$safe.exe"; Flags: ignoreversion
+
+          [Icons]
+          Name: "{autoprograms}\$name"; Filename: "{app}\$safe.exe"
+          Name: "{autodesktop}\$name"; Filename: "{app}\$safe.exe"; Tasks: desktopicon
+
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"; Flags: unchecked
+          "@
+          Set-Content -Path installer.iss -Value $script -Encoding utf8
+          & $env:ISCC installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+          Get-ChildItem output
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Stroka-Windows-Setup
+          path: output/*
+          if-no-files-found: error
+          retention-days: 14

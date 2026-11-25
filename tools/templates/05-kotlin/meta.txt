@@ -1,0 +1,3 @@
+id=kotlin
+title=Kotlin: счётчик (APK)
+main=Main.kt

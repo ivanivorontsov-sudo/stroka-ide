@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,6 +9,26 @@ plugins {
 val abiList = (project.findProperty("abis") as String? ?: "arm64-v8a,x86_64").split(",").map { it.trim() }.filter { it.isNotEmpty() }
 val ksPath: String? = System.getenv("STROKA_KEYSTORE")
 
+val kotlinRuntimeForDevice by configurations.creating
+// kotlinc-android embeds JNA classes. Keep the JNA Android AAR (including
+// native dispatch libraries for Vosk) and remove only duplicate JNA bytecode
+// from the compiler fat JAR before D8 packages the application.
+val kotlinCompilerRaw by configurations.creating {
+    isTransitive = false
+}
+val filteredKotlinCompiler by tasks.registering(Jar::class) {
+    archiveFileName.set("kotlinc-android-filtered.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("generated/kotlinc"))
+    from({ zipTree(kotlinCompilerRaw.singleFile) }) {
+        exclude("com/sun/jna/**")
+    }
+}
+val stageKotlinRuntime by tasks.registering(Copy::class) {
+    from(kotlinRuntimeForDevice)
+    include("kotlin-stdlib-2.4.0.jar")
+    into(layout.projectDirectory.dir("src/main/assets/libs/kotlin"))
+}
+
 android {
     namespace = "org.ivanivorontsov.stroka"
     compileSdk = 35
@@ -15,8 +37,8 @@ android {
         applicationId = "org.ivanivorontsov.stroka"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.8.2"
+        versionCode = 14
+        versionName = "1.9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters.clear()
@@ -46,9 +68,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         buildConfig = true
     }
@@ -69,6 +88,12 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
 chaquopy {
     defaultConfig {
         version = "3.12"
@@ -79,7 +104,24 @@ chaquopy {
 }
 
 dependencies {
-    implementation(files("libs/javax-lang-model-stub.jar"))
+    add(kotlinRuntimeForDevice.name, "org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
+    add(kotlinCompilerRaw.name, "com.github.PranavPurwar:kotlinc-android:2.4.0")
+    implementation(files(filteredKotlinCompiler.flatMap { it.archiveFile }))
+    // Runtime dependencies of the on-device Kotlin compiler. kotlinCompilerRaw is
+    // non-transitive (to drop its bundled JNA copy), so these must be listed
+    // explicitly; without kotlin-reflect the compiler fails on the phone with
+    // NoClassDefFoundError: kotlin/reflect/jvm/ReflectJvmMapping.
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.4.0")
+    implementation("org.jetbrains.intellij.deps:trove4j:1.0.20200330")
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.4.0")
+    implementation("org.jdom:jdom:2.0.2")
+    implementation("org.antlr:antlr4-runtime:4.13.2")
+    implementation("io.vavr:vavr:1.0.1")
+    implementation("org.codehaus.woodstox:stax2-api:4.3.0")
+    implementation("com.google.guava:guava:33.6.0-android")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation("com.github.PranavPurwar:javac-android:26.0.0")
+    implementation("com.github.Cosmic-IDE.kotlinc-android:jaxp:fce2462f00")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-ktx:1.9.3")
@@ -91,10 +133,66 @@ dependencies {
     implementation("com.alphacephei:vosk-android:0.3.75")
     implementation("org.eclipse.jgit:org.eclipse.jgit:5.13.5.202508271544-r")
     implementation("com.android.tools.build:apksig:8.7.3")
-    implementation("org.eclipse.jdt:ecj:3.21.0")
+    // Android-compatible ECJ batch compiler. The dependency is needed both at
+    // compile time (JavaCompile imports Main) and runtime (the app invokes ECJ).
+    implementation("org.eclipse.jdt:ecj:3.18.0")
     implementation("com.android.tools:r8:8.7.18")
     testImplementation("junit:junit:4.13.2")
+    // Use a real JVM JSON implementation in local unit tests instead of the
+    // Android framework stubs, whose methods return null in this test setup.
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+}
+
+val stageAndroidLambdaStubs by tasks.registering {
+    val output = layout.projectDirectory.file("src/main/assets/toolchain/core-lambda-stubs.jar")
+    outputs.file(output)
+    outputs.upToDateWhen { false }
+    doLast {
+        val sdkPath = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+            ?: throw GradleException("ANDROID_HOME/ANDROID_SDK_ROOT is required to stage core-lambda-stubs.jar")
+        val buildTools = File(sdkPath, "build-tools")
+        val source = buildTools.listFiles()
+            ?.map { File(it, "core-lambda-stubs.jar") }
+            ?.filter { it.isFile }
+            ?.maxByOrNull { it.parentFile.name }
+            ?: throw GradleException("Android SDK build-tools does not contain core-lambda-stubs.jar")
+        output.asFile.parentFile.mkdirs()
+        source.copyTo(output.asFile, overwrite = true)
+        logger.lifecycle("Staged Android lambda stubs: $source")
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(stageKotlinRuntime, filteredKotlinCompiler, stageAndroidLambdaStubs)
+}
+
+
+// Guard the compiler dependency before Kotlin compilation. This catches
+// repository/classpath regressions with a precise message instead of a pair
+// of misleading "Unresolved reference: jdt/Main" diagnostics.
+val verifyEcjCompileDependency by tasks.registering {
+    doLast {
+        val compileClasspath = configurations.getByName("debugCompileClasspath")
+        val ecjJar = compileClasspath.files.firstOrNull {
+            it.name == "ecj-3.18.0.jar" || it.name.startsWith("ecj-")
+        } ?: throw GradleException(
+            "Android-compatible ECJ 3.18.0 is missing from debugCompileClasspath. Resolved files: " +
+                compileClasspath.files.joinToString { it.name }
+        )
+        val mainClass = zipTree(ecjJar).matching {
+            include("org/eclipse/jdt/internal/compiler/batch/Main.class")
+        }.files
+        check(mainClass.isNotEmpty()) {
+            "Resolved ECJ artifact does not contain org/eclipse/jdt/internal/compiler/batch/Main.class: $ecjJar"
+        }
+        logger.lifecycle("Android-compatible ECJ compile dependency verified: $ecjJar")
+    }
+}
+
+tasks.matching { it.name == "compileDebugKotlin" }.configureEach {
+    dependsOn(verifyEcjCompileDependency)
 }

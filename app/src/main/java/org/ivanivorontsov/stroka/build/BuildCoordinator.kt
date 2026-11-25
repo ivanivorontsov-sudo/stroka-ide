@@ -27,14 +27,20 @@ object BuildCoordinator {
             "(function(){\n" +
             "  var src = " + quoted + ";\n" +
             "  var js = PonyatnyYadro.compile(src, { file: " + PonyatnyJs.json(prepared.fileName) + ", resolve: function(p, from){ return strokaResolve(p, from, STROKA_STD, STROKA_FILES); } });\n" +
-            "  var __R = PonyatnyYadro.makeRuntime({\n" +
+            "  var __R = window.__R = PonyatnyYadro.makeRuntime({\n" +
             "    write: function(s){ console.log(String(s)); },\n" +
             "    writeErr: function(s){ console.error(String(s)); },\n" +
-            "    ask: function(q){ var v = window.prompt(q || '\u0412\u0432\u043e\u0434', ''); return v == null ? '' : v; },\n" +
+            "    feature: function(s){ console.log('\u2714 ' + String(s)); },\n" +
+            "    ask: function(q){ var v = window.prompt(q || '\u0412\u0432\u043e\u0434', ''); return v == null ? null : v; },\n" +
             "    maxSteps: 5000000,\n" +
-            "    args: []\n" +
+            "    args: [],\n" +
+            "    system: window.StrokaSystem || null\n" +
             "  });\n" +
-            "  (0, eval)(js);\n" +
+            "  try { (0, eval)(js); } catch (e) {\n" +
+            "    if (e && e.isExit) { if (e.code) throw { message: '\u041a\u043e\u0434 \u0432\u044b\u0445\u043e\u0434\u0430 ' + e.code }; return; }\n" +
+            "    if (__R.featureCatch && __R.featureCatch(e)) return;\n" +
+            "    throw { message: '\u041e\u0448\u0438\u0431\u043a\u0430. ' + (__R.L ? '\u0421\u0442\u0440\u043e\u043a\u0430 ' + __R.L + ': ' : '') + (e && e.isPon ? e.message : __R.explain(e)) };\n" +
+            "  }\n" +
             "})();\n"
     }
 
@@ -53,6 +59,12 @@ object BuildCoordinator {
                 jar.outputStream().use { out -> inp.copyTo(out) }
             }
         }
+        val lambdaStubs = File(store, "core-lambda-stubs.jar")
+        if (!lambdaStubs.isFile) {
+            ctx.assets.open("toolchain/core-lambda-stubs.jar").use { inp ->
+                lambdaStubs.outputStream().use { out -> inp.copyTo(out) }
+            }
+        }
         val native = File(ctx.applicationInfo.nativeLibraryDir)
         val tc = Toolchain.fromNativeAndJar(native, jar)
             ?: throw BuildException(
@@ -66,7 +78,8 @@ object BuildCoordinator {
         val runtime = linkedMapOf(
             "index.html" to assetBytes(ctx, "runtime/index.html"),
             "runtime.js" to assetBytes(ctx, "runtime/runtime.js"),
-            "shell.js" to assetBytes(ctx, "runtime/shell.js")
+            "shell.js" to assetBytes(ctx, "runtime/shell.js"),
+            "grafika.js" to assetBytes(ctx, "runtime/grafika.js")
         )
         val libDir = extractLibs(ctx, File(ctx.filesDir, "libs"))
         return BuildAssets(
@@ -79,6 +92,7 @@ object BuildCoordinator {
             stdText = try { assetText(ctx, "ponyatny/std.js") } catch (_: Exception) { "" },
             libDir = libDir,
             cacheDir = File(ctx.filesDir, "lib-cache"),
+            kotlinStdlib = File(libDir, "kotlin/kotlin-stdlib-2.4.0.jar").takeIf { it.isFile },
             setupStub = try { assetBytes(ctx, "templates/stroka-setup-stub.exe") } catch (_: Exception) { ByteArray(0) },
             qjsLinuxAmd64 = try { assetBytes(ctx, "templates/qjs-linux-x86_64") } catch (_: Exception) { ByteArray(0) }
         )
@@ -98,7 +112,8 @@ object BuildCoordinator {
             runtime = mapOf(
                 "index.html" to File(runtimeDir, "index.html").readBytes(),
                 "runtime.js" to File(runtimeDir, "runtime.js").readBytes(),
-                "shell.js" to File(runtimeDir, "shell.js").readBytes()
+                "shell.js" to File(runtimeDir, "shell.js").readBytes(),
+                "grafika.js" to File(runtimeDir, "grafika.js").readBytes()
             ),
             mainJava = File(root, "app/src/main/assets/toolchain/Main.java").readText(Charsets.UTF_8),
             userKey = key,
@@ -107,6 +122,7 @@ object BuildCoordinator {
             stdText = File(root, "app/src/main/assets/ponyatny/std.js").readText(Charsets.UTF_8),
             libDir = File(root, "app/src/main/assets/libs"),
             cacheDir = File(root, "app/build/lib-cache"),
+            kotlinStdlib = File(root, "app/src/main/assets/libs/kotlin/kotlin-stdlib-2.4.0.jar").takeIf { it.isFile },
             setupStub = File(root, "app/src/main/assets/templates/stroka-setup-stub.exe").let { if (it.isFile) it.readBytes() else ByteArray(0) },
             qjsLinuxAmd64 = File(root, "app/src/main/assets/templates/qjs-linux-x86_64").let { if (it.isFile) it.readBytes() else ByteArray(0) }
         )
