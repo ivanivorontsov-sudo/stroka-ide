@@ -82,6 +82,26 @@ class Prefs(ctx: Context) {
         get() = sp.getString("build_icon_emoji", "") ?: ""
         set(v) = sp.edit().putString("build_icon_emoji", v).apply()
 
+    var buildPublisher: String
+        get() = sp.getString("build_publisher", "") ?: ""
+        set(v) = sp.edit().putString("build_publisher", v).apply()
+
+    var setupLicense: String
+        get() = sp.getString("setup_license", "") ?: ""
+        set(v) = sp.edit().putString("setup_license", v).apply()
+
+    var setupDesktop: Boolean
+        get() = sp.getBoolean("setup_desktop", true)
+        set(v) = sp.edit().putBoolean("setup_desktop", v).apply()
+
+    var setupStartMenu: Boolean
+        get() = sp.getBoolean("setup_start_menu", true)
+        set(v) = sp.edit().putBoolean("setup_start_menu", v).apply()
+
+    var setupRunAfter: Boolean
+        get() = sp.getBoolean("setup_run_after", true)
+        set(v) = sp.edit().putBoolean("setup_run_after", v).apply()
+
     var expanded: Set<String>
         get() = sp.getStringSet("tree_expanded", emptySet()) ?: emptySet()
         set(v) = sp.edit().putStringSet("tree_expanded", HashSet(v)).apply()

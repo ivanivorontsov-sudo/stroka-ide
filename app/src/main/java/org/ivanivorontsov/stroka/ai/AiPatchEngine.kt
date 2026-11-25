@@ -25,9 +25,16 @@ object AiPatchEngine {
     private const val MAX_FILE_CHARS = 300_000
     private val blockedNames = listOf("secret", "credential", "password", "token", "keystore", "local.properties")
 
+    /** Как parse, но обычный текстовый ответ (без JSON) не теряется: он становится summary без операций. */
+    fun parseOrText(raw: String): AiPatchPlan = try {
+        parse(raw)
+    } catch (e: AiException) {
+        if (e.message.orEmpty().startsWith("ИИ не вернул JSON") || e.message.orEmpty().startsWith("Ответ ИИ — не JSON")) AiPatchPlan(raw.trim().take(4000), emptyList()) else throw e
+    }
+
     fun parse(raw: String): AiPatchPlan {
         val jsonText = extractJson(raw)
-        val root = JSONObject(jsonText)
+        val root = try { JSONObject(jsonText) } catch (e: org.json.JSONException) { throw AiException("Ответ ИИ — не JSON: ${e.message}") }
         val summary = root.optString("summary", "").take(4000)
         val array = root.optJSONArray("operations") ?: JSONArray()
         if (array.length() > MAX_OPERATIONS) throw AiException("Слишком много операций: максимум $MAX_OPERATIONS.")

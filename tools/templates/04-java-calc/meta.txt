@@ -1,0 +1,3 @@
+id=java-calc
+title=Java: калькулятор (APK)
+main=Калькулятор.java

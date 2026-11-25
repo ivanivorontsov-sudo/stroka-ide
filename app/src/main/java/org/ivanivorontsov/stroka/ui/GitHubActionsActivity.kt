@@ -52,30 +52,10 @@ class GitHubActionsActivity : AppCompatActivity() {
 
     private fun token(): String = SecureStore(this).get("github_token").orEmpty()
 
-    private fun request(method: String, path: String, body: JSONObject? = null): String {
-        val credential = token()
-        if (credential.isBlank()) throw IllegalStateException("Сначала сохраните GitHub PAT в Настройки → Git и GitHub.")
-        val connection = (URL("https://api.github.com$path").openConnection() as HttpURLConnection)
-        connection.requestMethod = method
-        connection.connectTimeout = 15000
-        connection.readTimeout = 30000
-        connection.setRequestProperty("Authorization", "Bearer $credential")
-        connection.setRequestProperty("Accept", "application/vnd.github+json")
-        connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-        if (body != null) {
-            connection.doOutput = true
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-        }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val response = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-        connection.disconnect()
-        if (code !in 200..299) {
-            val detail = try { JSONObject(response).optString("message") } catch (_: Exception) { response.take(300) }
-            throw IllegalStateException("GitHub API HTTP $code: $detail. Проверьте scopes Actions: read/write и Contents: read.")
-        }
-        return response
+    private fun request(method: String, path: String, body: JSONObject? = null): String = try {
+        org.ivanivorontsov.stroka.git.GitHubApi(token()).request(method, path, body)
+    } catch (e: org.ivanivorontsov.stroka.git.GitHubApiException) {
+        throw IllegalStateException(e.message + ". Проверьте права токена: Actions — read/write, Contents — read.")
     }
 
     private fun repository(): String {

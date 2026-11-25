@@ -75,12 +75,14 @@ import org.ivanivorontsov.stroka.files.FNode
 import org.ivanivorontsov.stroka.files.FileIO
 import org.ivanivorontsov.stroka.files.LocalNode
 import org.ivanivorontsov.stroka.files.SafNode
+import org.ivanivorontsov.stroka.git.GitHubApi
 import org.ivanivorontsov.stroka.git.GitOps
 import org.ivanivorontsov.stroka.run.JsRunner
 import org.ivanivorontsov.stroka.run.PythonRunner
 import org.ivanivorontsov.stroka.voice.VoiceInput
 import org.ivanivorontsov.stroka.ai.ProjectContext
 import org.ivanivorontsov.stroka.build.IconComposer
+import org.ivanivorontsov.stroka.build.SetupOptions
 import org.ivanivorontsov.stroka.build.BuildCoordinator
 import org.ivanivorontsov.stroka.build.CompileEnv
 import org.ivanivorontsov.stroka.build.BuildException
@@ -292,6 +294,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             R.id.action_tutor -> startActivity(Intent(this, SelfTutorActivity::class.java))
             R.id.action_build_apk -> requestBuild("apk")
             R.id.action_build_exe -> requestBuild("exe")
+            R.id.action_build_setup -> requestBuild("setup")
             R.id.action_build_folder -> pickBuildFolder()
             R.id.action_ai -> openAiChat()
             R.id.action_ponyatny_help -> showPonyatnyHelp()
@@ -1292,6 +1295,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             items.add("Коммит всех изменений…" to { askCommit(repo, push = false) })
             items.add("Коммит и отправить (push)…" to { askCommit(repo, push = true) })
             items.add("Отправить (push)" to { gitTask("push") { git.push(repo, creds()) } })
+            items.add("Ветки…" to { showBranches(repo) })
+            items.add("Создать pull request…" to { askPullRequest(repo) })
         } else if (start != null && start.absolutePath.startsWith(projectsDir.absolutePath + "/")) {
             val projectRoot = generateSequence(start) { it.parentFile }.first { it.parentFile == projectsDir }
             items.add("Создать репозиторий в «${projectRoot.name}»…" to { askInit(projectRoot) })
@@ -1333,6 +1338,43 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             gitTask(if (push) "commit + push" else "commit") {
                 git.commit(repo, msg, creds())
                 if (push) git.push(repo, creds())
+            }
+        }
+    }
+
+    private fun showBranches(repo: File) {
+        gitIo.execute {
+            val list = try { git.branches(repo) } catch (e: Exception) { main.post { toast(e.message ?: "Ошибка Git") }; return@execute }
+            main.post {
+                val names = listOf("+ Новая ветка…") + list.mapIndexed { i, b -> if (i == 0) "● $b (текущая)" else b }
+                MaterialAlertDialogBuilder(this).setTitle("Ветки")
+                    .setItems(names.toTypedArray()) { _, i ->
+                        when {
+                            i == 0 -> askName("Имя новой ветки", "", "feature/имя") { n -> gitTask("branch") { git.createBranch(repo, n.trim()) } }
+                            i > 1 -> gitTask("checkout") { git.checkout(repo, list[i - 1]) }
+                        }
+                    }.setNegativeButton("Закрыть", null).show()
+            }
+        }
+    }
+
+    private fun askPullRequest(repo: File) {
+        val token = SecureStore(this).get("github_token").orEmpty()
+        val slug = GitHubApi.repoFromRemote(git.remoteUrl(repo))
+        if (slug == null) { toast("origin не указывает на репозиторий GitHub"); return }
+        if (token.isBlank()) { toast("Сначала сохраните GitHub-токен в Настройки → Git и GitHub"); return }
+        val branch = git.currentBranch(repo)
+        askName("Заголовок pull request ($branch → основная ветка)", "", "Что сделано") { title ->
+            gitTask("pull request") {
+                val api = GitHubApi(token)
+                git.push(repo, creds())
+                val base = api.defaultBranch(slug)
+                if (base == branch) throw IllegalStateException("Вы в основной ветке $base. Создайте отдельную ветку (Git → Ветки) и сделайте в ней коммит.")
+                val url = api.createPullRequest(slug, branch, base, title.trim())
+                main.post {
+                    appendConsole("Pull request создан: $url\n", Kind.INFO)
+                    try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (_: Exception) {}
+                }
             }
         }
     }
@@ -1633,7 +1675,8 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
     }
 
     private fun startBuild(kind: String) {
-        if (kind != "apk") { performBuild(kind); return }
+        if (kind != "apk" && kind != "setup") { performBuild(kind); return }
+        val setup = kind == "setup"
         val appName = EditText(this).apply {
             setSingleLine(true)
             hint = "Например Мой калькулятор"
@@ -1649,6 +1692,20 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             hint = "Положительное целое число"
             setText(prefs.buildVersionCode.toString())
             inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        val publisher = EditText(this).apply {
+            setSingleLine(true)
+            hint = "Например Иван Воронцов"
+            setText(prefs.buildPublisher)
+        }
+        val desktop = CheckBox(this).apply { text = "Ярлык на рабочем столе"; isChecked = prefs.setupDesktop }
+        val startMenu = CheckBox(this).apply { text = "Ярлык в меню «Пуск»"; isChecked = prefs.setupStartMenu }
+        val runAfter = CheckBox(this).apply { text = "Запустить программу после установки"; isChecked = prefs.setupRunAfter }
+        val license = EditText(this).apply {
+            hint = "Текст лицензии (необязательно) — установщик попросит принять"
+            minLines = 2
+            maxLines = 5
+            setText(prefs.setupLicense)
         }
         val iconStatus = TextView(this).apply {
             text = when {
@@ -1667,16 +1724,32 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             addView(appName)
             addView(TextView(this@MainActivity).apply { text = "Версия приложения" })
             addView(version)
-            addView(TextView(this@MainActivity).apply { text = "Version code (увеличивайте при обновлении)" })
-            addView(code)
+            if (setup) {
+                addView(TextView(this@MainActivity).apply { text = "Издатель" })
+                addView(publisher)
+                addView(desktop)
+                addView(startMenu)
+                addView(runAfter)
+                addView(license)
+            } else {
+                addView(TextView(this@MainActivity).apply { text = "Version code (увеличивайте при обновлении)" })
+                addView(code)
+            }
             addView(iconStatus)
             addView(photo)
             addView(emoji)
             addView(reset)
         }
+        val saveSetup = {
+            prefs.buildPublisher = publisher.text.toString().trim()
+            prefs.setupDesktop = desktop.isChecked
+            prefs.setupStartMenu = startMenu.isChecked
+            prefs.setupRunAfter = runAfter.isChecked
+            prefs.setupLicense = license.text.toString().trim()
+        }
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Параметры сборки APK")
-            .setView(content)
+            .setTitle(if (setup) "Установщик Windows" else "Параметры сборки APK")
+            .setView(ScrollView(this).apply { addView(content) })
             .setPositiveButton("Собрать") { _, _ ->
                 val name = appName.text.toString().trim()
                 val v = version.text.toString().trim()
@@ -1689,6 +1762,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 prefs.buildAppName = name
                 prefs.buildVersionName = v
                 prefs.buildVersionCode = n
+                if (setup) saveSetup()
                 performBuild(kind)
             }
             .setNegativeButton("Отмена", null)
@@ -1697,6 +1771,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
             prefs.buildAppName = appName.text.toString().trim().ifBlank { prefs.buildAppName }
             prefs.buildVersionName = version.text.toString().trim().ifBlank { prefs.buildVersionName }
             prefs.buildVersionCode = code.text.toString().toIntOrNull() ?: prefs.buildVersionCode
+            if (setup) saveSetup()
             iconOptionsKind = kind
             dialog.dismiss()
             openBuildIcon.launch(arrayOf("image/png", "image/jpeg", "image/webp"))
@@ -1726,7 +1801,7 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                 .setPositiveButton("ОК", null).show()
             return
         }
-        if (kind == "exe" && d.lang != Lang.PONYATNY && d.lang != Lang.JAVASCRIPT) {
+        if ((kind == "exe" || kind == "setup") && d.lang != Lang.PONYATNY && d.lang != Lang.JAVASCRIPT) {
             MaterialAlertDialogBuilder(this)
                 .setTitle("Сборка EXE")
                 .setMessage("Windows EXE на телефоне собирается из программы на «Понятном» или JavaScript (встроенный QuickJS). Для Java и Python соберите APK.")
@@ -1768,6 +1843,28 @@ class MainActivity : AppCompatActivity(), CodeEditor.Listener, ExtraKeysView.Lis
                         panelStatus.text = "Сборка готова"
                         toast("APK готов")
                         try { BuildCoordinator.mimeOpen(this@MainActivity, uri) } catch (_: Exception) {}
+                    }
+                } else if (kind == "setup") {
+                    val iconPng = when {
+                        prefs.buildIconUri.isNotBlank() -> IconComposer.fromUri(this@MainActivity, Uri.parse(prefs.buildIconUri))
+                        prefs.buildIconEmoji.isNotBlank() -> IconComposer.emojiPng(prefs.buildIconEmoji)
+                        else -> null
+                    }
+                    val opts = SetupOptions(
+                        title = label, version = prefs.buildVersionName, publisher = prefs.buildPublisher,
+                        desktopShortcut = prefs.setupDesktop, startMenu = prefs.setupStartMenu, runAfter = prefs.setupRunAfter,
+                        license = prefs.setupLicense, icon = iconPng?.let { IconComposer.pixels(it) }
+                    )
+                    val tmp = File(work, safeFileLabel + "-" + prefs.buildVersionName + "-Setup.exe")
+                    val setupExe = OneFileBuild.buildSetup(source, fileName, label, work, assets, tmp, { msg ->
+                        main.post { appendConsole(msg + "\n", Kind.INFO) }
+                    }, env, opts)
+                    val uri = BuildCoordinator.writeToTree(this@MainActivity, tree, setupExe.name, setupExe.readBytes())
+                    val ms = (System.nanoTime() - t0) / 1_000_000L
+                    main.post {
+                        appendConsole("Готово за $ms мс: ${setupExe.name} (${setupExe.length()} байт) записан в выбранную папку. Перенесите его на компьютер с Windows и запустите.\n", Kind.INFO)
+                        panelStatus.text = "Сборка готова"
+                        toast("Установщик готов")
                     }
                 } else {
                     val tmp = File(work, safeFileLabel + ".exe")

@@ -71,10 +71,10 @@ class Stroka182PackagesTest {
         assertEquals('M'.code.toByte(), buf[0])
         assertEquals('Z'.code.toByte(), buf[1])
         val inner = SetupPacker.inspect(buf)!!.second
-        assertTrue(inner.keys.toString(), inner.containsKey("Калькулятор.exe") && inner.containsKey("meta.txt"))
+        assertTrue(inner.keys.toString(), inner.containsKey("app/Калькулятор.exe") && inner.containsKey("meta.txt"))
         val meta = String(inner["meta.txt"]!!, Charsets.UTF_8)
         assertTrue(meta, meta.contains("exe=Калькулятор.exe") && meta.contains("title=Калькулятор"))
-        val innerExe = payload(inner["Калькулятор.exe"]!!, "STRQJS01")
+        val innerExe = payload(inner["app/Калькулятор.exe"]!!, "STRQJS01")
         assertTrue(innerExe.containsKey("yadro.js"))
         PonyatnyCalculatorBuildTest.copyEvidence(root, setup, "Калькулятор-Setup.exe")
     }

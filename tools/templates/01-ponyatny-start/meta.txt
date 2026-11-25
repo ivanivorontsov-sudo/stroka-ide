@@ -1,0 +1,3 @@
+id=ponyatny-start
+title=Понятный: первая программа
+main=привет.pon

@@ -1,0 +1,3 @@
+id=ponyatny-game
+title=Понятный: мини-игра «Поймай мяч»
+main=игра.pon

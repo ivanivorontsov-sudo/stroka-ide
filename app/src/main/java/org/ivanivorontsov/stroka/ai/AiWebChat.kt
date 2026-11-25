@@ -189,7 +189,8 @@ object AiWebChat {
           var before=window.__strokaBefore||{count:0,last:''};
           var fresh=!!last&&last!==before.last&&last!==norm(window.__strokaPrompt);
           var login=!!document.querySelector('input[type=password]')||(!composer()&&/sign in|log in|войти|создать аккаунт|continue with google/i.test((document.body.innerText||'').slice(0,2500)));
-          return JSON.stringify({text:last,busy:busy,login:login,composer:composer(),count:count,before:before.count,fresh:fresh});
+          var captcha=!!document.querySelector('iframe[src*=captcha],iframe[src*=hcaptcha],iframe[src*=recaptcha],iframe[src*=turnstile],iframe[title*=challenge]')||/complete the following challenge|confirm (that )?(this prompt was made by a|you are a) human|verify you are human|i.m not a robot|я не робот|подтвердите, что вы не робот|пройдите проверку/i.test((document.body.innerText||'').slice(0,4000));
+          return JSON.stringify({text:last,busy:busy,login:login,captcha:captcha,composer:composer(),count:count,before:before.count,fresh:fresh});
         })()"""
     }
 

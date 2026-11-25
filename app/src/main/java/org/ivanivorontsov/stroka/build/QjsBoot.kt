@@ -9,6 +9,7 @@ var __strokaShow = function (v) {
 };
 var __strokaError = function (e) {
   if (e && e.isExit) return "";
+  if (__R && __R.featureCatch && __R.featureCatch(e)) return "";
   var m = e && e.isPon ? e.message : (__R && __R.explain ? __R.explain(e) : String(e && e.message || e));
   return (__R && __R.L ? "Строка " + __R.L + ": " : "") + m;
 };
@@ -23,10 +24,11 @@ var __strokaCalc = function (name, a, b) {
 """
 
     fun windows(): String = """
+var __strokaEmpty = 0;
 var __R = typeof PonyatnyYadro !== "undefined" ? PonyatnyYadro.makeRuntime({
   write: function (s) { print(s); },
   writeErr: function (s) { print(s); },
-  ask: function (q) { return ask(q === undefined ? "" : String(q)); },
+  ask: function (q) { var a = ask(q === undefined ? "" : String(q)); if (a === null || a === undefined) return null; if (a === "") { __strokaEmpty++; if (__strokaEmpty >= 50) return null; } else __strokaEmpty = 0; return a; },
   maxSteps: Infinity,
   args: []
 }) : null;
@@ -57,7 +59,7 @@ std.evalScript(std.loadFile(__dir + "/yadro.js"));
 var __R = PonyatnyYadro.makeRuntime({
   write: function (s) { std.out.puts(String(s) + "\n"); std.out.flush(); },
   writeErr: function (s) { std.err.puts(String(s) + "\n"); },
-  ask: function (q) { if (q) { std.out.puts(String(q) + " "); std.out.flush(); } var l = std.in.getline(); return l === null ? "" : l; },
+  ask: function (q) { if (q) { std.out.puts(String(q) + " "); std.out.flush(); } var l = std.in.getline(); return l === null ? null : l; },
   maxSteps: Infinity,
   args: __args
 });

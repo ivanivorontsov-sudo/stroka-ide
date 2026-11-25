@@ -43,6 +43,15 @@ object IconComposer {
         } finally { source.recycle() }
     }
 
+    /** ARGB pixels of a PNG for the Windows icon sizes (16/32/48/256). */
+    fun pixels(png: ByteArray): WinIcon.Pixels = WinIcon.Pixels { n ->
+        val source = BitmapFactory.decodeByteArray(png, 0, png.size) ?: throw BuildException("Не удалось прочитать значок.")
+        try {
+            val scaled = Bitmap.createScaledBitmap(source, n, n, true)
+            try { IntArray(n * n).also { scaled.getPixels(it, 0, n, 0, 0, n, n) } } finally { if (scaled !== source) scaled.recycle() }
+        } finally { source.recycle() }
+    }
+
     private fun render(source: Bitmap?, emoji: String?): ByteArray {
         val output = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)

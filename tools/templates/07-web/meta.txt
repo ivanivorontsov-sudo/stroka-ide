@@ -1,0 +1,3 @@
+id=web
+title=Сайт: HTML + CSS + JS
+main=index.html

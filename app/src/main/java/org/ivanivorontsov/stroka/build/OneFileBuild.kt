@@ -87,17 +87,23 @@ object OneFileBuild {
         assets: BuildAssets,
         outSetup: File,
         log: (String) -> Unit = {},
-        env: CompileEnv = CompileEnv()
+        env: CompileEnv = CompileEnv(),
+        options: SetupOptions = SetupOptions(label)
     ): File {
-        if (assets.setupStub.size < 64) throw BuildException("Нет шаблона установщика Windows.")
-        log("Собираю установщик Windows")
-        val exe = File(work, "$label.exe")
+        if (assets.setupStub.size < 64) throw BuildException("Нет шаблона установщика Windows в этой сборке Строки.")
+        log("Собираю программу для Windows")
+        val safe = label.map { if (it == '/' || it == '\\' || it == ':' || it == '*' || it == '?' || it == '"' || it == '<' || it == '>' || it == '|') '_' else it }
+            .joinToString("").trim().take(60).ifBlank { "Программа" }
+        val exe = File(work, "$safe.exe")
         buildExe(source, fileName, label, File(work, "exe"), assets, exe, log, env)
-        val files = linkedMapOf(
-            exe.name to exe.readBytes(),
-            "meta.txt" to "title=$label\nid=${DebPacker.debName(label)}\nexe=${exe.name}\npublisher=Строка\nversion=1.0\n".toByteArray(Charsets.UTF_8)
-        )
-        return SetupPacker.pack(assets.setupStub, files, outSetup)
+        val exeBytes = exe.readBytes()
+        val icon = options.icon
+        if (icon != null) {
+            val n = WinIcon.patchExe(exeBytes, icon)
+            log(if (n > 0) "Значок программы заменён ($n размеров)" else "Шаблон программы без места для значка — значок будет только у ярлыков")
+        }
+        log("Упаковываю установщик: ${options.title} ${options.version}")
+        return SetupPacker.build(assets.setupStub, linkedMapOf(exe.name to exeBytes), exe.name, options.copy(title = options.title.ifBlank { label }), outSetup)
     }
 
     fun buildDeb(

@@ -364,7 +364,7 @@ class AiChatActivity : AppCompatActivity() {
                             insertedRaw = evalJsBlocking(AiWebChat.injectScript(prompt, p.id, selected))
                             insertedObject = try { JSONObject(insertedRaw) } catch (_: Exception) { JSONObject() }
                             inserted = insertedObject.optString("status", insertedRaw)
-                            if (inserted == "OK") main.post { append("Интерфейс чата распознан адаптивно с помощью ИИ.\\n") }
+                            if (inserted == "OK") main.post { append("Интерфейс чата распознан адаптивно с помощью ИИ.\n") }
                         }
                     }
                     if (inserted != "OK") {
@@ -390,6 +390,7 @@ class AiChatActivity : AppCompatActivity() {
                         val poll = evalJsBlocking(AiWebChat.pollScript(p.id))
                         val obj = try { JSONObject(poll) } catch (_: Exception) { JSONObject() }
                         if (obj.optBoolean("login")) throw AiExceptionForLogin()
+                        if (obj.optBoolean("captcha")) throw AiExceptionForLogin(captcha = true)
                         val current = if (obj.optBoolean("fresh")) obj.optString("text") else ""
                         val busy = obj.optBoolean("busy")
                         if (current.isNotBlank() && current != last) {
@@ -409,7 +410,7 @@ class AiChatActivity : AppCompatActivity() {
                     messages += thread.messages
                     AiClient.chatStructured(prefs.aiBase, prefs.aiModel, key, messages)
                 }
-                val plan = AiPatchEngine.parse(raw)
+                val plan = AiPatchEngine.parseOrText(raw)
                 main.post {
                     thread.messages += AiMessage("assistant", raw)
                     thread.updatedAt = System.currentTimeMillis()
@@ -431,7 +432,8 @@ class AiChatActivity : AppCompatActivity() {
                     if (!webPromptSubmitted && thread.messages.lastOrNull()?.role == "user") thread.messages.removeAt(thread.messages.lastIndex)
                     store.save(threads)
                     setBusy(false)
-                    append("Нужен вход в аккаунт ${provider?.name ?: "ИИ"}. Нажмите «Войти», завершите вход и повторите запрос.\n\n")
+                    append(if (e.captcha) "${provider?.name ?: "Сайт"} просит пройти проверку «я не робот». Пройдите её в открывшемся окне — ответ появится там; затем продолжайте в чате.\n\n"
+                        else "Нужен вход в аккаунт ${provider?.name ?: "ИИ"}. Нажмите «Войти», завершите вход и повторите запрос.\n\n")
                     openBrowserForLogin()
                 }
             } catch (e: Exception) {
@@ -453,7 +455,7 @@ class AiChatActivity : AppCompatActivity() {
 Пути только относительные от корня проекта. Не меняй секреты, ключи, local.properties, .git и скрытые настройки.
 Для каждого изменяемого файла верни полный итоговый текст, не diff. Не запускай команды и не проси передавать ключи.
 Текущий основной файл: $fileName ($langName).
-""".trimIndent()
+""".trimIndent() + (if (fileName.endsWith(".pon", true) || langName.contains("Понят")) "\n" + AiClient.PONYATNY_HINT else "")
 
     private fun buildInitialContext(): String {
         val base = structuredSystemPrompt()
@@ -521,7 +523,7 @@ class AiChatActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private class AiExceptionForLogin : Exception("Нужно войти в веб-чат.")
+    private class AiExceptionForLogin(val captcha: Boolean = false) : Exception(if (captcha) "Сайт просит пройти проверку «я не робот»." else "Нужно войти в веб-чат.")
 
     companion object {
         const val EXTRA_CODE = "code"

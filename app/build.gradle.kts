@@ -37,8 +37,8 @@ android {
         applicationId = "org.ivanivorontsov.stroka"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.8.3"
+        versionCode = 14
+        versionName = "1.9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters.clear()
@@ -107,6 +107,21 @@ dependencies {
     add(kotlinRuntimeForDevice.name, "org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
     add(kotlinCompilerRaw.name, "com.github.PranavPurwar:kotlinc-android:2.4.0")
     implementation(files(filteredKotlinCompiler.flatMap { it.archiveFile }))
+    // Runtime dependencies of the on-device Kotlin compiler. kotlinCompilerRaw is
+    // non-transitive (to drop its bundled JNA copy), so these must be listed
+    // explicitly; without kotlin-reflect the compiler fails on the phone with
+    // NoClassDefFoundError: kotlin/reflect/jvm/ReflectJvmMapping.
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.4.0")
+    implementation("org.jetbrains.intellij.deps:trove4j:1.0.20200330")
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.4.0")
+    implementation("org.jdom:jdom:2.0.2")
+    implementation("org.antlr:antlr4-runtime:4.13.2")
+    implementation("io.vavr:vavr:1.0.1")
+    implementation("org.codehaus.woodstox:stax2-api:4.3.0")
+    implementation("com.google.guava:guava:33.6.0-android")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation("com.github.PranavPurwar:javac-android:26.0.0")
+    implementation("com.github.Cosmic-IDE.kotlinc-android:jaxp:fce2462f00")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-ktx:1.9.3")

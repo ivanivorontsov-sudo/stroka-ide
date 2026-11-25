@@ -13,6 +13,7 @@ object WwwBundle {
             "index.html" to need(File(runtimeDir, "index.html")),
             "runtime.js" to need(File(runtimeDir, "runtime.js")),
             "shell.js" to need(File(runtimeDir, "shell.js")),
+            "grafika.js" to need(File(runtimeDir, "grafika.js")),
             "yadro.js" to need(yadroJs),
             "program.js" to programJs.toByteArray(Charsets.UTF_8)
         )

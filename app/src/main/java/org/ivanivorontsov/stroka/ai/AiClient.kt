@@ -11,27 +11,31 @@ class AiException(message: String) : Exception(message)
 data class AiMessage(val role: String, val content: String)
 
 object AiClient {
-    fun systemPrompt(langName: String, fileName: String): String {
-        return """
-Ты помогаешь писать и исправлять программы в мобильном редакторе «Строка».
-Отвечай по-русски, кратко и по делу. Когда нужно изменить код, верни полный текст файла в одном блоке ``` с языком.
-Не добавляй комментарии в код, если пользователь не просил. Не выводи ключи, токены и пароли.
+    /** Короткая шпаргалка по «Понятному» 2.7 для моделей, которые его не знают. */
+    const val PONYATNY_HINT = """Язык «Понятный» 2.7 (файлы .pon): русские ключевые слова, блоки закрываются словом «конец».
+пусть x = 5; константа N = 10; пиши "текст", x; пусть имя = спроси("Вопрос?")
+если x > 0 то … иначе если x < 0 то … иначе … конец; пока x > 0 … конец; для i от 1 до 10 … конец; для каждого элемент в список … конец
+функция имя(а, б) … верни а + б конец; лямбда: функция(а) => а * 2 или а => а * 2; класс Имя … конец; попробуй … если ошибка как е … конец
+Строки: "…" или «…», подстановка "Счёт: {x}". Логика: и, или, не, истина, ложь, ничего. Списки [1, 2], словари {"ключ": 1}.
+Встроенные: длина, сумма, округли, число, строка, случайное. Графика: окно(заголовок, ш, в), залей(цвет), прямоугольник(x, y, ш, в, цвет), круг(x, y, r, цвет), рисуй_текст(x, y, текст, цвет, размер), каждый_кадр(функция), клавиша("влево"), мышь().
+Если есть функции сложить/вычесть/умножить/разделить — Строка сама строит окно калькулятора."""
 
-Язык «Понятный»: русские ключевые слова (пусть, константа, если/то/иначе, пока, повторить, для, функция, верни, конец, и, или, не, истина, ложь, ничего, попробуй, брось, выбор, класс, новый).
-Строки можно брать в «ёлочки» «». Функции в скомпилированном JS получают префикс $. Стандартные имена: напиши, спроси.
-Пиши идиоматичный «Понятный», а не перевод с JavaScript дословно.
+    fun systemPrompt(langName: String, fileName: String): String =
+        "Ты помогаешь писать и исправлять программы в мобильном редакторе «Строка». Отвечай по-русски, кратко и по делу. " +
+            "Когда нужно изменить код, верни полный текст файла в одном блоке ``` с языком. Не выводи ключи, токены и пароли.\n" +
+            "Текущий файл: $fileName (язык: $langName).\n" + PONYATNY_HINT
 
-Текущий файл: $fileName (язык: $langName).
-Если пользователь просит калькулятор, сделай четыре действия и обработай деление на ноль.
-""".trimIndent()
+    /** Адрес Chat Completions для OpenAI-совместимого API: https://api.deepseek.com, …/v1, …/v1beta/openai, …/compatible-mode/v1. */
+    fun endpoint(baseUrl: String): String {
+        val base = baseUrl.trim().ifBlank { "https://api.deepseek.com" }.trimEnd('/')
+        if (base.endsWith("/chat/completions")) return base
+        val path = Regex("^https?://[^/]+(/.*)?$").find(base)?.groupValues?.get(1).orEmpty()
+        return if (Regex("/v\\d+[a-z0-9]*(/|$)|/openai$").containsMatchIn(path)) "$base/chat/completions" else "$base/v1/chat/completions"
     }
 
     fun chat(baseUrl: String, model: String, apiKey: String, messages: List<AiMessage>): String {
         if (apiKey.isBlank()) throw AiException("Не задан ключ API ИИ. Откройте Настройки и сохраните ключ.")
-        val base = baseUrl.trim().ifBlank { "https://api.deepseek.com" }.trimEnd('/')
-        val url = if (base.endsWith("/v1") || base.endsWith("/chat/completions")) {
-            if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
-        } else "$base/v1/chat/completions"
+        val url = endpoint(baseUrl)
         val arr = JSONArray()
         for (m in messages) {
             arr.put(JSONObject().put("role", m.role).put("content", m.content))
@@ -106,10 +110,7 @@ object AiClient {
         messages: List<AiMessage>,
         responseFormat: JSONObject
     ): String {
-        val base = baseUrl.trim().ifBlank { "https://api.deepseek.com" }.trimEnd('/')
-        val url = if (base.endsWith("/v1") || base.endsWith("/chat/completions")) {
-            if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
-        } else "$base/v1/chat/completions"
+        val url = endpoint(baseUrl)
         val arr = JSONArray()
         messages.forEach { arr.put(JSONObject().put("role", it.role).put("content", it.content)) }
         val body = JSONObject().put("model", model.ifBlank { "deepseek-chat" })

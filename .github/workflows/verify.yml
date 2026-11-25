@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feature/ide-toolchain-upgrade]
+    branches: [main, feature/ide-toolchain-upgrade, v1.9]
 
 permissions:
   contents: read
@@ -16,7 +16,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -38,7 +38,7 @@ jobs:
           STROKA_EVIDENCE: ${{ runner.temp }}/stroka-evidence
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon testDebugUnitTest assembleDebug
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest
 
       - name: Upload unit test reports
         if: always()
@@ -65,6 +65,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Run generated APK interaction tests on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         env:
@@ -74,15 +80,12 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: |
-            ./gradlew --no-daemon connectedDebugAndroidTest
-            mkdir -p "${{ runner.temp }}/generated-calculator"
-            adb pull "/sdcard/Android/data/org.ivanivorontsov.stroka/files/build-out/Калькулятор-java.apk" "${{ runner.temp }}/generated-calculator/Калькулятор-java.apk"
+          script: bash tools/ci/device-tests.sh "${{ runner.temp }}/device"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Stroka-java-calculator-device-test
-          path: ${{ runner.temp }}/generated-calculator/Калькулятор-java.apk
+          name: Stroka-device-tests
+          path: ${{ runner.temp }}/device/**
           if-no-files-found: ignore
           retention-days: 7

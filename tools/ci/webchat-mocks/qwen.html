@@ -1,0 +1,11 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Qwen (мок)</title>
+<style>body{font-family:sans-serif;margin:0;height:100vh;display:flex;flex-direction:column}main{flex:1;padding:12px}form{padding:12px;display:flex}textarea{flex:1;height:56px}button{width:48px}</style></head>
+<body><main id="log"></main>
+<form id="f"><textarea id="q" placeholder="How can I help you today?"></textarea><button type="submit" aria-label="Send message">➤</button></form>
+<script>
+const f=document.getElementById("f"),q=document.getElementById("q");
+f.addEventListener("submit",e=>{e.preventDefault();const text=q.value;if(!text)return;q.value="";
+ const u=document.createElement("div");u.className="chat-user-message";u.textContent=text;log.appendChild(u);
+ const a=document.createElement("div");a.className="response-message-content";a.setAttribute("aria-busy","true");log.appendChild(a);
+ setTimeout(()=>{a.textContent='{"summary":"Калькулятор Qwen","operations":[{"action":"write","path":"calc.pon","content":"пиши 2 + 2"}]}';a.removeAttribute("aria-busy");},900);});
+</script></body></html>

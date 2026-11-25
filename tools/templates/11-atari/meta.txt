@@ -1,0 +1,3 @@
+id=atari
+title=Atari 2600: радуга (ассемблер 6502)
+main=game.asm
