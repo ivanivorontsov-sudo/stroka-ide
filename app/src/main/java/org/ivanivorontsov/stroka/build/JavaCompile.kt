@@ -15,6 +15,11 @@ object JavaCompile {
     ) {
         if (sources.isEmpty()) throw BuildException("Нет Java-исходников для компиляции.")
         outDir.mkdirs()
+        for (f in sources) {
+            val text = f.readText(Charsets.UTF_8)
+            val plain = JavaTextBlocks.desugar(text)
+            if (plain != text) f.writeText(plain, Charsets.UTF_8)
+        }
         val out = StringWriter()
         val err = StringWriter()
         val main = Main(PrintWriter(out, true), PrintWriter(err, true), false, null, null)

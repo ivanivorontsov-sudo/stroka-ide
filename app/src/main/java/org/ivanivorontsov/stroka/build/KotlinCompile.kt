@@ -30,6 +30,10 @@ object KotlinCompile {
             .distinctBy { it.absolutePath }
             .joinToString(File.pathSeparator) { it.absolutePath }
         val args = arrayListOf(
+            // На Android java.home = /apex/com.android.art, там нет классов JDK:
+            // без -no-jdk компилятор падает с «No class roots are found in the JDK path».
+            // Классы java.* берутся из android.jar в classpath.
+            "-no-jdk",
             "-no-stdlib",
             "-no-reflect",
             "-jvm-target", "1.8",
